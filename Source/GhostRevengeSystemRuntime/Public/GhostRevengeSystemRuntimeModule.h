@@ -8,6 +8,7 @@
 class FGhostRevengeSystemRuntimeModule : public IModuleInterface
 {
 public:
+	inline static const FName GRSModuleName = TEXT("GhostRevengeSystem");
 	//~IModuleInterface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
