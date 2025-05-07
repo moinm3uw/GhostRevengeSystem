@@ -1,0 +1,15 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-GhostRevengeSystemRuntime.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GhostRevengeSystemRuntime.init.gen.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GRSWorldSubSystem.gen.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GhostRevengeSystemRuntimeModule.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GRSWorldSubSystem.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\PerModuleInline.gen.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\Default.rc2.res"
+/OUT:"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\UnrealEditor-GhostRevengeSystemRuntime.lib"
