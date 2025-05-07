@@ -1,4 +1,4 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
@@ -15,7 +15,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
 	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject& WorldContextObject);
