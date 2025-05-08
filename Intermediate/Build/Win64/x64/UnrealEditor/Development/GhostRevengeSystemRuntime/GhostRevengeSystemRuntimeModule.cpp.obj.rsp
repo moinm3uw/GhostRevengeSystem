@@ -45,6 +45,6 @@
 /TP
 /GR-
 /W4
-/std:c++20
+/std:c++latest
 /Zc:preprocessor
 /wd5054

@@ -6,7 +6,9 @@ public class GhostRevengeSystemRuntime : ModuleRules
 {
 	public GhostRevengeSystemRuntime(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		CppStandard = CppStandardVersion.Latest; 
+		bEnableNonInlinedGenCppWarnings = true;
+		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{

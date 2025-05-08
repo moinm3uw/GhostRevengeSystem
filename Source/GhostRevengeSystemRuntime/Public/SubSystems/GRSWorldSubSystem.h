@@ -25,14 +25,19 @@ public:
 	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
 	FGRSOnInitialize OnInitialize;
 
+	/** Returns the data asset that contains all the assets of Ghost Revenge System game feature.
+	 * @see UGRSWorldSubsystem::GRSDataAssetInternal. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	const class UGRSDataAsset* GetGRSDataAsset() const;
+
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
 	 * Property is put to subsystem because its instance is created before any other object.
 	 * It can't be put to DevelopSettings class because it does work properly for MGF-modules. */
-	//UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
-	//TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
-	
+	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
+	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
+
 	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 };

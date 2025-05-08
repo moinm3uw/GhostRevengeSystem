@@ -37,8 +37,8 @@
 /FUNCTIONPADMIN:6
 /NOIMPLIB
 "C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GhostRevengeSystemRuntime.init.gen.cpp.obj"
-"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GRSWorldSubSystem.gen.cpp.obj"
 "C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GhostRevengeSystemRuntimeModule.cpp.obj"
+"C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GRSDataAsset.cpp.obj"
 "C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\GRSWorldSubSystem.cpp.obj"
 "C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\PerModuleInline.gen.cpp.obj"
 "C:\UnrealProjects\bmb\Bomber\Plugins\GameFeatures\GhostRevengeSystem\Intermediate\Build\Win64\x64\UnrealEditor\Development\GhostRevengeSystemRuntime\Default.rc2.res"
@@ -46,7 +46,10 @@
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Engine\UnrealEditor-Engine.lib"
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Slate\UnrealEditor-Slate.lib"
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\SlateCore\UnrealEditor-SlateCore.lib"
+"..\Intermediate\Build\Win64\x64\UnrealEditor\Development\GameplayTags\UnrealEditor-GameplayTags.lib"
+"C:\UnrealProjects\bmb\Bomber\Plugins\MyEditorUtils\Intermediate\Build\Win64\x64\UnrealEditor\Development\MyUtils\UnrealEditor-MyUtils.lib"
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Core\UnrealEditor-Core.lib"
+"C:\UnrealProjects\bmb\Bomber\Intermediate\Build\Win64\x64\UnrealEditor\Development\Bomber\UnrealEditor-Bomber.lib"
 "delayimp.lib"
 "wininet.lib"
 "rpcrt4.lib"

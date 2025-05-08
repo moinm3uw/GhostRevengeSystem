@@ -9,18 +9,29 @@
 #include "UObject/ScriptMacros.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
+class UGRSDataAsset;
 #ifdef GHOSTREVENGESYSTEMRUNTIME_GRSWorldSubSystem_generated_h
 #error "GRSWorldSubSystem.generated.h already included, missing '#pragma once' in GRSWorldSubSystem.h"
 #endif
 #define GHOSTREVENGESYSTEMRUNTIME_GRSWorldSubSystem_generated_h
+
+#define FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_18_DELEGATE \
+static void FGRSOnInitialize_DelegateWrapper(const FMulticastScriptDelegate& GRSOnInitialize);
+
+
+#define FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_RPC_WRAPPERS_NO_PURE_DECLS \
+	DECLARE_FUNCTION(execGetGRSDataAsset);
+
 
 #define FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_INCLASS_NO_PURE_DECLS \
 private: \
 	static void StaticRegisterNativesUGRSWorldSubSystem(); \
 	friend struct Z_Construct_UClass_UGRSWorldSubSystem_Statics; \
 public: \
-	DECLARE_CLASS(UGRSWorldSubSystem, UWorldSubsystem, COMPILED_IN_FLAGS(0), CASTCLASS_None, TEXT("/Script/GhostRevengeSystemRuntime"), NO_API) \
-	DECLARE_SERIALIZER(UGRSWorldSubSystem)
+	DECLARE_CLASS(UGRSWorldSubSystem, UWorldSubsystem, COMPILED_IN_FLAGS(0 | CLASS_DefaultConfig | CLASS_Config), CASTCLASS_None, TEXT("/Script/GhostRevengeSystemRuntime"), NO_API) \
+	DECLARE_SERIALIZER(UGRSWorldSubSystem) \
+	static const TCHAR* StaticConfigName() {return TEXT("GhostRevengeSystem");} \
+
 
 
 #define FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_ENHANCED_CONSTRUCTORS \
@@ -41,6 +52,7 @@ public: \
 #define FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_GENERATED_BODY \
 PRAGMA_DISABLE_DEPRECATION_WARNINGS \
 public: \
+	FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_RPC_WRAPPERS_NO_PURE_DECLS \
 	FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_INCLASS_NO_PURE_DECLS \
 	FID_UnrealProjects_bmb_Bomber_Plugins_GameFeatures_GhostRevengeSystem_Source_GhostRevengeSystemRuntime_Public_SubSystems_GRSWorldSubSystem_h_15_ENHANCED_CONSTRUCTORS \
 private: \

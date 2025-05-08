@@ -15,6 +15,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UMyPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** Returns the progression data asset or crash if can not be obtained. */
+	/** Returns the progression data asset or crash when can not be obtained. */
 	static const UGRSDataAsset& Get();
 };
