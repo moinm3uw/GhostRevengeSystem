@@ -4,8 +4,10 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 #include "Data/MyPrimaryDataAsset.h"
+#include "Data/GRSDataAsset.h"
 #include "Engine/Engine.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
+
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -32,8 +34,7 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 // Returns the data asset that contains all the assets of Ghost Revenge System game feature
 const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 {
-	return nullptr;
-	//return UMyPrimaryDataAsset::GetOrLoadOnce(DataAssetInternal);
+	return UMyPrimaryDataAsset::GetOrLoadOnce(DataAssetInternal);
 }
 
 // Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors
