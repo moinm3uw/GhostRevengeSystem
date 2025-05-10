@@ -53,7 +53,7 @@ void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameSt
 	switch (EndGameState)
 	{
 	case EEndGameState::Lose:
-		HUD = UWidgetsSubsystem::Get().GetHUDWidget();
+		//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
 		if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
 		{
 			break;
