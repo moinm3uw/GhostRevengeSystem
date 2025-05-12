@@ -3,6 +3,7 @@
 
 #include "Components/GRSComponent.h"
 
+#include "Data/GRSDataAsset.h"
 #include "GameFramework/MyPlayerState.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "Subsystems/WidgetsSubsystem.h"
@@ -23,6 +24,7 @@ void UGRSComponent::OnRegister()
 
 	BIND_ON_LOCAL_CHARACTER_READY(this, UGRSComponent::OnLocalCharacterReady);
 	UE_LOG(LogTemp, Warning, TEXT("UGRSComponent OnRegister"));
+	UE_LOG(LogTemp, Warning, TEXT("UGRSDataAsset string %s"), *UGRSDataAsset::Get().GetTestString());
 }
 
 // Clears all transient data created by this component
@@ -49,7 +51,7 @@ void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState*
 // Called when the end game state was changed to recalculate progression according to endgame (win, loss etc.) 
 void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameState)
 {
-	class UHUDWidget* HUD  = nullptr;
+	class UHUDWidget* HUD = nullptr;
 	switch (EndGameState)
 	{
 	case EEndGameState::Lose:

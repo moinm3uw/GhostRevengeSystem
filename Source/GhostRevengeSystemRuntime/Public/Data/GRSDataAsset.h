@@ -17,4 +17,13 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UMyPrimaryDataAsset
 public:
 	/** Returns the progression data asset or crash when can not be obtained. */
 	static const UGRSDataAsset& Get();
+
+	/** Returns test string data */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FString GetTestString() const { return TestDataAssetStringInternal; }
+
+protected:
+	/** Test value for the data assest*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
+	FString TestDataAssetStringInternal;
 };
