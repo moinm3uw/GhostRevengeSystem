@@ -2,15 +2,15 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "GhostRevengeSystem",
-	"Description": "Ghost Revenge MGF",
+	"FriendlyName": "Ghost Revenge System",
+	"Description": "Game feature that implements ghost revenge on the project.",
 	"Category": "Game Features",
-	"CreatedBy": "Valeriy Rotermel",
-	"CreatedByURL": "",
+	"CreatedBy": "Valerii Rotermel & Yevhenii Selivanov",
+	"CreatedByURL": "https://github.com/moinm3uw",
 	"DocsURL": "",
 	"MarketplaceURL": "",
-	"SupportURL": "",
-	"EnabledByDefault": false,
+	"SupportURL": "https://discord.gg/7hT2huzw",
+	"EnabledByDefault": true,
 	"CanContainContent": true,
 	"IsBetaVersion": true,
 	"IsExperimentalVersion": false,
@@ -28,6 +28,6 @@
 		{
 			"Name": "MyEditorUtils",
 			"Enabled": true
-		}
+		},
 	]
 }
