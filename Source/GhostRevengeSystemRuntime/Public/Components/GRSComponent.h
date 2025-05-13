@@ -1,4 +1,4 @@
-// Copyright (c) Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
@@ -19,13 +19,17 @@ public:
 	// Sets default values for this component's properties
 	UGRSComponent();
 
+	/** Returns current spot name */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	FName GetSpotName();
+
+
 	/*********************************************************************************************
 	 * Protected properties
 	 **********************************************************************************************/
 protected:
-
 	UPROPERTY()
-	AMyPlayerState *PlayerStateInternal;
+	AMyPlayerState* PlayerStateInternal;
 	/*********************************************************************************************
 	 * Protected functions
 	 **********************************************************************************************/
@@ -35,7 +39,11 @@ protected:
 
 	/** Clears all transient data created by this component. */
 	virtual void OnUnregister() override;
-	
+
+	/** Called when the ghost revenge system is ready loaded (when game transitions to ingame state) */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnInitialize();
+
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnLocalCharacterReady(class APlayerCharacter* PlayerCharacter, int32 CharacterID);
@@ -47,5 +55,8 @@ protected:
 	/** Called when the end game state was changed to recalculate progression according to endgame (win, loss etc.)  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
-	
+
+	/** Spot type (enum to FName)*/
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Name"))
+	FName SpotNameInternal;
 };

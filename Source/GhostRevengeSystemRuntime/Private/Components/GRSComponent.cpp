@@ -1,4 +1,4 @@
-// Copyright (c) Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 
 #include "Components/GRSComponent.h"
@@ -6,6 +6,7 @@
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/MyPlayerState.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
+#include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/HUDWidget.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
@@ -17,20 +18,34 @@ UGRSComponent::UGRSComponent()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
+// Returns current spot name
+FName UGRSComponent::GetSpotName_Implementation()
+{
+	return SpotNameInternal;
+}
+
 // Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called
 void UGRSComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	BIND_ON_LOCAL_CHARACTER_READY(this, UGRSComponent::OnLocalCharacterReady);
-	UE_LOG(LogTemp, Warning, TEXT("UGRSComponent OnRegister"));
-	UE_LOG(LogTemp, Warning, TEXT("UGRSDataAsset string %s"), *UGRSDataAsset::Get().GetTestString());
+	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 }
 
 // Clears all transient data created by this component
 void UGRSComponent::OnUnregister()
 {
 	Super::OnUnregister();
+}
+
+// Called when the ghost revenge system is ready loaded (when game transitions to ingame state)
+void UGRSComponent::OnInitialize_Implementation()
+{
+	SpotNameInternal = UGRSWorldSubSystem::Get().GetSpotName();
+	UGRSWorldSubSystem::Get().RegisterSpotComponent(this);
+	BIND_ON_LOCAL_CHARACTER_READY(this, UGRSComponent::OnLocalCharacterReady);
+	UE_LOG(LogTemp, Warning, TEXT("UGRSComponent OnRegister"));
+	UE_LOG(LogTemp, Warning, TEXT("UGRSDataAsset string %s"), *UGRSDataAsset::Get().GetTestString());
 }
 
 // Called when the local player character is spawned, possessed, and replicated

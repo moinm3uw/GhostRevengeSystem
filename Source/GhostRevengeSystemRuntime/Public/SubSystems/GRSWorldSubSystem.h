@@ -30,6 +30,14 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	const class UGRSDataAsset* GetGRSDataAsset() const;
 
+	/** Returns available FName for spot component */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	FName GetSpotName();
+	
+	/** Register the ghost revenge system spot component */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RegisterSpotComponent(class UGRSComponent* MyComponent);
+
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -37,6 +45,14 @@ protected:
 	 * It can't be put to DevelopSettings class because it does work properly for MGF-modules. */
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
+
+	/** Listen game states to switch character skin. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+
+	/** Stores list of FNames (enums converted to FName) of spots */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Map"))
+	TMap<FName/*SpotName*/, TObjectPtr<class UGRSComponent>> SpotComponentsMapInternal;
 
 	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

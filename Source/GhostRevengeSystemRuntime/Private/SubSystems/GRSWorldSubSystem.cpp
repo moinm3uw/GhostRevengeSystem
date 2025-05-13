@@ -3,10 +3,15 @@
 
 #include "SubSystems/GRSWorldSubSystem.h"
 
+#include "Components/GRSComponent.h"
+#include "Data/EGRSSpotType.h"
 #include "Data/MyPrimaryDataAsset.h"
 #include "Data/GRSDataAsset.h"
 #include "Engine/Engine.h"
+#include "GameFramework/MyGameStateBase.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
+#include "Subsystems/GlobalEventsSubsystem.h"
+#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
@@ -41,4 +46,48 @@ const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
+
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+}
+
+// Listen game states to switch character skin.
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+{
+	switch (CurrentGameState)
+	{
+	case ECurrentGameState::GameStarting:
+		OnInitialize.Broadcast();
+		break;
+	default:
+		break;
+	}
+}
+
+// Returns available FName for spot component
+FName UGRSWorldSubSystem::GetSpotName()
+{
+	FName SpotName = FName("");
+	if (SpotComponentsMapInternal.IsEmpty())
+	{
+		UEnum* EnumPtr = StaticEnum<EGRSSpotType>();
+		const FString ContextString = EnumPtr->GetNameStringByValue(TO_FLAG(EGRSSpotType::Left));
+		SpotName = *ContextString;
+		return SpotName;
+	}
+
+	UEnum* EnumPtr = StaticEnum<EGRSSpotType>();
+	const FString ContextString = EnumPtr->GetNameStringByValue(TO_FLAG(EGRSSpotType::Right));
+	SpotName = *ContextString;
+	return SpotName;
+}
+
+// Register the ghost revenge system spot component
+void UGRSWorldSubSystem::RegisterSpotComponent(UGRSComponent* MyComponent)
+{
+	if (!ensureMsgf(MyComponent, TEXT("ASSERT: [%i] %hs:\n'MyComponent' is null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	SpotComponentsMapInternal.Add(MyComponent->GetSpotName(), MyComponent);
 }
