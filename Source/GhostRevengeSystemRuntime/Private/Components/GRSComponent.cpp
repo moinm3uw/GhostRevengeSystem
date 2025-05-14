@@ -7,6 +7,7 @@
 #include "Components/MySkeletalMeshComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/MyPlayerState.h"
+#include "LevelActors/GRSPlayerCharacter.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
@@ -77,7 +78,6 @@ void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState*
 {
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
 	PlayerStateInternal = PlayerState;
-
 	
 	APlayerCharacter* PlayerCharacter = PlayerStateInternal->GetPlayerCharacter();
 	PlayerCharacterInternal = DuplicateObject<APlayerCharacter>(PlayerCharacter, PlayerCharacter->GetOuter(), TEXT("GRSPlayerCharacter"));
@@ -99,8 +99,11 @@ void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState*
 void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameState)
 {
 	class UHUDWidget* HUD = nullptr;
-	APlayerCharacter* SpawnedActor = nullptr;
-
+	GhostPlayerCharacter = NewObject<AGRSPlayerCharacter>();
+	if (!ensureMsgf(GhostPlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'GhostPlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
 	// Spawn parameters
 	FActorSpawnParameters SpawnParams;
 	
@@ -109,8 +112,7 @@ void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameSt
 	{
 	case EEndGameState::Lose:
 		
-	
-		SpawnedActor = GetWorld()->SpawnActor<APlayerCharacter>(PlayerCharacterInternal->GetClass(),SpawnLocation, FRotator::ZeroRotator,SpawnParams);
+		GhostPlayerCharacter = GetWorld()->SpawnActor<AGRSPlayerCharacter>(GhostPlayerCharacter->GetClass(),SpawnLocation, FRotator::ZeroRotator,SpawnParams);
 		/*
 		//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
 		if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))

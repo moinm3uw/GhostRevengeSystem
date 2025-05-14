@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/MapComponent.h"
 #include "GameFramework/Character.h"
+#include "LevelActors/PlayerCharacter.h"
 #include "GRSPlayerCharacter.generated.h"
 
 /**
@@ -19,6 +20,9 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter
 public:
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+
+	/** Called when an instance of this class is placed (in editor) or spawned */
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
@@ -58,8 +62,6 @@ public:
 	friend class UMyCheatManager;
 
 	/** Returns the Skeletal Mesh of ghost revenge character. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
-	class UMySkeletalMeshComponent* GetMySkeletalMeshComponent() const;
 	UMySkeletalMeshComponent& GetMeshChecked() const;
 
 	/** Set and apply default skeletal mesh for this player.

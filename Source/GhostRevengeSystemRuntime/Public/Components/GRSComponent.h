@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "LevelActors/PlayerCharacter.h"
+#include "LevelActors/GRSPlayerCharacter.h"
 #include "GRSComponent.generated.h"
 
 
@@ -64,6 +66,10 @@ protected:
 	/** Current player character, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
 	TObjectPtr<APlayerCharacter> PlayerCharacterInternal;
+
+	/** AGRSPlayerCharacter, set once game state changes into in-game */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
+	TObjectPtr<AGRSPlayerCharacter> GhostPlayerCharacter;
 
 	/** Current skeletal mesh component, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current My Skeletal Mesh Component"))

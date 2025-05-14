@@ -12,7 +12,7 @@ public class GhostRevengeSystemRuntime : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{
-				"Core",
+				"Core", "UMG",
 				// Bomber
 				"Bomber"
 			}

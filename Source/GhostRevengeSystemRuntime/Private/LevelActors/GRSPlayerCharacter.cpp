@@ -16,12 +16,6 @@
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 class UPlayerRow;
-// Sets default values
-AGRSPlayerCharacter::AGRSPlayerCharacter()
-{
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
 
 // Sets default values for this character's properties
 AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -111,16 +105,20 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	}
 }
 
+// Called when an instance of this class is placed (in editor) or spawned
+void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	
+	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	SetDefaultPlayerMeshData();
+	
+}
+
 // Called when the game starts or when spawned
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-// Returns the Skeletal Mesh of ghost revenge character
-UMySkeletalMeshComponent* AGRSPlayerCharacter::GetMySkeletalMeshComponent() const
-{
-	return MapComponentInternal ? MapComponentInternal->GetMeshComponent<UMySkeletalMeshComponent>() : nullptr;
 }
 
 
@@ -159,11 +157,11 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = fal
 	MeshData.Row = Row;
 	MeshData.SkinIndex = PlayerCharacter->GetPlayerId() % SkinsNum;
 
-	if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(GetMySkeletalMeshComponent()))
+	if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(&GetMeshChecked()))
 	{
 		SkeletalMeshComponent->SetSkeletalMesh(Cast<USkeletalMesh>(MeshData.Row->Mesh));
 	}
-	else if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(GetMySkeletalMeshComponent()))
+	else if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(&GetMeshChecked()))
 	{
 		StaticMeshComponent->SetStaticMesh(Cast<UStaticMesh>(MeshData.Row->Mesh));
 	}
