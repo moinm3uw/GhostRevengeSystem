@@ -1,0 +1,183 @@
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
+
+
+#include "LevelActors/GRSPlayerCharacter.h"
+
+#include "Components/CapsuleComponent.h"
+#include "Components/MySkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/WidgetComponent.h"
+#include "DataAssets/PlayerDataAsset.h"
+#include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/MyPlayerState.h"
+#include "LevelActors/PlayerCharacter.h"
+#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
+
+class UPlayerRow;
+// Sets default values
+AGRSPlayerCharacter::AGRSPlayerCharacter()
+{
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+// Sets default values for this character's properties
+AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UMySkeletalMeshComponent>(MeshComponentName)) // Init UMySkeletalMeshComponent instead of USkeletalMeshComponent
+{
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+
+	// Replicate an actor
+	bReplicates = true;
+	bAlwaysRelevant = true;
+	SetReplicatingMovement(true);
+
+	// Do not rotate player by camera
+	bUseControllerRotationYaw = false;
+
+	// Initialize MapComponent
+	// MapComponentInternal = CreateDefaultSubobject<UMapComponent>(TEXT("MapComponent"
+	const APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
+	MapComponentInternal = UMapComponent::GetMapComponent(PlayerCharacter);
+
+	// Initialize skeletal mesh
+	USkeletalMeshComponent* SkeletalMeshComponent = GetMesh();
+	checkf(SkeletalMeshComponent, TEXT("ERROR: [%i] %hs:\n'SkeletalMeshComponent' is null!"), __LINE__, __FUNCTION__);
+	static const FVector MeshRelativeLocation(0, 0, -90.f);
+	SkeletalMeshComponent->SetRelativeLocation_Direct(MeshRelativeLocation);
+	static const FRotator MeshRelativeRotation(0, -90.f, 0);
+	SkeletalMeshComponent->SetRelativeRotation_Direct(MeshRelativeRotation);
+	SkeletalMeshComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	// Enable all lighting channels, so it's clearly visible in the dark
+	SkeletalMeshComponent->SetLightingChannels(/*bChannel0*/true, /*bChannel1*/true, /*bChannel2*/true);
+
+	// do not set mesh component to  map.
+	//MapComponentInternal->SetMeshComponent(SkeletalMeshComponent);
+
+	// Initialize the nameplate mesh component
+	NameplateMeshInternal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("NameplateMeshComponent"));
+	NameplateMeshInternal->SetupAttachment(RootComponent);
+	static const FVector NameplateRelativeLocation(0.f, 0.f, 210.f);
+	NameplateMeshInternal->SetRelativeLocation_Direct(NameplateRelativeLocation);
+	static const FVector NameplateRelativeScale(2.25f, 1.f, 1.f);
+	NameplateMeshInternal->SetRelativeScale3D_Direct(NameplateRelativeScale);
+	NameplateMeshInternal->SetUsingAbsoluteRotation(true);
+	NameplateMeshInternal->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	checkf(PlaneMesh, TEXT("ERROR: [%i] %hs:\n'PlaneMesh' failed to load!"), __LINE__, __FUNCTION__);
+	NameplateMeshInternal->SetStaticMesh(PlaneMesh);
+	NameplateMeshInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Initialize 3D widget component for the player name
+	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
+	PlayerName3DWidgetComponentInternal->SetupAttachment(NameplateMeshInternal);
+	static const FVector WidgetRelativeLocation(0.f, 0.f, 10.f);
+	PlayerName3DWidgetComponentInternal->SetRelativeLocation_Direct(WidgetRelativeLocation);
+	static const FRotator WidgetRelativeRotation(90.f, -90.f, 180.f);
+	PlayerName3DWidgetComponentInternal->SetRelativeRotation_Direct(WidgetRelativeRotation);
+	PlayerName3DWidgetComponentInternal->SetGenerateOverlapEvents(false);
+	static const FVector2D DrawSize(180.f, 50.f);
+	PlayerName3DWidgetComponentInternal->SetDrawSize(DrawSize);
+	static const FVector2D Pivot(0.5f, 0.4f);
+	PlayerName3DWidgetComponentInternal->SetPivot(Pivot);
+	PlayerName3DWidgetComponentInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		// Rotate player by movement
+		MovementComponent->bOrientRotationToMovement = true;
+		static const FRotator RotationRate(0.f, 540.f, 0.f);
+		MovementComponent->RotationRate = RotationRate;
+
+		// Do not push out clients from collision
+		MovementComponent->MaxDepenetrationWithGeometryAsProxy = 0.f;
+	}
+
+	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
+	{
+		// Setup collision to allow overlap players with each other, but block all other actors
+		RootCapsuleComponent->CanCharacterStepUpOn = ECB_Yes;
+		RootCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		RootCapsuleComponent->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
+		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
+	}
+}
+
+// Called when the game starts or when spawned
+void AGRSPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+// Returns the Skeletal Mesh of ghost revenge character
+UMySkeletalMeshComponent* AGRSPlayerCharacter::GetMySkeletalMeshComponent() const
+{
+	return MapComponentInternal ? MapComponentInternal->GetMeshComponent<UMySkeletalMeshComponent>() : nullptr;
+}
+
+
+UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
+{
+	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
+}
+
+// Set and apply default skeletal mesh for this player
+void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = false*/)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
+
+	const ELevelType PlayerFlag = UMyBlueprintFunctionLibrary::GetLevelType();
+	ELevelType LevelType = PlayerFlag;
+
+	if (bForcePlayerSkin)
+	{
+		// Force each bot to look like different player
+		LevelType = static_cast<ELevelType>(1 << PlayerCharacter->GetPlayerId());
+	}
+
+	const UPlayerRow* Row = UPlayerDataAsset::Get().GetRowByLevelType<UPlayerRow>(TO_ENUM(ELevelType, LevelType));
+	if (!ensureMsgf(Row, TEXT("ASSERT: [%i] %hs:\n'Row' is not found!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	const int32 SkinsNum = Row->GetSkinTexturesNum();
+	FBmrMeshData MeshData = FBmrMeshData::Empty;
+	MeshData.Row = Row;
+	MeshData.SkinIndex = PlayerCharacter->GetPlayerId() % SkinsNum;
+
+	if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(GetMySkeletalMeshComponent()))
+	{
+		SkeletalMeshComponent->SetSkeletalMesh(Cast<USkeletalMesh>(MeshData.Row->Mesh));
+	}
+	else if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(GetMySkeletalMeshComponent()))
+	{
+		StaticMeshComponent->SetStaticMesh(Cast<UStaticMesh>(MeshData.Row->Mesh));
+	}
+	
+}
+
+// Called every frame
+void AGRSPlayerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+// Called to bind functionality to input
+void AGRSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}

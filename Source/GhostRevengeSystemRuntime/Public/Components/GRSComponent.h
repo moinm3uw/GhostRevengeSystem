@@ -19,6 +19,11 @@ public:
 	// Sets default values for this component's properties
 	UGRSComponent();
 
+	/** Returns the Skeletal Mesh of the Bomber character. */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	class UMySkeletalMeshComponent* GetMySkeletalMeshComponent() const;
+	class UMySkeletalMeshComponent& GetMeshChecked() const;
+	
 	/** Returns current spot name */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	FName GetSpotName();
@@ -56,6 +61,14 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
 
+	/** Current player character, set once game state changes into in-game */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
+	TObjectPtr<APlayerCharacter> PlayerCharacterInternal;
+
+	/** Current skeletal mesh component, set once game state changes into in-game */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current My Skeletal Mesh Component"))
+	TObjectPtr<UMySkeletalMeshComponent> MySkeletalMeshComponentInternal;
+	
 	/** Spot type (enum to FName)*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Name"))
 	FName SpotNameInternal;

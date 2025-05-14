@@ -22,8 +22,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FString GetTestString() const { return TestDataAssetStringInternal; }
 
+	/** Returns spawn location */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
+
 protected:
 	/** Test value for the data assest*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
 	FString TestDataAssetStringInternal;
+
+	/** Spawn location of actor*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Spawn Location to play"))
+	FVector SpawnLocationInternal;
 };

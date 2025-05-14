@@ -3,8 +3,11 @@
 
 #include "Components/GRSComponent.h"
 
+#include "Components/MapComponent.h"
+#include "Components/MySkeletalMeshComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/MyPlayerState.h"
+#include "LevelActors/PlayerCharacter.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/WidgetsSubsystem.h"
@@ -16,6 +19,20 @@ UGRSComponent::UGRSComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+// Returns the Skeletal Mesh of the Bomber character
+UMySkeletalMeshComponent* UGRSComponent::GetMySkeletalMeshComponent() const
+{
+	return GetOwner()->FindComponentByClass<UMySkeletalMeshComponent>();
+}
+
+// Returns the Skeletal Mesh of the Bomber character
+UMySkeletalMeshComponent& UGRSComponent::GetMeshChecked() const
+{
+	UMySkeletalMeshComponent* Mesh = GetMySkeletalMeshComponent();
+	ensureMsgf(Mesh, TEXT("ASSERT: [%i] %hs:\n'Mesh' is nullptr, can not get mesh for spot.!"), __LINE__, __FUNCTION__);
+	return *Mesh;
 }
 
 // Returns current spot name
@@ -60,6 +77,21 @@ void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState*
 {
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
 	PlayerStateInternal = PlayerState;
+
+	
+	APlayerCharacter* PlayerCharacter = PlayerStateInternal->GetPlayerCharacter();
+	PlayerCharacterInternal = DuplicateObject<APlayerCharacter>(PlayerCharacter, PlayerCharacter->GetOuter(), TEXT("GRSPlayerCharacter"));
+	PlayerCharacterInternal->SetActorLocation(FVector(-800, -800, 100));
+	
+	MySkeletalMeshComponentInternal = PlayerCharacterInternal->GetMeshChecked();
+
+	/*
+	if (UMapComponent* MapComponent = UMapComponent::GetMapComponent(PlayerCharacterInternal))
+	{
+		MapComponent->SetReplicatedMeshData(MySkeletalMeshComponentInternal->GetMeshData());
+	}
+	*/
+
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 }
 
@@ -67,9 +99,19 @@ void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState*
 void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameState)
 {
 	class UHUDWidget* HUD = nullptr;
+	APlayerCharacter* SpawnedActor = nullptr;
+
+	// Spawn parameters
+	FActorSpawnParameters SpawnParams;
+	
+	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
 	switch (EndGameState)
 	{
 	case EEndGameState::Lose:
+		
+	
+		SpawnedActor = GetWorld()->SpawnActor<APlayerCharacter>(PlayerCharacterInternal->GetClass(),SpawnLocation, FRotator::ZeroRotator,SpawnParams);
+		/*
 		//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
 		if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
 		{
@@ -79,6 +121,7 @@ void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameSt
 		PlayerStateInternal->SetCharacterDead(false);
 		PlayerStateInternal->SetOpponentKilledNum(0);
 		PlayerStateInternal->SetEndGameState(EEndGameState::None);
+		*/
 		break;
 
 	default: break;
