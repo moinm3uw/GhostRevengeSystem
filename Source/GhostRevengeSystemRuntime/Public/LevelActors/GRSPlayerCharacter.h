@@ -34,6 +34,30 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	/** Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetDefaultParams();
+
+	/** Initialize skeletal mesh of the character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void InitializeSkeletalMesh();
+
+	/** Initialize the nameplate mesh component (background material of the player name) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void InitializeNameplateMeshComponent();
+
+	/**  Initialize 3D widget component for the player name */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void  Initialize3DWidgetComponent();
+
+	/** Configure the movement component of the character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void MovementComponentConfiguration();
+
+	/** Set up the capsule component of the character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetupCapsuleComponent();
+
 	/** Current player character, set once game state changes into in-game
 	 * Is used as a reference character to init ghost revenge character. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))

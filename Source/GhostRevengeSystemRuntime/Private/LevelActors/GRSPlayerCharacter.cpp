@@ -21,6 +21,28 @@ class UPlayerRow;
 AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UMySkeletalMeshComponent>(MeshComponentName)) // Init UMySkeletalMeshComponent instead of USkeletalMeshComponent
 {
+	// Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
+	SetDefaultParams();
+
+	// Initialize skeletal mesh of the character
+	InitializeSkeletalMesh();
+
+	// Initialize the nameplate mesh component
+	InitializeNameplateMeshComponent();
+
+	// Initialize 3D widget component for the player name
+	Initialize3DWidgetComponent();
+
+	// Configure the movement component
+	MovementComponentConfiguration();
+
+	// Setup capsule component
+	SetupCapsuleComponent();
+}
+
+// Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
+void AGRSPlayerCharacter::SetDefaultParams()
+{
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
@@ -31,12 +53,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 
 	// Do not rotate player by camera
 	bUseControllerRotationYaw = false;
+}
 
-	// Initialize MapComponent
-	// MapComponentInternal = CreateDefaultSubobject<UMapComponent>(TEXT("MapComponent"
-	const APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
-	MapComponentInternal = UMapComponent::GetMapComponent(PlayerCharacter);
-
+// Initialize skeletal mesh of the character
+void AGRSPlayerCharacter::InitializeSkeletalMesh()
+{
 	// Initialize skeletal mesh
 	USkeletalMeshComponent* SkeletalMeshComponent = GetMesh();
 	checkf(SkeletalMeshComponent, TEXT("ERROR: [%i] %hs:\n'SkeletalMeshComponent' is null!"), __LINE__, __FUNCTION__);
@@ -47,11 +68,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	SkeletalMeshComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	// Enable all lighting channels, so it's clearly visible in the dark
 	SkeletalMeshComponent->SetLightingChannels(/*bChannel0*/true, /*bChannel1*/true, /*bChannel2*/true);
+}
 
-	// do not set mesh component to  map.
-	//MapComponentInternal->SetMeshComponent(SkeletalMeshComponent);
-
-	// Initialize the nameplate mesh component
+// Initialize the nameplate mesh component (background material of the player name)
+void AGRSPlayerCharacter::InitializeNameplateMeshComponent()
+{
 	NameplateMeshInternal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("NameplateMeshComponent"));
 	NameplateMeshInternal->SetupAttachment(RootComponent);
 	static const FVector NameplateRelativeLocation(0.f, 0.f, 210.f);
@@ -64,8 +85,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	checkf(PlaneMesh, TEXT("ERROR: [%i] %hs:\n'PlaneMesh' failed to load!"), __LINE__, __FUNCTION__);
 	NameplateMeshInternal->SetStaticMesh(PlaneMesh);
 	NameplateMeshInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
 
-	// Initialize 3D widget component for the player name
+// Initialize 3D widget component for the player name
+void AGRSPlayerCharacter::Initialize3DWidgetComponent()
+{
 	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
 	PlayerName3DWidgetComponentInternal->SetupAttachment(NameplateMeshInternal);
 	static const FVector WidgetRelativeLocation(0.f, 0.f, 10.f);
@@ -78,7 +102,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	static const FVector2D Pivot(0.5f, 0.4f);
 	PlayerName3DWidgetComponentInternal->SetPivot(Pivot);
 	PlayerName3DWidgetComponentInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
 
+// Configure the movement component of the character
+void AGRSPlayerCharacter::MovementComponentConfiguration()
+{
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
 		// Rotate player by movement
@@ -89,7 +117,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 		// Do not push out clients from collision
 		MovementComponent->MaxDepenetrationWithGeometryAsProxy = 0.f;
 	}
+}
 
+// Set up the capsule component of the character
+void AGRSPlayerCharacter::SetupCapsuleComponent()
+{
 	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
 	{
 		// Setup collision to allow overlap players with each other, but block all other actors
@@ -109,10 +141,9 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	
+
 	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	SetDefaultPlayerMeshData();
-	
 }
 
 // Called when the game starts or when spawned
@@ -121,7 +152,7 @@ void AGRSPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
-
+// Returns the Skeletal Mesh of ghost revenge character
 UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 {
 	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
@@ -165,7 +196,6 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = fal
 	{
 		StaticMeshComponent->SetStaticMesh(Cast<UStaticMesh>(MeshData.Row->Mesh));
 	}
-	
 }
 
 // Called every frame
