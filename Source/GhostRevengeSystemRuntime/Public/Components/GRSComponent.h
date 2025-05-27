@@ -8,7 +8,10 @@
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "GRSComponent.generated.h"
 
-
+/**
+ * Ghost Revenge System module, where the Owner is Player Controller actor.
+ * Is responsible to spawn Ghost character after player first death and handle inputs of the spawned pawn
+ */
 UCLASS(BlueprintType, Blueprintable, DisplayName = "GRS Component", ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSComponent : public UActorComponent
 {
@@ -21,28 +24,25 @@ public:
 	// Sets default values for this component's properties
 	UGRSComponent();
 
-	/** Returns the Skeletal Mesh of the Bomber character. */
+	/** Returns Player Controller of this component. */
 	UFUNCTION(BlueprintPure, Category = "C++")
-	class UMySkeletalMeshComponent* GetMySkeletalMeshComponent() const;
-	class UMySkeletalMeshComponent& GetMeshChecked() const;
-	
-	/** Returns current spot name */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	FName GetSpotName();
+	class AMyPlayerController* GetPlayerController() const;
+	class AMyPlayerController& GetPlayerControllerChecked() const;
 
+	/** */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE AGRSPlayerCharacter* GetGhostPlayerCharacter() { return GhostPlayerCharacter; }
 
 	/*********************************************************************************************
 	 * Protected properties
 	 **********************************************************************************************/
 protected:
-	UPROPERTY()
-	AMyPlayerState* PlayerStateInternal;
 	/*********************************************************************************************
 	 * Protected functions
 	 **********************************************************************************************/
 protected:
-	/** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
-	virtual void OnRegister() override;
+	/** Called when the owning Actor begins play or when the component is created if the Actor has already begun play. */
+	virtual void BeginPlay() override;
 
 	/** Clears all transient data created by this component. */
 	virtual void OnUnregister() override;
@@ -63,19 +63,15 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
 
-	/** Current player character, set once game state changes into in-game */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
-	TObjectPtr<APlayerCharacter> PlayerCharacterInternal;
+	/** Listen game states to switch character skin. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+
+	/** Enables or disables the input context. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetManagedInputContextEnabled();
 
 	/** AGRSPlayerCharacter, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
 	TObjectPtr<AGRSPlayerCharacter> GhostPlayerCharacter;
-
-	/** Current skeletal mesh component, set once game state changes into in-game */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current My Skeletal Mesh Component"))
-	TObjectPtr<UMySkeletalMeshComponent> MySkeletalMeshComponentInternal;
-	
-	/** Spot type (enum to FName)*/
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Name"))
-	FName SpotNameInternal;
 };

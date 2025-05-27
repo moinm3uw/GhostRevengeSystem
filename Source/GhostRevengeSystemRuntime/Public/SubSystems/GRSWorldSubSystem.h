@@ -21,6 +21,10 @@ public:
 	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject& WorldContextObject);
 
+	/** Returns the Player Controller component of the ghost character */
+	UFUNCTION(BlueprintPure, Category = "C++", DisplayName = "Get Ghost Character Player Controller Component", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
+	static class AGRSPlayerCharacter* GetPlayerControllerComponent(const UObject* OptionalWorldContext = nullptr);
+
 	/* Delegate to inform that module is loaded. To have better loading control of the MGF  */
 	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
 	FGRSOnInitialize OnInitialize;
@@ -33,7 +37,7 @@ public:
 	/** Returns available FName for spot component */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FName GetSpotName();
-	
+
 	/** Register the ghost revenge system spot component */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void RegisterSpotComponent(class UGRSComponent* MyComponent);

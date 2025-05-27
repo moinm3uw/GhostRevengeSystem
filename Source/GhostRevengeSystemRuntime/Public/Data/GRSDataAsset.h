@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Data/MyPrimaryDataAsset.h"
+#include "DataAssets/MyInputMappingContext.h"
 #include "GRSDataAsset.generated.h"
 
 /**
@@ -26,6 +27,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
 
+	/** Returns input context. 
+	 * @see UGRSDataAsset::InputContextsInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UMyInputMappingContext* GetInputContext() const { return InputContextInternal; }
+	
 protected:
 	/** Test value for the data assest*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
@@ -34,4 +40,8 @@ protected:
 	/** Spawn location of actor*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Spawn Location to play"))
 	FVector SpawnLocationInternal;
+
+	/** Input context for the GRSPlayerCharacter */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
+	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
 };

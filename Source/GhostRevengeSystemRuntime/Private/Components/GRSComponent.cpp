@@ -3,15 +3,15 @@
 
 #include "Components/GRSComponent.h"
 
-#include "Components/MapComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
+#include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
+#include "GameFramework/MyGameStateBase.h"
 #include "GameFramework/MyPlayerState.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/HUDWidget.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
@@ -22,30 +22,24 @@ UGRSComponent::UGRSComponent()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
-// Returns the Skeletal Mesh of the Bomber character
-UMySkeletalMeshComponent* UGRSComponent::GetMySkeletalMeshComponent() const
+// Sets default values for this component's properties
+AMyPlayerController* UGRSComponent::GetPlayerController() const
 {
-	return GetOwner()->FindComponentByClass<UMySkeletalMeshComponent>();
+	return Cast<AMyPlayerController>(GetOwner());
 }
 
-// Returns the Skeletal Mesh of the Bomber character
-UMySkeletalMeshComponent& UGRSComponent::GetMeshChecked() const
+// Returns Player Controller of this component
+AMyPlayerController& UGRSComponent::GetPlayerControllerChecked() const
 {
-	UMySkeletalMeshComponent* Mesh = GetMySkeletalMeshComponent();
-	ensureMsgf(Mesh, TEXT("ASSERT: [%i] %hs:\n'Mesh' is nullptr, can not get mesh for spot.!"), __LINE__, __FUNCTION__);
-	return *Mesh;
+	AMyPlayerController* MyPlayerController = GetPlayerController();
+	checkf(MyPlayerController, TEXT("%s: 'MyPlayerController' is null"), *FString(__FUNCTION__));
+	return *MyPlayerController;
 }
 
-// Returns current spot name
-FName UGRSComponent::GetSpotName_Implementation()
+// Called when the owning Actor begins play or when the component is created if the Actor has already begun play
+void UGRSComponent::BeginPlay()
 {
-	return SpotNameInternal;
-}
-
-// Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called
-void UGRSComponent::OnRegister()
-{
-	Super::OnRegister();
+	Super::BeginPlay();
 
 	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 }
@@ -56,12 +50,31 @@ void UGRSComponent::OnUnregister()
 	Super::OnUnregister();
 }
 
-// Called when the ghost revenge system is ready loaded (when game transitions to ingame state)
+// Enables or disables the input context
+void UGRSComponent::SetManagedInputContextEnabled()
+{
+	AMyPlayerController& PC = GetPlayerControllerChecked();
+
+	// Remove all previous input contexts managed by Controller
+	TArray<const UMyInputMappingContext*> InputContexts;
+	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+	InputContexts.AddUnique(InputContext);
+	PC.RemoveInputContexts(InputContexts);
+
+	// Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
+	if (InputContext
+		&& InputContext->GetChosenGameStatesBitmask() > 0)
+	{
+		PC.SetupInputContexts(InputContexts);
+	}
+}
+
+// Called when the ghost revenge system is ready loaded (when game transitions to in-game state)
 void UGRSComponent::OnInitialize_Implementation()
 {
-	SpotNameInternal = UGRSWorldSubSystem::Get().GetSpotName();
 	UGRSWorldSubSystem::Get().RegisterSpotComponent(this);
 	BIND_ON_LOCAL_CHARACTER_READY(this, UGRSComponent::OnLocalCharacterReady);
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 	UE_LOG(LogTemp, Warning, TEXT("UGRSComponent OnRegister"));
 	UE_LOG(LogTemp, Warning, TEXT("UGRSDataAsset string %s"), *UGRSDataAsset::Get().GetTestString());
 }
@@ -77,13 +90,6 @@ void UGRSComponent::OnLocalCharacterReady_Implementation(class APlayerCharacter*
 void UGRSComponent::OnLocalPlayerStateReady_Implementation(class AMyPlayerState* PlayerState, int32 CharacterID)
 {
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
-	PlayerStateInternal = PlayerState;
-	
-	APlayerCharacter* PlayerCharacter = PlayerStateInternal->GetPlayerCharacter();
-	PlayerCharacterInternal = DuplicateObject<APlayerCharacter>(PlayerCharacter, PlayerCharacter->GetOuter(), TEXT("GRSPlayerCharacter"));
-	PlayerCharacterInternal->SetActorLocation(FVector(-800, -800, 100));
-	
-	MySkeletalMeshComponentInternal = PlayerCharacterInternal->GetMeshChecked();
 
 	/*
 	if (UMapComponent* MapComponent = UMapComponent::GetMapComponent(PlayerCharacterInternal))
@@ -106,26 +112,49 @@ void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameSt
 	}
 	// Spawn parameters
 	FActorSpawnParameters SpawnParams;
-	
+
 	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
 	switch (EndGameState)
 	{
 	case EEndGameState::Lose:
-		
-		GhostPlayerCharacter = GetWorld()->SpawnActor<AGRSPlayerCharacter>(GhostPlayerCharacter->GetClass(),SpawnLocation, FRotator::ZeroRotator,SpawnParams);
-		/*
-		//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
-		if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
 		{
-			break;
+			// Spawn ghost character 
+			GhostPlayerCharacter = GetWorld()->SpawnActor<AGRSPlayerCharacter>(GhostPlayerCharacter->GetClass(), SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+			// Posses controller
+			SetManagedInputContextEnabled();
 		}
-		HUD->SetVisibility(ESlateVisibility::Collapsed);
-		PlayerStateInternal->SetCharacterDead(false);
-		PlayerStateInternal->SetOpponentKilledNum(0);
-		PlayerStateInternal->SetEndGameState(EEndGameState::None);
-		*/
+
+
+	/*
+	//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
+	if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		break;
+	}
+	HUD->SetVisibility(ESlateVisibility::Collapsed);
+	PlayerStateInternal->SetCharacterDead(false);
+	PlayerStateInternal->SetOpponentKilledNum(0);
+	PlayerStateInternal->SetEndGameState(EEndGameState::None);
+	*/
 		break;
 
+	default: break;
+	}
+}
+
+// Listen game states to switch character skin. 
+void UGRSComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+{
+	switch (CurrentGameState)
+	{
+	case ECurrentGameState::Menu:
+		{
+			if (GhostPlayerCharacter)
+			{
+				GhostPlayerCharacter->Destroy();
+			}
+		}
+		break;
 	default: break;
 	}
 }

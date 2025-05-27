@@ -12,8 +12,11 @@ public class GhostRevengeSystemRuntime : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{
-				"Core", "UMG",
+				"Core"
+				, "UMG"
+				, "EnhancedInput" // Created UMyInputAction, UMyInputMappingContext
 				// Bomber
+				,
 				"Bomber"
 			}
 		);
@@ -21,8 +24,11 @@ public class GhostRevengeSystemRuntime : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 			{
-				"CoreUObject", "Engine", "Slate", "SlateCore", // core
-				"GameplayTags", // UE_DEFINE_GAMEPLAY_STATIC
+				"CoreUObject"
+				, "Engine"
+				, "Slate"
+				, "SlateCore" // core
+				,  "GameplayTags", // UE_DEFINE_GAMEPLAY_STATIC
 				// Bomber
 				"MyUtils",
 			}

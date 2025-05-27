@@ -4,11 +4,13 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 #include "Components/GRSComponent.h"
+#include "Controllers/MyPlayerController.h"
 #include "Data/EGRSSpotType.h"
 #include "Data/MyPrimaryDataAsset.h"
 #include "Data/GRSDataAsset.h"
 #include "Engine/Engine.h"
 #include "GameFramework/MyGameStateBase.h"
+#include "Kismet/GameplayStatics.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
@@ -34,6 +36,19 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
 	checkf(ThisSubsystem, TEXT("%s: 'ProgressionSubsystem' is null"), *FString(__FUNCTION__));
 	return *ThisSubsystem;
+}
+
+//  Returns the Player Controller component of the ghost character
+AGRSPlayerCharacter* UGRSWorldSubSystem::GetPlayerControllerComponent(const UObject* OptionalWorldContext)
+{
+	const AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController(OptionalWorldContext);
+	UGRSComponent* MyComponent =  MyPC->FindComponentByClass<UGRSComponent>();
+	AGRSPlayerCharacter* MyPlayer = nullptr;
+	if (MyComponent)
+	{
+		MyPlayer = MyComponent->GetGhostPlayerCharacter();
+	}
+	return MyPlayer;
 }
 
 // Returns the data asset that contains all the assets of Ghost Revenge System game feature
@@ -88,6 +103,4 @@ void UGRSWorldSubSystem::RegisterSpotComponent(UGRSComponent* MyComponent)
 	{
 		return;
 	}
-
-	SpotComponentsMapInternal.Add(MyComponent->GetSpotName(), MyComponent);
 }

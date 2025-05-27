@@ -3,16 +3,21 @@
 
 #include "LevelActors/GRSPlayerCharacter.h"
 
+#include "InputActionValue.h"
+#include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Controllers/MyPlayerController.h"
 #include "DataAssets/PlayerDataAsset.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/MyPlayerState.h"
 #include "LevelActors/PlayerCharacter.h"
+#include "MyUtilsLibraries/UtilsLibrary.h"
+#include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 class UPlayerRow;
@@ -28,10 +33,10 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	InitializeSkeletalMesh();
 
 	// Initialize the nameplate mesh component
-	InitializeNameplateMeshComponent();
+	//InitializeNameplateMeshComponent();
 
 	// Initialize 3D widget component for the player name
-	Initialize3DWidgetComponent();
+	//Initialize3DWidgetComponent();
 
 	// Configure the movement component
 	MovementComponentConfiguration();
@@ -150,12 +155,55 @@ void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Set the animation blueprint on very first character spawn
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
+		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
+	}
+
+	TryPossessController();
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
 UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 {
 	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
+}
+
+// Possess a player 
+void AGRSPlayerCharacter::TryPossessController()
+{
+	if (!HasAuthority()
+		|| !IsActorInitialized() // Engine doesn't allow to possess before BeginPlay\PostInitializeComponents
+		|| UUtilsLibrary::IsEditorNotPieWorld())
+	{
+		// Should not possess in PIE
+		return;
+	}
+
+
+	AController* ControllerToPossess = nullptr;
+	AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (MyPC)
+	{
+		ControllerToPossess = MyPC;
+	}
+
+	if (!ControllerToPossess
+		|| ControllerToPossess == Controller)
+	{
+		return;
+	}
+
+	if (Controller)
+	{
+		// At first, unpossess previous controller
+		Controller->UnPossess();
+	}
+
+	ControllerToPossess->Possess(this);
 }
 
 // Set and apply default skeletal mesh for this player
@@ -196,6 +244,34 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = fal
 	{
 		StaticMeshComponent->SetStaticMesh(Cast<UStaticMesh>(MeshData.Row->Mesh));
 	}
+}
+
+// Move the player character
+void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
+{
+	const AController* OwnedController = GetController();
+	if (!OwnedController
+		|| OwnedController->IsMoveInputIgnored())
+	{
+		return;
+	}
+
+	// input is a Vector2D
+	const FVector2D MovementVector = ActionValue.Get<FVector2D>();
+
+	// Find out which way is forward
+	const FRotator ForwardRotation = UCellsUtilsLibrary::GetLevelGridRotation();
+
+	// Get forward vector
+	const FVector ForwardDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
+	//const FVector ForwardDirection = FVector().ZeroVector;
+
+	// Get right vector
+	const FVector RightDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
+	//const FVector RightDirection = FVector().ZeroVector;;
+
+	AddMovementInput(ForwardDirection, MovementVector.Y);
+	AddMovementInput(RightDirection, MovementVector.X);
 }
 
 // Called every frame

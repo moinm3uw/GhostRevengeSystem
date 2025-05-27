@@ -88,9 +88,17 @@ public:
 	/** Returns the Skeletal Mesh of ghost revenge character. */
 	UMySkeletalMeshComponent& GetMeshChecked() const;
 
+	/** Possess a player */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	void TryPossessController();
+	
 	/** Set and apply default skeletal mesh for this player.
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
 	void SetDefaultPlayerMeshData(bool bForcePlayerSkin = false);
+
+	/** Move the player character. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void MovePlayer(const FInputActionValue& ActionValue);
 	
 };
