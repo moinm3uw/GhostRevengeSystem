@@ -6,15 +6,15 @@ public class GhostRevengeSystemRuntime : ModuleRules
 {
 	public GhostRevengeSystemRuntime(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.NoPCHs; //@Todo: DEBUG.  Instead of current UseExplicitOrSharedPCHs
-		CppStandard = CppStandardVersion.Latest;
-		bEnableNonInlinedGenCppWarnings = true; // debug
-		OptimizeCode = CodeOptimization.Never; // debug  
-		bUseUnity = false; //@Todo: DEBUG
+		CppStandard = CppStandardVersion.Latest; 
+		bEnableNonInlinedGenCppWarnings = true;
+		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{
-				"Core", "UMG", "EnhancedInput" // Created UMyInputAction, UMyInputMappingContext
+				"Core"
+				, "UMG"
+				, "EnhancedInput" // Created UMyInputAction, UMyInputMappingContext
 				// Bomber
 				,
 				"Bomber"
@@ -24,9 +24,11 @@ public class GhostRevengeSystemRuntime : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 			{
-				"CoreUObject", "Engine", "Slate", "SlateCore" // core
-				,
-				"GameplayTags", // UE_DEFINE_GAMEPLAY_STATIC
+				"CoreUObject"
+				, "Engine"
+				, "Slate"
+				, "SlateCore" // core
+				,  "GameplayTags", // UE_DEFINE_GAMEPLAY_STATIC
 				// Bomber
 				"MyUtils",
 			}
