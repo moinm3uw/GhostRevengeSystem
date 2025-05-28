@@ -46,9 +46,17 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void InitializeNameplateMeshComponent();
 
+	/** Setup name plate material */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void InitializeNamePlateMaterial();
+
 	/**  Initialize 3D widget component for the player name */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void  Initialize3DWidgetComponent();
+
+	/** Set nickname */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void InitPlayerNickName();
 
 	/** Configure the movement component of the character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -100,5 +108,12 @@ public:
 	/** Move the player character. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
-	
+
+	/** Updates new player name on a 3D widget component. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void SetNicknameOnNameplate(FName NewName);
+
+	/** Returns own character ID, e.g: 0, 1, 2, 3 */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	int32 GetPlayerId() const;
 };

@@ -17,6 +17,8 @@
 #include "GameFramework/MyPlayerState.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
+#include "Subsystems/WidgetsSubsystem.h"
+#include "UI/Widgets/PlayerNameWidget.h"
 #include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
@@ -33,10 +35,13 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	InitializeSkeletalMesh();
 
 	// Initialize the nameplate mesh component
-	//InitializeNameplateMeshComponent();
+	InitializeNameplateMeshComponent();
+
+	// set a name plate material
+	InitializeNamePlateMaterial();
 
 	// Initialize 3D widget component for the player name
-	//Initialize3DWidgetComponent();
+	Initialize3DWidgetComponent();
 
 	// Configure the movement component
 	MovementComponentConfiguration();
@@ -78,7 +83,7 @@ void AGRSPlayerCharacter::InitializeSkeletalMesh()
 // Initialize the nameplate mesh component (background material of the player name)
 void AGRSPlayerCharacter::InitializeNameplateMeshComponent()
 {
-	NameplateMeshInternal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("NameplateMeshComponent"));
+	NameplateMeshInternal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GRSNameplateMeshComponent"));
 	NameplateMeshInternal->SetupAttachment(RootComponent);
 	static const FVector NameplateRelativeLocation(0.f, 0.f, 210.f);
 	NameplateMeshInternal->SetRelativeLocation_Direct(NameplateRelativeLocation);
@@ -92,10 +97,30 @@ void AGRSPlayerCharacter::InitializeNameplateMeshComponent()
 	NameplateMeshInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
+// Setup name plate material
+void AGRSPlayerCharacter::InitializeNamePlateMaterial()
+{
+	// Set a nameplate material
+	if (ensureMsgf(NameplateMeshInternal, TEXT("ASSERT: 'NameplateMeshComponent' is not valid")))
+	{
+		const UPlayerDataAsset& PlayerDataAsset = UPlayerDataAsset::Get();
+		const int32 NameplateMeshesNum = PlayerDataAsset.GetNameplateMaterialsNum();
+		if (NameplateMeshesNum > 0)
+		{
+			int32 CurrentPlayerId = GetPlayerId();
+			const int32 MaterialNo = CurrentPlayerId < NameplateMeshesNum ? CurrentPlayerId : CurrentPlayerId % NameplateMeshesNum;
+			if (UMaterialInterface* Material = PlayerDataAsset.GetNameplateMaterial(MaterialNo))
+			{
+				NameplateMeshInternal->SetMaterial(0, Material);
+			}
+		}
+	}
+}
+
 // Initialize 3D widget component for the player name
 void AGRSPlayerCharacter::Initialize3DWidgetComponent()
 {
-	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
+	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UWidgetComponent>(TEXT("GRSPlayerName3DWidgetComponent"));
 	PlayerName3DWidgetComponentInternal->SetupAttachment(NameplateMeshInternal);
 	static const FVector WidgetRelativeLocation(0.f, 0.f, 10.f);
 	PlayerName3DWidgetComponentInternal->SetRelativeLocation_Direct(WidgetRelativeLocation);
@@ -107,6 +132,15 @@ void AGRSPlayerCharacter::Initialize3DWidgetComponent()
 	static const FVector2D Pivot(0.5f, 0.4f);
 	PlayerName3DWidgetComponentInternal->SetPivot(Pivot);
 	PlayerName3DWidgetComponentInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AGRSPlayerCharacter::InitPlayerNickName()
+{
+	if (AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
+	{
+		MyPlayerState->OnPlayerNameChanged.AddUniqueDynamic(this, &ThisClass::SetNicknameOnNameplate);
+		SetNicknameOnNameplate(*MyPlayerState->GetPlayerName());
+	}
 }
 
 // Configure the movement component of the character
@@ -142,6 +176,39 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
+// Update player name on a 3D widget component
+void AGRSPlayerCharacter::SetNicknameOnNameplate_Implementation(FName NewName)
+{
+	const UWidgetsSubsystem* WidgetsSubsystem = UWidgetsSubsystem::GetWidgetsSubsystem();
+	UPlayerNameWidget* PlayerNameWidget = WidgetsSubsystem ? WidgetsSubsystem->GetNicknameWidget(GetPlayerId()) : nullptr;
+	if (!PlayerNameWidget)
+	{
+		// Widget is not created yet, might be called before UI Subsystem is initialized
+		return;
+	}
+
+	PlayerNameWidget->SetPlayerName(FText::FromName(NewName));
+	PlayerNameWidget->SetAssociatedPlayerId(GetPlayerId());
+
+	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
+	const UUserWidget* LastWidget = PlayerName3DWidgetComponentInternal->GetWidget();
+	if (LastWidget != PlayerNameWidget)
+	{
+		PlayerName3DWidgetComponentInternal->SetWidget(PlayerNameWidget);
+	}
+}
+
+// Returns own character ID, e.g: 0, 1, 2, 3
+int32 AGRSPlayerCharacter::GetPlayerId() const
+{
+	if (const AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
+	{
+		return MyPlayerState->GetPlayerId();
+	}
+
+	return 0;
+}
+
 // Called when an instance of this class is placed (in editor) or spawned
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
@@ -164,6 +231,9 @@ void AGRSPlayerCharacter::BeginPlay()
 	}
 
 	TryPossessController();
+
+	// Update nickname and subscribe to the player name change
+	InitPlayerNickName();
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
