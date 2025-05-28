@@ -74,4 +74,5 @@ protected:
 	/** AGRSPlayerCharacter, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
 	TObjectPtr<AGRSPlayerCharacter> GhostPlayerCharacter;
+	
 };

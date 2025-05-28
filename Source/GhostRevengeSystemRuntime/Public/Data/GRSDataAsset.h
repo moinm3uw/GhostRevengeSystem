@@ -27,6 +27,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
 
+	/** Returns collision transform */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FTransform GetCollisionTransform() const { return CollisionTransformInternal; }
+
 	/** Returns input context. 
 	 * @see UGRSDataAsset::InputContextsInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
@@ -37,11 +41,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
 	FString TestDataAssetStringInternal;
 
-	/** Spawn location of actor*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Spawn Location to play"))
+	/** Spawn location of Ghost Character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Character Spawn location"))
 	FVector SpawnLocationInternal;
 
+	/** Collision Asset transform of actor */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Collision Asset Transofrm"))
+	FTransform CollisionTransformInternal;
+
 	/** Input context for the GRSPlayerCharacter */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
 	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
 };

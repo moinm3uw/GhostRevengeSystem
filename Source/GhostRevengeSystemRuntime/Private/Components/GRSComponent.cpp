@@ -6,6 +6,9 @@
 #include "Components/MySkeletalMeshComponent.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
+#include "DataAssets/GeneratedMapDataAsset.h"
+#include "Engine/Blueprint.h"
+#include "Engine/BlueprintGeneratedClass.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "GameFramework/MyPlayerState.h"
 #include "LevelActors/GRSPlayerCharacter.h"
@@ -118,6 +121,14 @@ void UGRSComponent::OnEndGameStateChanged_Implementation(EEndGameState EndGameSt
 	{
 	case EEndGameState::Lose:
 		{
+			const TSubclassOf<AActor> CollisionsAssetClass = UGeneratedMapDataAsset::Get().GetCollisionsAssetClass();
+
+			// Spawn side collision
+			AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(CollisionsAssetClass, UGRSDataAsset::Get().GetCollisionTransform());
+			if (SpawnedActor)
+			{
+				SpawnedActor->SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
+			}
 			// Spawn ghost character 
 			GhostPlayerCharacter = GetWorld()->SpawnActor<AGRSPlayerCharacter>(GhostPlayerCharacter->GetClass(), SpawnLocation, FRotator::ZeroRotator, SpawnParams);
 			// Posses controller
