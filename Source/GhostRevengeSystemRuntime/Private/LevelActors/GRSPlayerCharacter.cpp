@@ -4,17 +4,23 @@
 #include "LevelActors/GRSPlayerCharacter.h"
 
 #include "InputActionValue.h"
+#include "TimerManager.h"
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
+#include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Controllers/MyPlayerController.h"
+#include "Data/GRSDataAsset.h"
 #include "DataAssets/PlayerDataAsset.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/MyPlayerState.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/GameplayStaticsTypes.h"
+#include "LevelActors/GRSBombProjectile.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/WidgetsSubsystem.h"
@@ -342,6 +348,40 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 
 	AddMovementInput(ForwardDirection, MovementVector.Y);
 	AddMovementInput(RightDirection, MovementVector.X);
+}
+
+// Hold button to increase trajectory on button release trow bomb
+void AGRSPlayerCharacter::ThrowBomb(const FInputActionValue& ActionValue)
+{
+	UE_LOG(LogTemp, Warning, TEXT("GRS: We are doing something"));
+
+	float NewHoldTime = 0.0f;
+
+	if (CurrentHoldTimeInternal < 1.0f)
+	{
+		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
+	}
+	else
+	{
+		CurrentHoldTimeInternal = 0.0f;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
+
+
+	// Calculate throw direction and force
+	FVector ThrowDirection = GetActorForwardVector() + FVector(1, 10, 0.5f); // Slight upward angle
+	ThrowDirection.Normalize();
+
+	float ThrowForce = CurrentHoldTimeInternal;
+	FVector LaunchVelocity = ThrowDirection * 10;
+
+	// Spawn bomb at chest height
+	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * 100.0f + FVector(0, 0, 50.0f);
+	if (AGRSBombProjectile* Bomb = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), SpawnLocation, GetActorRotation()))
+	{
+		Bomb->Launch(LaunchVelocity);
+	}
 }
 
 // Called every frame

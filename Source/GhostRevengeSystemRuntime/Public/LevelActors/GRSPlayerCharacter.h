@@ -87,6 +87,9 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
 
+	float CurrentHoldTimeInternal = 0.0f;
+	bool bIsCharging = false;
+
 	/*********************************************************************************************
 	 * Player Mesh
 	 ********************************************************************************************* */
@@ -108,6 +111,10 @@ public:
 	/** Move the player character. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
+
+	/** Hold button to increase trajectory on button release trow bomb */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void ThrowBomb(const FInputActionValue& ActionValue);
 
 	/** Updates new player name on a 3D widget component. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

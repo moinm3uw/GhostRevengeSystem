@@ -35,6 +35,16 @@ public:
 	 * @see UGRSDataAsset::InputContextsInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UMyInputMappingContext* GetInputContext() const { return InputContextInternal; }
+
+	/** Returns projectile class 
+	 * @see UGRSDataAsset::BombClass.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class TSubclassOf<class AGRSBombProjectile> GetProjectileClass() const { return BombClass; }
+
+	/** Returns projectile mesh 
+	 * @see UGRSDataAsset::StaticMesh.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return StaticMesh; }
 	
 protected:
 	/** Test value for the data assest*/
@@ -52,4 +62,10 @@ protected:
 	/** Input context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
 	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bomb")
+	TSubclassOf<class AGRSBombProjectile> BombClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bomb")
+	TObjectPtr<UStaticMesh> StaticMesh;
 };
