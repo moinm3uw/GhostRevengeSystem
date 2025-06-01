@@ -52,7 +52,7 @@ protected:
 
 	/**  Initialize 3D widget component for the player name */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void  Initialize3DWidgetComponent();
+	void Initialize3DWidgetComponent();
 
 	/** Set nickname */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -82,13 +82,20 @@ protected:
 	/** 3D widget component that displays the player name above the character. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
 	TObjectPtr<class UWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
-	
+
 	/** Mesh of component. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
 
+
+	/*********************************************************************************************
+	 * trajectory
+	 **********************************************************************************************/
+
+	UPROPERTY()
+	TObjectPtr<class AGRSBombProjectile> BombProjectileInternal = nullptr;
+
 	float CurrentHoldTimeInternal = 0.0f;
-	bool bIsCharging = false;
 
 	/*********************************************************************************************
 	 * Player Mesh
@@ -102,7 +109,7 @@ public:
 	/** Possess a player */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
 	void TryPossessController();
-	
+
 	/** Set and apply default skeletal mesh for this player.
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
@@ -112,9 +119,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
 
-	/** Hold button to increase trajectory on button release trow bomb */
+	/** Hold button to increase trajectory on max level achieved throw projectile */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void ThrowBomb(const FInputActionValue& ActionValue);
+	void ChargeBomb(const FInputActionValue& ActionValue);
+
+	/** Spawn and send projectile */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void ThrowProjectile(const FInputActionValue& ActionValue);
+
+	/** Add and update spline elements (trajectory) */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void UpdateSplineTrajectory();
+
+	/** Hide spline elements (trajectory) */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void HideSplineTrajectory();
 
 	/** Updates new player name on a 3D widget component. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

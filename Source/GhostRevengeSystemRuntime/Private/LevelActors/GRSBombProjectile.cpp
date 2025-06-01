@@ -3,9 +3,12 @@
 
 #include "LevelActors/GRSBombProjectile.h"
 
+#include "Bomber.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Data/GRSDataAsset.h"
+#include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
@@ -16,15 +19,27 @@ AGRSBombProjectile::AGRSBombProjectile()
 
 	// Collision sphere
 	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	CollisionSphere->SetSphereRadius(5.0f);
+	CollisionSphere->SetSphereRadius(1.0f);
 	RootComponent = CollisionSphere;
+
+	// Setup collision to allow overlap players with each other, but block all other actors
+	CollisionSphere->CanCharacterStepUpOn = ECB_Yes;
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CollisionSphere->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
+
 	CollisionSphere->OnComponentHit.AddDynamic(this, &AGRSBombProjectile::OnHit);
 
 	// Mesh
 	BombMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BombMesh"));
 	BombMesh->SetupAttachment(RootComponent);
 	BombMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BombMesh->SetStaticMesh(UGRSDataAsset::Get().GetProjectileMesh());
 
 	// Projectile movement
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
@@ -44,6 +59,7 @@ void AGRSBombProjectile::Launch(const FVector& LaunchVelocity)
 void AGRSBombProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+	BombMesh->SetStaticMesh(UGRSDataAsset::Get().GetProjectileMesh());
 }
 
 void AGRSBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)

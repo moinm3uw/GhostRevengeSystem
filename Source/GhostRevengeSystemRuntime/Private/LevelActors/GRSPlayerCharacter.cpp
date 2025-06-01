@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
 #include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Controllers/MyPlayerController.h"
@@ -25,6 +26,7 @@
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/PlayerNameWidget.h"
+#include "UObject/ConstructorHelpers.h"
 #include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
@@ -240,6 +242,8 @@ void AGRSPlayerCharacter::BeginPlay()
 
 	// Update nickname and subscribe to the player name change
 	InitPlayerNickName();
+
+	HideSplineTrajectory();
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
@@ -351,37 +355,92 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 }
 
 // Hold button to increase trajectory on button release trow bomb
-void AGRSPlayerCharacter::ThrowBomb(const FInputActionValue& ActionValue)
+void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("GRS: We are doing something"));
-
-	float NewHoldTime = 0.0f;
-
 	if (CurrentHoldTimeInternal < 1.0f)
 	{
 		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
+		UpdateSplineTrajectory();
+		if (TrajectorySpline)
+		{
+			TrajectorySpline->SetVisibility(true);
+		}
 	}
 	else
 	{
-		CurrentHoldTimeInternal = 0.0f;
+		ThrowProjectile(ActionValue);
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
+}
 
-
+// Spawn and send projectile
+void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
+{
 	// Calculate throw direction and force
-	FVector ThrowDirection = GetActorForwardVector() + FVector(1, 10, 0.5f); // Slight upward angle
+	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f); // Slight upward angle
 	ThrowDirection.Normalize();
 
-	float ThrowForce = CurrentHoldTimeInternal;
-	FVector LaunchVelocity = ThrowDirection * 10;
+	FVector LaunchVelocity = ThrowDirection * 100;
 
 	// Spawn bomb at chest height
-	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * 100.0f + FVector(0, 0, 50.0f);
-	if (AGRSBombProjectile* Bomb = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), SpawnLocation, GetActorRotation()))
+	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * FVector(1500, 0, 150.0f);
+
+	if (BombProjectileInternal == nullptr)
 	{
-		Bomb->Launch(LaunchVelocity);
+		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), SpawnLocation, GetActorRotation());
 	}
+
+	if (BombProjectileInternal)
+	{
+		BombProjectileInternal->Launch(LaunchVelocity);
+	}
+
+	CurrentHoldTimeInternal = 0.0f;
+	//HideSplineTrajectory();
+}
+
+//  Add and update spline elements (trajectory) 
+void AGRSPlayerCharacter::UpdateSplineTrajectory()
+{
+	if (!TrajectorySpline) return;
+
+	float bigNumber = CurrentHoldTimeInternal + 350.0f;
+	// Spawn bomb at chest height
+	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() + CurrentHoldTimeInternal * FVector(100, 100, 100.0f);
+
+	// Get start position (e.g., weapon muzzle)
+	FVector StartPos = GetActorLocation() + GetActorForwardVector() * 100.0f;
+
+	// Set launch velocity (forward direction with some upward angle)
+	FVector LaunchVel = GetActorForwardVector() * 1000.0f + FVector(800.0f, 0.0f, 800.0f);
+
+	// Predict and draw the trajectory
+	// Setup prediction parameters - minimal setup like Blueprint
+	FPredictProjectilePathParams Params;
+	Params.StartLocation = GetActorLocation();
+	Params.LaunchVelocity = LaunchVel;
+	Params.bTraceComplex = false;
+	// Debug drawing settings
+	Params.DrawDebugType = EDrawDebugTrace::Persistent;
+
+	FPredictProjectilePathResult Result;
+	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, Result);
+	
+}
+
+// Hide spline elements (trajectory)
+void AGRSPlayerCharacter::HideSplineTrajectory()
+{
+	if (!TrajectorySpline)
+	{
+		return;
+	}
+
+	TrajectorySpline->SetVisibility(false);
+
+	// Clear existing spline points
+	TrajectorySpline->ClearSplinePoints();
 }
 
 // Called every frame
