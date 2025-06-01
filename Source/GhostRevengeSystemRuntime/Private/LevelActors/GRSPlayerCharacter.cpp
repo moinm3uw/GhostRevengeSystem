@@ -361,10 +361,6 @@ void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 	{
 		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
 		UpdateSplineTrajectory();
-		if (TrajectorySpline)
-		{
-			TrajectorySpline->SetVisibility(true);
-		}
 	}
 	else
 	{
@@ -403,8 +399,7 @@ void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 //  Add and update spline elements (trajectory) 
 void AGRSPlayerCharacter::UpdateSplineTrajectory()
 {
-	if (!TrajectorySpline) return;
-
+	
 	float bigNumber = CurrentHoldTimeInternal + 350.0f;
 	// Spawn bomb at chest height
 	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() + CurrentHoldTimeInternal * FVector(100, 100, 100.0f);
@@ -426,21 +421,14 @@ void AGRSPlayerCharacter::UpdateSplineTrajectory()
 
 	FPredictProjectilePathResult Result;
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, Result);
-	
 }
 
 // Hide spline elements (trajectory)
 void AGRSPlayerCharacter::HideSplineTrajectory()
 {
-	if (!TrajectorySpline)
-	{
-		return;
-	}
-
-	TrajectorySpline->SetVisibility(false);
-
-	// Clear existing spline points
-	TrajectorySpline->ClearSplinePoints();
+	
+	
+	
 }
 
 // Called every frame
