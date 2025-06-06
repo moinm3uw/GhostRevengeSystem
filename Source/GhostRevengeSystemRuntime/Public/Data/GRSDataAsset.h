@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Data/MyPrimaryDataAsset.h"
 #include "DataAssets/MyInputMappingContext.h"
+#include "Kismet/GameplayStaticsTypes.h"
 #include "GRSDataAsset.generated.h"
 
 /**
@@ -45,19 +46,38 @@ public:
 	 * @see UGRSDataAsset::StaticMesh.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return StaticMesh; }
-	
+
+	/** Returns projectile predict parameters 
+	 * @see UGRSDataAsset::PredictParams.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FPredictProjectilePathParams GetChargePredictParams() const { return PredictParamsInternal; }
+
+	// VelocityInternal
+	/** Returns projectile predict velocity  
+	 * @see UGRSDataAsset::VelocityInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector GetVelocityParams() const { return VelocityInternal; }
+
 protected:
-	/** Test value for the data assest*/
+	/** Test value for the data asset */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
 	FString TestDataAssetStringInternal;
 
 	/** Spawn location of Ghost Character */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Character Spawn location"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Spawn location"))
 	FVector SpawnLocationInternal;
 
 	/** Collision Asset transform of actor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Collision Asset Transofrm"))
 	FTransform CollisionTransformInternal;
+
+	/** Projectile path params */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
+	FPredictProjectilePathParams PredictParamsInternal;
+
+	/** Velocity of the prediction calculation */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Velocity in each of the directions"))
+	FVector VelocityInternal;
 
 	/** Input context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))

@@ -357,10 +357,12 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 // Hold button to increase trajectory on button release trow bomb
 void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 {
+	UpdateSplineTrajectory();
+	
 	if (CurrentHoldTimeInternal < 1.0f)
 	{
 		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
-		UpdateSplineTrajectory();
+		// UpdateSplineTrajectory();
 	}
 	else
 	{
@@ -399,7 +401,6 @@ void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 //  Add and update spline elements (trajectory) 
 void AGRSPlayerCharacter::UpdateSplineTrajectory()
 {
-	
 	float bigNumber = CurrentHoldTimeInternal + 350.0f;
 	// Spawn bomb at chest height
 	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() + CurrentHoldTimeInternal * FVector(100, 100, 100.0f);
@@ -408,27 +409,36 @@ void AGRSPlayerCharacter::UpdateSplineTrajectory()
 	FVector StartPos = GetActorLocation() + GetActorForwardVector() * 100.0f;
 
 	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVel = GetActorForwardVector() * 1000.0f + FVector(800.0f, 0.0f, 800.0f);
+	FVector LaunchVel = UGRSDataAsset::Get().GetVelocityParams();
+	// 45-degree vector between up and right
+	FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
 
 	// Predict and draw the trajectory
-	// Setup prediction parameters - minimal setup like Blueprint
-	FPredictProjectilePathParams Params;
+	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
 	Params.StartLocation = GetActorLocation();
-	Params.LaunchVelocity = LaunchVel;
-	Params.bTraceComplex = false;
-	// Debug drawing settings
-	Params.DrawDebugType = EDrawDebugTrace::Persistent;
+	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVel.X * CurrentHoldTimeInternal, 0 + LaunchVel.Y, UpRight45.Z + LaunchVel.Z);
+	Params.ActorsToIgnore.Add(this);
 
+	// Debug drawing settings
 	FPredictProjectilePathResult Result;
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, Result);
+
+	if (BombProjectileInternal == nullptr)
+	{
+		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), Result.LastTraceDestination.Location, GetActorRotation());
+	}
+
+	if (BombProjectileInternal)
+	{
+		BombProjectileInternal->Destroy();
+		
+		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), Result.LastTraceDestination.Location, GetActorRotation());
+	}
 }
 
 // Hide spline elements (trajectory)
 void AGRSPlayerCharacter::HideSplineTrajectory()
 {
-	
-	
-	
 }
 
 // Called every frame
