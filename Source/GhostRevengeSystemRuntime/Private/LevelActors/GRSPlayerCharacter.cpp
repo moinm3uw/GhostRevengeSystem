@@ -3,17 +3,21 @@
 
 #include "LevelActors/GRSPlayerCharacter.h"
 
+#include "GeneratedMap.h"
 #include "InputActionValue.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/GhostRevengeSystemSpotComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
+#include "DataAssets/BombDataAsset.h"
 #include "DataAssets/PlayerDataAsset.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
@@ -21,9 +25,11 @@
 #include "GameFramework/MyPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/GameplayStaticsTypes.h"
+#include "LevelActors/BombActor.h"
 #include "LevelActors/GRSBombProjectile.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
+#include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/PlayerNameWidget.h"
 #include "UObject/ConstructorHelpers.h"
@@ -31,6 +37,10 @@
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 class UPlayerRow;
+
+/*********************************************************************************************
+ * Mesh and Initialization
+**********************************************************************************************/
 
 // Sets default values for this character's properties
 AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -56,6 +66,18 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 
 	// Setup capsule component
 	SetupCapsuleComponent();
+
+	// setup spline component
+	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
+	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
+
+
+	SphereComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	if (SphereMesh.Succeeded())
+	{
+		SphereComp->SetStaticMesh(SphereMesh.Object);
+	}
 }
 
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
@@ -142,6 +164,7 @@ void AGRSPlayerCharacter::Initialize3DWidgetComponent()
 	PlayerName3DWidgetComponentInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
+// Set nickname
 void AGRSPlayerCharacter::InitPlayerNickName()
 {
 	if (AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
@@ -184,39 +207,6 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
-// Update player name on a 3D widget component
-void AGRSPlayerCharacter::SetNicknameOnNameplate_Implementation(FName NewName)
-{
-	const UWidgetsSubsystem* WidgetsSubsystem = UWidgetsSubsystem::GetWidgetsSubsystem();
-	UPlayerNameWidget* PlayerNameWidget = WidgetsSubsystem ? WidgetsSubsystem->GetNicknameWidget(GetPlayerId()) : nullptr;
-	if (!PlayerNameWidget)
-	{
-		// Widget is not created yet, might be called before UI Subsystem is initialized
-		return;
-	}
-
-	PlayerNameWidget->SetPlayerName(FText::FromName(NewName));
-	PlayerNameWidget->SetAssociatedPlayerId(GetPlayerId());
-
-	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
-	const UUserWidget* LastWidget = PlayerName3DWidgetComponentInternal->GetWidget();
-	if (LastWidget != PlayerNameWidget)
-	{
-		PlayerName3DWidgetComponentInternal->SetWidget(PlayerNameWidget);
-	}
-}
-
-// Returns own character ID, e.g: 0, 1, 2, 3
-int32 AGRSPlayerCharacter::GetPlayerId() const
-{
-	if (const AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
-	{
-		return MyPlayerState->GetPlayerId();
-	}
-
-	return 0;
-}
-
 // Called when an instance of this class is placed (in editor) or spawned
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
@@ -243,7 +233,22 @@ void AGRSPlayerCharacter::BeginPlay()
 	// Update nickname and subscribe to the player name change
 	InitPlayerNickName();
 
-	HideSplineTrajectory();
+	ClearTrajectorySplines();
+
+	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	SphereComp->SetVisibility(false);
+}
+
+// Called every frame
+void AGRSPlayerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+// Called to bind functionality to input
+void AGRSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
@@ -354,15 +359,51 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 	AddMovementInput(RightDirection, MovementVector.X);
 }
 
+// Update player name on a 3D widget component
+void AGRSPlayerCharacter::SetNicknameOnNameplate_Implementation(FName NewName)
+{
+	const UWidgetsSubsystem* WidgetsSubsystem = UWidgetsSubsystem::GetWidgetsSubsystem();
+	UPlayerNameWidget* PlayerNameWidget = WidgetsSubsystem ? WidgetsSubsystem->GetNicknameWidget(GetPlayerId()) : nullptr;
+	if (!PlayerNameWidget)
+	{
+		// Widget is not created yet, might be called before UI Subsystem is initialized
+		return;
+	}
+
+	PlayerNameWidget->SetPlayerName(FText::FromName(NewName));
+	PlayerNameWidget->SetAssociatedPlayerId(GetPlayerId());
+
+	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
+	const UUserWidget* LastWidget = PlayerName3DWidgetComponentInternal->GetWidget();
+	if (LastWidget != PlayerNameWidget)
+	{
+		PlayerName3DWidgetComponentInternal->SetWidget(PlayerNameWidget);
+	}
+}
+
+// Returns own character ID, e.g: 0, 1, 2, 3
+int32 AGRSPlayerCharacter::GetPlayerId() const
+{
+	if (const AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
+	{
+		return MyPlayerState->GetPlayerId();
+	}
+
+	return 0;
+}
+
+/*********************************************************************************************
+ * Hold To Charge and aim
+ **********************************************************************************************/
+
 // Hold button to increase trajectory on button release trow bomb
 void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 {
-	UpdateSplineTrajectory();
-	
+	ShowVisualTrajectory();
+
 	if (CurrentHoldTimeInternal < 1.0f)
 	{
 		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
-		// UpdateSplineTrajectory();
 	}
 	else
 	{
@@ -372,83 +413,136 @@ void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 	UE_LOG(LogTemp, Warning, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
 }
 
+//  Add and update visual representation of charging (aiming) progress as trajectory
+void AGRSPlayerCharacter::ShowVisualTrajectory()
+{
+	FPredictProjectilePathResult Result;
+
+	// Configure PredictProjectilePath settings and get result 
+	PredictProjectilePath(Result);
+
+	// Show visual element in the of predicted path
+	AddMeshToEndProjectilePath(Result);
+
+	if (Result.PathData.Num() > 0)
+	{
+		// Add spline points to the component
+		AddSplinePoints(Result);
+
+		// Add spline mesh to spline points
+		AddSplineMesh(Result);
+	}
+}
+
 // Spawn and send projectile
 void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 {
-	// Calculate throw direction and force
-	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f); // Slight upward angle
-	ThrowDirection.Normalize();
+	// Calculate Cell to spawn bomb:
+	FVector SpawnLocation = SphereComp->GetComponentLocation();
+	FCell CurrentCell;
+	CurrentCell.Location = SpawnLocation;
+	SphereComp->SetVisibility(false);
+	const FCell& SpawnBombCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
+	UGhostRevengeSystemSpotComponent* Spot = UGRSWorldSubSystem::Get().GetSpotComponent();
 
+	// Spawn bomb
+	//const FBmrMeshData& PlayerMeshData = Spot->GetMeshChecked().GetMeshData();
+	AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Bomb, SpawnBombCell, UBombDataAsset::Get().GetRowByIndex(0));
+
+	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f);
+	ThrowDirection.Normalize();
 	FVector LaunchVelocity = ThrowDirection * 100;
 
-	// Spawn bomb at chest height
-	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * FVector(1500, 0, 150.0f);
+	CurrentHoldTimeInternal = 0.0f;
+	ClearTrajectorySplines();
 
+	// Spawn projectile and launch projectile
 	if (BombProjectileInternal == nullptr)
 	{
-		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), SpawnLocation, GetActorRotation());
+		//BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), SpawnLocation, GetActorRotation());
 	}
 
 	if (BombProjectileInternal)
 	{
-		BombProjectileInternal->Launch(LaunchVelocity);
+		// BombProjectileInternal->Launch(LaunchVelocity);
 	}
-
-	CurrentHoldTimeInternal = 0.0f;
-	//HideSplineTrajectory();
 }
 
-//  Add and update spline elements (trajectory) 
-void AGRSPlayerCharacter::UpdateSplineTrajectory()
+// Hide spline elements (trajectory)
+void AGRSPlayerCharacter::ClearTrajectorySplines()
 {
-	float bigNumber = CurrentHoldTimeInternal + 350.0f;
-	// Spawn bomb at chest height
-	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() + CurrentHoldTimeInternal * FVector(100, 100, 100.0f);
+	for (USplineMeshComponent* SplineMeshComponent : SplineMeshArrayInternal)
+	{
+		SplineMeshComponent->DestroyComponent();
+	}
 
-	// Get start position (e.g., weapon muzzle)
-	FVector StartPos = GetActorLocation() + GetActorForwardVector() * 100.0f;
+	SplineMeshArrayInternal.Empty();
+	ProjectileSplineComponentInternal->ClearSplinePoints();
+}
 
+// Configure PredictProjectilePath settings and get result
+void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
+{
 	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVel = UGRSDataAsset::Get().GetVelocityParams();
+	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
 	// 45-degree vector between up and right
 	FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
 
 	// Predict and draw the trajectory
 	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
 	Params.StartLocation = GetActorLocation();
-	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVel.X * CurrentHoldTimeInternal, 0 + LaunchVel.Y, UpRight45.Z + LaunchVel.Z);
+	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVelocity.X * CurrentHoldTimeInternal, 0 + LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
 	Params.ActorsToIgnore.Add(this);
 
-	// Debug drawing settings
-	FPredictProjectilePathResult Result;
-	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, Result);
+	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
+}
 
-	if (BombProjectileInternal == nullptr)
+// Add a mesh to the last element of the predict Projectile path results
+void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result)
+{
+	SphereComp->SetVisibility(true);
+	SphereComp->SetWorldLocation(Result.LastTraceDestination.Location);
+}
+
+// Add spline points to the spline component
+void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
+{
+	ClearTrajectorySplines();
+	for (int32 i = 0; i < Result.PathData.Num(); i++)
 	{
-		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), Result.LastTraceDestination.Location, GetActorRotation());
+		FVector SplinePoint = Result.PathData[i].Location;
+		ProjectileSplineComponentInternal->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
+		ProjectileSplineComponentInternal->Mobility = EComponentMobility::Static;
 	}
 
-	if (BombProjectileInternal)
+	ProjectileSplineComponentInternal->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
+	ProjectileSplineComponentInternal->UpdateSpline();
+}
+
+// Add spline mesh to spline points 
+void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
+{
+	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
 	{
-		BombProjectileInternal->Destroy();
-		
-		BombProjectileInternal = GetWorld()->SpawnActor<AGRSBombProjectile>(UGRSDataAsset::Get().GetProjectileClass(), Result.LastTraceDestination.Location, GetActorRotation());
+		// Create and attach the spline mesh component
+		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this); // 'this' is usually your actor
+		SplineMesh->AttachToComponent(ProjectileSplineComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
+		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
+		SplineMesh->Mobility = EComponentMobility::Static;
+		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+
+		// Set mesh and material
+		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
+		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
+		FVector TangentStart = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
+		FVector TangentEnd = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
+
+		// Set start and end
+		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
+		// Register the component so it appears in the game
+		SplineMesh->RegisterComponent();
+
+		SplineMeshArrayInternal.AddUnique(SplineMesh);
 	}
-}
-
-// Hide spline elements (trajectory)
-void AGRSPlayerCharacter::HideSplineTrajectory()
-{
-}
-
-// Called every frame
-void AGRSPlayerCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-// Called to bind functionality to input
-void AGRSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }

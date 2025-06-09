@@ -45,47 +45,83 @@ public:
 	/** Returns projectile mesh 
 	 * @see UGRSDataAsset::StaticMesh.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
-	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return StaticMesh; }
+	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return AimingAreaStaticMesh; }
+
+	/** Returns projectile mesh 
+	 * @see UGRSDataAsset::ChargeTrajectoryMeshInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UStaticMesh* GetChargeMesh() const { return AimingTrajectoryMeshInternal; }
 
 	/** Returns projectile predict parameters 
 	 * @see UGRSDataAsset::PredictParams.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FPredictProjectilePathParams GetChargePredictParams() const { return PredictParamsInternal; }
 
-	// VelocityInternal
 	/** Returns projectile predict velocity  
 	 * @see UGRSDataAsset::VelocityInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetVelocityParams() const { return VelocityInternal; }
+	
+	/** Returns projectile predict velocity
+	 * @see UGRSDataAsset::TrajectoryMaterialInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UMaterialInterface* GetTrajectoryMaterial() const { return TrajectoryMaterialInternal; }
+	
+	/** Returns projectile predict velocity
+	 * @see UGRSDataAsset::AimingMaterialInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UMaterialInterface* GetAimingMaterial() const { return AimingMaterialInternal; }
+
+	/** Returns Trajectory Scale
+	 * @see UGRSDataAsset::TrajectoryMeshScaleInternal */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector2D GetTrajectoryMeshScale() const { return TrajectoryMeshScaleInternal; }
 
 protected:
 	/** Test value for the data asset */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Test stirng"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Test stirng"))
 	FString TestDataAssetStringInternal;
 
 	/** Spawn location of Ghost Character */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Spawn location"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Spawn location"))
 	FVector SpawnLocationInternal;
 
 	/** Collision Asset transform of actor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Collision Asset Transofrm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Collision Asset Transofrm"))
 	FTransform CollisionTransformInternal;
 
 	/** Projectile path params */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
 	FPredictProjectilePathParams PredictParamsInternal;
 
 	/** Velocity of the prediction calculation */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Velocity in each of the directions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Velocity in each of the directions"))
 	FVector VelocityInternal;
 
 	/** Input context for the GRSPlayerCharacter */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
 	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bomb")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++|Bomb")
 	TSubclassOf<class AGRSBombProjectile> BombClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bomb")
-	TObjectPtr<UStaticMesh> StaticMesh;
+	/** Aiming area mesh element */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	TObjectPtr<UStaticMesh> AimingAreaStaticMesh;
+
+	/** A visual mesh that represents trajectory of aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	TObjectPtr<UStaticMesh> AimingTrajectoryMeshInternal;
+
+	/** A visual mesh that represents trajectory of aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	TObjectPtr<class UMaterialInterface> TrajectoryMaterialInternal;
+
+	/** A visual mesh that represents aiming area */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	TObjectPtr<class UMaterialInterface> AimingMaterialInternal;
+
+	/** Trajectory mesh scale for aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory", meta = (BlueprintProtected, DisplayName = "Aim Trajectory Transofrm"))
+	FVector2D TrajectoryMeshScaleInternal;
 };

@@ -75,7 +75,6 @@ void UGRSComponent::SetManagedInputContextEnabled()
 // Called when the ghost revenge system is ready loaded (when game transitions to in-game state)
 void UGRSComponent::OnInitialize_Implementation()
 {
-	UGRSWorldSubSystem::Get().RegisterSpotComponent(this);
 	BIND_ON_LOCAL_CHARACTER_READY(this, UGRSComponent::OnLocalCharacterReady);
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 	UE_LOG(LogTemp, Warning, TEXT("UGRSComponent OnRegister"));

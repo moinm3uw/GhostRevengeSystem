@@ -40,7 +40,11 @@ public:
 
 	/** Register the ghost revenge system spot component */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterSpotComponent(class UGRSComponent* MyComponent);
+	void RegisterSpotComponent(class UGhostRevengeSystemSpotComponent* SpotComponent);
+
+	/** Get current spot component */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	FORCEINLINE class UGhostRevengeSystemSpotComponent* GetSpotComponent() const { return SpotComponentInternal; }
 
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
@@ -57,6 +61,10 @@ protected:
 	/** Stores list of FNames (enums converted to FName) of spots */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Map"))
 	TMap<FName/*SpotName*/, TObjectPtr<class UGRSComponent>> SpotComponentsMapInternal;
+
+	/** Spot Component for the current character */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
+	TObjectPtr<class UGhostRevengeSystemSpotComponent> SpotComponentInternal;
 
 	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

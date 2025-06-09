@@ -42,7 +42,7 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 AGRSPlayerCharacter* UGRSWorldSubSystem::GetPlayerControllerComponent(const UObject* OptionalWorldContext)
 {
 	const AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController(OptionalWorldContext);
-	UGRSComponent* MyComponent =  MyPC->FindComponentByClass<UGRSComponent>();
+	UGRSComponent* MyComponent = MyPC->FindComponentByClass<UGRSComponent>();
 	AGRSPlayerCharacter* MyPlayer = nullptr;
 	if (MyComponent)
 	{
@@ -97,10 +97,12 @@ FName UGRSWorldSubSystem::GetSpotName()
 }
 
 // Register the ghost revenge system spot component
-void UGRSWorldSubSystem::RegisterSpotComponent(UGRSComponent* MyComponent)
+void UGRSWorldSubSystem::RegisterSpotComponent(UGhostRevengeSystemSpotComponent* SpotComponent)
 {
-	if (!ensureMsgf(MyComponent, TEXT("ASSERT: [%i] %hs:\n'MyComponent' is null!"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(SpotComponent, TEXT("ASSERT: [%i] %hs:\n'SpotComponent' is null!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
+
+	SpotComponentInternal = SpotComponent;
 }
