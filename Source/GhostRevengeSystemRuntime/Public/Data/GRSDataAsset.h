@@ -20,10 +20,14 @@ public:
 	/** Returns the progression data asset or crash when can not be obtained. */
 	static const UGRSDataAsset& Get();
 
-	/** Returns test string data */
+	/** Returns if the display of trajectory is enabled */
 	UFUNCTION(BlueprintPure, Category = "C++")
-	FORCEINLINE FString GetTestString() const { return TestDataAssetStringInternal; }
-
+	FORCEINLINE bool ShouldDisplayTrajectory() const { return bEnableTrajectoryVisualInternal; }
+	
+	/** Returns if the display of trajectory is enabled */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE bool ShouldSpawnBombOnMaxChargeTime() const { return bSpawnBombOnMaxChargingTimeInternal; }
+	
 	/** Returns spawn location */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
@@ -61,12 +65,12 @@ public:
 	 * @see UGRSDataAsset::VelocityInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetVelocityParams() const { return VelocityInternal; }
-	
+
 	/** Returns projectile predict velocity
 	 * @see UGRSDataAsset::TrajectoryMaterialInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UMaterialInterface* GetTrajectoryMaterial() const { return TrajectoryMaterialInternal; }
-	
+
 	/** Returns projectile predict velocity
 	 * @see UGRSDataAsset::AimingMaterialInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
@@ -78,50 +82,54 @@ public:
 	FORCEINLINE FVector2D GetTrajectoryMeshScale() const { return TrajectoryMeshScaleInternal; }
 
 protected:
-	/** Test value for the data asset */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Test stirng"))
-	FString TestDataAssetStringInternal;
+	/** Input mapping context for the GRSPlayerCharacter */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
+	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
 
-	/** Spawn location of Ghost Character */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Spawn location"))
-	FVector SpawnLocationInternal;
-
-	/** Collision Asset transform of actor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Collision Asset Transofrm"))
+	/** A collision used to define the area where ghost character can move around. Placed on the sides of the map */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "A box collision asset transofrm spawned on sides of map"))
 	FTransform CollisionTransformInternal;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	TSubclassOf<class AGRSBombProjectile> BombClass;
+
+	/** Parameter to control trajectory visual display */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Display trajectory"))
+	bool bEnableTrajectoryVisualInternal;
+
+	/** Parameter to control if bomb should be spawned once reached a max charging time */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Spawn Bomb once Maximum Charge Time Reached"))
+	bool bSpawnBombOnMaxChargingTimeInternal;
+
 	/** Projectile path params */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
 	FPredictProjectilePathParams PredictParamsInternal;
 
 	/** Velocity of the prediction calculation */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (BlueprintProtected, DisplayName = "Velocity in each of the directions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Trajectory Velocity multiplier in each of the directions"))
 	FVector VelocityInternal;
 
-	/** Input context for the GRSPlayerCharacter */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (BlueprintProtected, DisplayName = "Input Context", ShowOnlyInnerProperties))
-	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++|Bomb")
-	TSubclassOf<class AGRSBombProjectile> BombClass;
-
-	/** Aiming area mesh element */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
-	TObjectPtr<UStaticMesh> AimingAreaStaticMesh;
-
 	/** A visual mesh that represents trajectory of aiming */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
 	TObjectPtr<UStaticMesh> AimingTrajectoryMeshInternal;
 
 	/** A visual mesh that represents trajectory of aiming */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
 	TObjectPtr<class UMaterialInterface> TrajectoryMaterialInternal;
 
 	/** A visual mesh that represents aiming area */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
 	TObjectPtr<class UMaterialInterface> AimingMaterialInternal;
 
 	/** Trajectory mesh scale for aiming */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory", meta = (BlueprintProtected, DisplayName = "Aim Trajectory Transofrm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Aim Trajectory Transofrm"))
 	FVector2D TrajectoryMeshScaleInternal;
+
+	/** Spawn location of Ghost Character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Temporarry", meta = (BlueprintProtected, DisplayName = "Ghost Character Spawn Location"))
+	FVector SpawnLocationInternal;
+
+	/** Aiming area mesh element */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Temporarry")
+	TObjectPtr<UStaticMesh> AimingAreaStaticMesh;
 };

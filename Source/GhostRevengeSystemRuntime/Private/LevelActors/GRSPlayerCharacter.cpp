@@ -71,7 +71,6 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
 	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
 
-
 	SphereComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (SphereMesh.Succeeded())
@@ -228,7 +227,7 @@ void AGRSPlayerCharacter::BeginPlay()
 		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
 	}
 
-	TryPossessController();
+	//TryPossessController();
 
 	// Update nickname and subscribe to the player name change
 	InitPlayerNickName();
@@ -249,6 +248,76 @@ void AGRSPlayerCharacter::Tick(float DeltaTime)
 void AGRSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+// Clean up the character
+void AGRSPlayerCharacter::PerfromCleanUp()
+{
+	ClearTrajectorySplines();
+
+	if (Controller)
+	{
+		AMyPlayerController& PC = *UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+
+		// Remove all previous input contexts managed by Controller
+		TArray<const UMyInputMappingContext*> InputContexts;
+		UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+		InputContexts.AddUnique(InputContext);
+		PC.RemoveInputContexts(InputContexts);
+
+		Controller->Possess(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
+	}
+
+	if (UMovementComponent* MovementComponent = GetMovementComponent())
+	{
+		MovementComponent->DestroyComponent();
+	}
+
+	if (AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
+	{
+		MyPlayerState->OnPlayerNameChanged.RemoveDynamic(this, &ThisClass::SetNicknameOnNameplate);
+	}
+
+	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
+	{
+		RootCapsuleComponent->DestroyComponent();
+	}
+
+	if (NameplateMeshInternal)
+	{
+		NameplateMeshInternal->DestroyComponent();
+	}
+
+	if (PlayerName3DWidgetComponentInternal)
+	{
+		PlayerName3DWidgetComponentInternal->DestroyComponent();
+	}
+
+	if (MeshComponentInternal)
+	{
+		MeshComponentInternal->DestroyComponent();
+	}
+
+	if (ProjectileSplineComponentInternal)
+	{
+		ProjectileSplineComponentInternal->DestroyComponent();
+	}
+	if (BombProjectileInternal)
+	{
+		BombProjectileInternal->Destroy();
+	}
+
+	if (SphereComp)
+	{
+		SphereComp->DestroyComponent();
+	}
+}
+
+void AGRSPlayerCharacter::SetVisibility(bool Visibility)
+{
+	GetMesh()->SetVisibility(Visibility, true);
+	NameplateMeshInternal->SetVisibility(Visibility, true);
+	PlayerName3DWidgetComponentInternal->SetVisibility(Visibility, true);
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
@@ -407,7 +476,11 @@ void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 	}
 	else
 	{
-		ThrowProjectile(ActionValue);
+		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
+		{
+			ThrowProjectile(ActionValue);
+		}
+		CurrentHoldTimeInternal = 0;
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
@@ -421,15 +494,13 @@ void AGRSPlayerCharacter::ShowVisualTrajectory()
 	// Configure PredictProjectilePath settings and get result 
 	PredictProjectilePath(Result);
 
-	// Show visual element in the of predicted path
+	// Aiming area - show visual element in the of predicted end
 	AddMeshToEndProjectilePath(Result);
 
-	if (Result.PathData.Num() > 0)
+	// show trajectory visual 
+	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && Result.PathData.Num() > 0)
 	{
-		// Add spline points to the component
 		AddSplinePoints(Result);
-
-		// Add spline mesh to spline points
 		AddSplineMesh(Result);
 	}
 }
@@ -453,7 +524,6 @@ void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 	ThrowDirection.Normalize();
 	FVector LaunchVelocity = ThrowDirection * 100;
 
-	CurrentHoldTimeInternal = 0.0f;
 	ClearTrajectorySplines();
 
 	// Spawn projectile and launch projectile

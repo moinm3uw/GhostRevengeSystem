@@ -26,15 +26,6 @@ public:
 	 * Mesh and Initialization
 	 **********************************************************************************************/
 protected:
-	/** Current player character, set once game state changes into in-game
-	 * Is used as a reference character to init ghost revenge character. */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
-	TObjectPtr<APlayerCharacter> PlayerCharacterInternal;
-
-	/** Current skeletal mesh component, set once game state changes into in-game */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current My Skeletal Mesh Component"))
-	TObjectPtr<UMapComponent> MapComponentInternal;
-
 	/** The static mesh nameplate (background material of the player name). */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Nameplate Mesh Component"))
 	TObjectPtr<class UStaticMeshComponent> NameplateMeshInternal = nullptr;
@@ -94,6 +85,12 @@ public:
 	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	/** Clean up the character */
+	void PerfromCleanUp();
+
+	/** Set visibility of the player character */
+	void SetVisibility(bool Visibility);
+
 	/** Returns the Skeletal Mesh of ghost revenge character. */
 	UMySkeletalMeshComponent& GetMeshChecked() const;
 
@@ -128,7 +125,6 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<class AGRSBombProjectile> BombProjectileInternal = nullptr;
-	
 
 	UPROPERTY()
 	float CurrentHoldTimeInternal = 0.0f;
@@ -140,7 +136,6 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* SphereComp;
 
-
 public:
 	/** Hold button to increase trajectory on max level achieved throw projectile */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
@@ -149,11 +144,11 @@ public:
 	/** Add and update visual representation of charging (aiming) progress as trajectory */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ShowVisualTrajectory();
-	
+
 	/** Spawn and send projectile */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ThrowProjectile(const FInputActionValue& ActionValue);
-	
+
 	/** Hide spline elements (trajectory) */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ClearTrajectorySplines();
