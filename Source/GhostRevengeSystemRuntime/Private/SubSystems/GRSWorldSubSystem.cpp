@@ -1,11 +1,9 @@
 ﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-
 #include "SubSystems/GRSWorldSubSystem.h"
 
 #include "PoolManagerSubsystem.h"
 #include "Controllers/MyPlayerController.h"
-#include "Data/EGRSSpotType.h"
 #include "Data/MyPrimaryDataAsset.h"
 #include "Data/GRSDataAsset.h"
 #include "DataAssets/GeneratedMapDataAsset.h"
@@ -17,7 +15,6 @@
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
-
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -62,7 +59,7 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState Cur
 	{
 	case ECurrentGameState::Menu:
 		{
-			RemoveGhostCharacter();
+			RemoveGhostCharacterFromMap();
 		}
 		break;
 	case ECurrentGameState::GameStarting:
@@ -75,11 +72,13 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState Cur
 	}
 }
 
+// Called when the ghost revenge system is ready loaded (when game transitions to ingame state) 
 void UGRSWorldSubSystem::OnInit_Implementation()
 {
 	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
 }
 
+// Called when the local player character is spawned, possessed, and replicated.
 void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerCharacter* PlayerCharacter, int32 CharacterID)
 {
 	// Binds the local player state ready event to the handler
@@ -87,6 +86,7 @@ void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerChara
 	LocalPlayerCharacterInternal = PlayerCharacter;
 }
 
+// Subscribes to the end game state change notification on the player state.
 void UGRSWorldSubSystem::OnLocalPlayerStateReady_Implementation(class AMyPlayerState* PlayerState, int32 CharacterID)
 {
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
@@ -100,13 +100,11 @@ void UGRSWorldSubSystem::OnLocalPlayerStateReady_Implementation(class AMyPlayerS
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 }
 
+// Called when the end game state was changed to recalculate progression according to endgame (win, loss etc.) 
 void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EEndGameState EndGameState)
 {
 	class UHUDWidget* HUD = nullptr;
-	// Spawn parameters
-	FActorSpawnParameters SpawnParams;
 
-	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
 	switch (EndGameState)
 	{
 	case EEndGameState::Lose:
@@ -131,11 +129,32 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EEndGameState EndG
 	}
 }
 
+// Add ghost character to the current active game (on level map)
 void UGRSWorldSubSystem::AddGhostCharacter()
 {
+	// --- spawn collisions box on the sides of the map
 	SpawnMapCollisionOnSide();
 
-	//Return to Pool Manager the list of handles which is not needed (if there are any) 
+	// --- take from pool and spawn character to level
+	SpawnGhostCharacter();
+}
+
+//  Spawn a collision box the side of the map
+void UGRSWorldSubSystem::SpawnMapCollisionOnSide()
+{
+	// Spawn side collision
+	const TSubclassOf<AActor> CollisionsAssetClass = UGeneratedMapDataAsset::Get().GetCollisionsAssetClass();
+	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(CollisionsAssetClass, UGRSDataAsset::Get().GetCollisionTransform());
+	if (SpawnedActor)
+	{
+		SpawnedActor->SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
+	}
+}
+
+// Take from pool manager and spawn a ghost character to the current active game (on level map)
+void UGRSWorldSubSystem::SpawnGhostCharacter()
+{
+	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
 	if (!PoolActorHandlersInternal.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
@@ -156,45 +175,40 @@ void UGRSWorldSubSystem::AddGhostCharacter()
 	UPoolManagerSubsystem::Get().TakeFromPoolArray(PoolActorHandlersInternal, AGRSPlayerCharacter::StaticClass(), 1, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
-void UGRSWorldSubSystem::SpawnMapCollisionOnSide()
-{
-	// Spawn side collision
-	const TSubclassOf<AActor> CollisionsAssetClass = UGeneratedMapDataAsset::Get().GetCollisionsAssetClass();
-	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(CollisionsAssetClass, UGRSDataAsset::Get().GetCollisionTransform());
-	if (SpawnedActor)
-	{
-		SpawnedActor->SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
-	}
-}
-
+// Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
+	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (!ensureMsgf(PC, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
 	// something wrong if there are more than 1 object found
 	if (CreatedObjects.Num() > 1)
 	{
 		return;
 	}
 
-	// Spawn ghost character 
-	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
-
 	// Setup spawned widget
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
-		AGRSPlayerCharacter& GhostPlayerCharacter = CreatedObject.GetChecked<AGRSPlayerCharacter>();
-		ensure(&GhostPlayerCharacter);
-		GhostPlayerCharacterInternal = GhostPlayerCharacter;
+		GhostPlayerCharacterInternal = CreatedObject.GetChecked<AGRSPlayerCharacter>();
 
-		GhostPlayerCharacter.SetActorLocation(SpawnLocation);
-		// Possess the ghost character
-		AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+		// --- Possess the ghost character
 		PC->Possess(GhostPlayerCharacterInternal);
+
+		// --- Enables ghost character input (Input Manage Context) 
 		SetManagedInputContextEnabled(true);
 
+		// --- Update ghost character 
+		FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
+		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
 		GhostPlayerCharacterInternal->SetVisibility(true);
 	}
 }
 
+// Enables or disables the input context
 void UGRSWorldSubSystem::SetManagedInputContextEnabled(bool bEnable)
 {
 	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
@@ -221,20 +235,31 @@ void UGRSWorldSubSystem::SetManagedInputContextEnabled(bool bEnable)
 	}
 }
 
-void UGRSWorldSubSystem::RemoveGhostCharacter()
+// Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern)
+void UGRSWorldSubSystem::RemoveGhostCharacterFromMap()
 {
+	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (!ensureMsgf(PC, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	// coild be null
 	if (!GhostPlayerCharacterInternal)
 	{
 		return;
 	}
 
+	// --- Disable ghost character input
 	SetManagedInputContextEnabled(false);
 
-	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	// --- Posses to play character  
 	PC->Possess(LocalPlayerCharacterInternal);
+
+	// --- Hide from level
 	GhostPlayerCharacterInternal->SetVisibility(false);
 
-	// Destroying Star Actors
+	// --- Return to pool character
 	if (!PoolActorHandlersInternal.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);

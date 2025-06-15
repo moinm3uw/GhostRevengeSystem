@@ -43,22 +43,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
 
-	/** Enables or disables the input context. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetManagedInputContextEnabled(bool bEnable);
-
-	/** Add ghost character to the level */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void AddGhostCharacter();
-	
-	/** Spawn a collision box the side of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SpawnMapCollisionOnSide();
-
-	/** Remove ghost character from the level */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveGhostCharacter();
-
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -67,9 +51,12 @@ protected:
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
 
-	/** Listen game states to switch character skin. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	class APlayerCharacter* LocalPlayerCharacterInternal;
+
+	/** Array of pool actors handlers which should be released */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
+	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
 
 	/** Spot Component for the current character */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
@@ -77,14 +64,18 @@ protected:
 
 	/** AGRSPlayerCharacter, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
-	TObjectPtr<AGRSPlayerCharacter> GhostPlayerCharacterInternal;
+	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
 
 	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 
-	/** Called when the ghost revenge system is ready loaded (when game transitions to ingame state) */
+	/** Called when the ghost revenge system is ready loaded (when game transitions to in-game state) */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnInit();
+
+	/** Listen game states to switch character skin. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnGameStateChanged(ECurrentGameState CurrentGameState);
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -98,17 +89,30 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
 
-	/**
-	 * Dynamically adds Star actors which representing unlocked and locked progression above the character
+	/** Add ghost character to the current active game (on level map) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void AddGhostCharacter();
+
+	/** Take from pool manager and spawn a ghost character to the current active game (on level map) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SpawnGhostCharacter();
+
+	/** Spawn a collision box the side of the map */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SpawnMapCollisionOnSide();
+
+	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category= "C++")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	APlayerCharacter* LocalPlayerCharacterInternal;
+	/** Enables or disables the input context.
+	 * * @param bEnable - true to enable, false to disable */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetManagedInputContextEnabled(bool bEnable);
 
-	/** Array of pool actors handlers which should be released */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
-	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
+	/** Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveGhostCharacterFromMap();
 };
