@@ -2,6 +2,7 @@
 
 #include "SubSystems/GRSWorldSubSystem.h"
 
+#include "GeneratedMap.h"
 #include "PoolManagerSubsystem.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/MyPrimaryDataAsset.h"
@@ -68,6 +69,13 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState Cur
 			OnInit();
 			break;
 		}
+	case ECurrentGameState::InGame:
+		{
+			// --- spawn collisions box on the sides of the map
+			SpawnMapCollisionOnSide();
+			break;
+		}
+
 	default: break;
 	}
 }
@@ -133,7 +141,7 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EEndGameState EndG
 void UGRSWorldSubSystem::AddGhostCharacter()
 {
 	// --- spawn collisions box on the sides of the map
-	SpawnMapCollisionOnSide();
+	//SpawnMapCollisionOnSide();
 
 	// --- take from pool and spawn character to level
 	SpawnGhostCharacter();
@@ -144,10 +152,35 @@ void UGRSWorldSubSystem::SpawnMapCollisionOnSide()
 {
 	// Spawn side collision
 	const TSubclassOf<AActor> CollisionsAssetClass = UGeneratedMapDataAsset::Get().GetCollisionsAssetClass();
+
+	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	int32 playerId = PlayerCharacter->GetPlayerId();
+	UE_LOG(LogTemp, Warning, TEXT("player ID: %i"), playerId);
+
+	UMapComponent* MapComponent = UMapComponent::GetMapComponent(PlayerCharacter);
+	if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n'PlayerMapComponent' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	FCell FirstCell = MapComponent->GetCell();
+	if (playerId == 0 || playerId == 3)
+	{
+		FirstCell.Location.X = FirstCell.Location.X - FCell::CellSize;
+	}
+	if (playerId == 1 || playerId == 2)
+	{
+		FirstCell.Location.X = FirstCell.Location.X + FCell::CellSize;
+	}
+
 	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(CollisionsAssetClass, UGRSDataAsset::Get().GetCollisionTransform());
 	if (SpawnedActor)
 	{
 		SpawnedActor->SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
+		SpawnedActor->SetActorLocation(FVector(FirstCell.Location.X, 0, 0));
 	}
 }
 
