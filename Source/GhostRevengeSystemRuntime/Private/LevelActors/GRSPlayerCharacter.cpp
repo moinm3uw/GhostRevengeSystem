@@ -206,6 +206,21 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
+// Request to possess pawn from client
+void AGRSPlayerCharacter::ServerRequestPossess_Implementation(APawn* NewPawn)
+{
+	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (!PC)
+	{
+		return;
+	}
+	
+	if (HasAuthority() && NewPawn)
+	{
+		PC->Possess(NewPawn);
+	}
+}
+
 // Called when an instance of this class is placed (in editor) or spawned
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {

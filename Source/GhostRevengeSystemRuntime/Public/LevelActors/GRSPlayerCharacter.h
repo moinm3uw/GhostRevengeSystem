@@ -70,6 +70,10 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetupCapsuleComponent();
 
+	/** Request to possess pawn from client */
+	UFUNCTION(Server, Reliable)
+	void ServerRequestPossess(APawn* NewPawn);
+
 public:
 	friend class UMyCheatManager;
 

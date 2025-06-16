@@ -54,9 +54,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
 	class APlayerCharacter* LocalPlayerCharacterInternal;
 
-	/** Array of pool actors handlers which should be released */
+	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
+
+	/** Array of pool actors handlers of collisions that should be released */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
+	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
 
 	/** Spot Component for the current character */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
@@ -65,6 +69,14 @@ protected:
 	/** AGRSPlayerCharacter, set once game state changes into in-game */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
 	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
+
+	/** Left Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
+	TObjectPtr<class AActor> LeftSideCollisionInternal;
+
+	/** Right Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
+	TObjectPtr<class AActor> RightSideCollisionInternal;
 
 	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
@@ -101,11 +113,21 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SpawnMapCollisionOnSide();
 
+	/** Remove a collision box the sides of the map */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveMapCollisionOnSide();
+
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category= "C++")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
+
+	/** Grabs a side collision asset from the pool manager (Object pooling patter)
+	 * @param CreatedObjects - Handles of objects from Pool Manager
+	 */
+	UFUNCTION(BlueprintCallable, Category= "C++")
+	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */

@@ -61,6 +61,7 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState Cur
 	case ECurrentGameState::Menu:
 		{
 			RemoveGhostCharacterFromMap();
+			RemoveMapCollisionOnSide();
 		}
 		break;
 	case ECurrentGameState::GameStarting:
@@ -150,37 +151,72 @@ void UGRSWorldSubSystem::AddGhostCharacter()
 //  Spawn a collision box the side of the map
 void UGRSWorldSubSystem::SpawnMapCollisionOnSide()
 {
-	// Spawn side collision
-	const TSubclassOf<AActor> CollisionsAssetClass = UGeneratedMapDataAsset::Get().GetCollisionsAssetClass();
+	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
+	if (!CollisionPoolActorHandlersInternal.IsEmpty())
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
+		CollisionPoolActorHandlersInternal.Empty();
+	}
 
+	// --- Prepare spawn request
+	const TWeakObjectPtr<ThisClass> WeakThis = this;
+	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
+	{
+		if (UGRSWorldSubSystem* This = WeakThis.Get())
+		{
+			This->OnTakeCollisionActorsFromPoolCompleted(CreatedObjects);
+		}
+	};
+
+	// --- Spawn actor
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGeneratedMapDataAsset::Get().GetCollisionsAssetClass(), 1, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+}
+
+// Remove a collision box the sides of the map
+void UGRSWorldSubSystem::RemoveMapCollisionOnSide()
+{
+	// --- Return to pool character
+	if (!CollisionPoolActorHandlersInternal.IsEmpty())
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
+	}
+}
+
+void UGRSWorldSubSystem::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
+{
 	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
-	int32 playerId = PlayerCharacter->GetPlayerId();
-	UE_LOG(LogTemp, Warning, TEXT("player ID: %i"), playerId);
 
 	UMapComponent* MapComponent = UMapComponent::GetMapComponent(PlayerCharacter);
 	if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n'PlayerMapComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
-	FCell FirstCell = MapComponent->GetCell();
-	if (playerId == 0 || playerId == 3)
-	{
-		FirstCell.Location.X = FirstCell.Location.X - FCell::CellSize;
-	}
-	if (playerId == 1 || playerId == 2)
-	{
-		FirstCell.Location.X = FirstCell.Location.X + FCell::CellSize;
-	}
 
-	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(CollisionsAssetClass, UGRSDataAsset::Get().GetCollisionTransform());
-	if (SpawnedActor)
+	// Spawn side collision
+	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
-		SpawnedActor->SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
-		SpawnedActor->SetActorLocation(FVector(FirstCell.Location.X, 0, 0));
+		AActor& SpawnCollision = CreatedObject.GetChecked<AActor>();
+
+		int32 playerId = PlayerCharacter->GetPlayerId();
+
+		FCell FirstCell = MapComponent->GetCell();
+		if (playerId == 0 || playerId == 3)
+		{
+			FirstCell.Location.X = FirstCell.Location.X - FCell::CellSize;
+			LeftSideCollisionInternal = SpawnCollision;
+		}
+		if (playerId == 1 || playerId == 2)
+		{
+			FirstCell.Location.X = FirstCell.Location.X + FCell::CellSize;
+			RightSideCollisionInternal = SpawnCollision;
+		}
+
+		SpawnCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
+		SpawnCollision.SetActorLocation(FVector(FirstCell.Location.X, 0, 0));
 	}
 }
 
@@ -211,6 +247,12 @@ void UGRSWorldSubSystem::SpawnGhostCharacter()
 // Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
+	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
 	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
 	if (!ensureMsgf(PC, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is null!"), __LINE__, __FUNCTION__))
 	{
@@ -228,8 +270,26 @@ void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectD
 	{
 		GhostPlayerCharacterInternal = CreatedObject.GetChecked<AGRSPlayerCharacter>();
 
+		int32 playerId = PlayerCharacter->GetPlayerId();
+		FVector NewLocation = FVector::ZeroVector;
+		if (playerId == 0 || playerId == 3)
+		{
+			NewLocation = LeftSideCollisionInternal->GetActorLocation();
+		}
+		if (playerId == 1 || playerId == 2)
+		{
+			NewLocation = RightSideCollisionInternal->GetActorLocation();
+		}
+
 		// --- Possess the ghost character
-		PC->Possess(GhostPlayerCharacterInternal);
+		if (GhostPlayerCharacterInternal->HasAuthority())
+		{
+			PC->Possess(GhostPlayerCharacterInternal);
+		}
+		else
+		{
+			GhostPlayerCharacterInternal->ServerRequestPossess_Implementation(GhostPlayerCharacterInternal);
+		}
 
 		// --- Enables ghost character input (Input Manage Context) 
 		SetManagedInputContextEnabled(true);
@@ -238,6 +298,8 @@ void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectD
 		FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
 		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
 		GhostPlayerCharacterInternal->SetVisibility(true);
+
+		GhostPlayerCharacterInternal->SetActorLocation(NewLocation);
 	}
 }
 
