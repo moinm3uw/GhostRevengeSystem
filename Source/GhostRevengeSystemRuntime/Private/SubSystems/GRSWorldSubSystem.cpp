@@ -152,11 +152,13 @@ void UGRSWorldSubSystem::AddGhostCharacter()
 void UGRSWorldSubSystem::SpawnMapCollisionOnSide()
 {
 	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
+	/*
 	if (!CollisionPoolActorHandlersInternal.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
 		CollisionPoolActorHandlersInternal.Empty();
 	}
+	*/
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
@@ -200,7 +202,6 @@ void UGRSWorldSubSystem::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPo
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
 		AActor& SpawnCollision = CreatedObject.GetChecked<AActor>();
-
 		int32 playerId = PlayerCharacter->GetPlayerId();
 
 		FCell FirstCell = MapComponent->GetCell();
@@ -271,14 +272,14 @@ void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectD
 		GhostPlayerCharacterInternal = CreatedObject.GetChecked<AGRSPlayerCharacter>();
 
 		int32 playerId = PlayerCharacter->GetPlayerId();
-		FVector NewLocation = FVector::ZeroVector;
+		FVector NewLocation = GhostPlayerCharacterInternal->GetActorLocation();
 		if (playerId == 0 || playerId == 3)
 		{
-			NewLocation = LeftSideCollisionInternal->GetActorLocation();
+			NewLocation.X = LeftSideCollisionInternal->GetActorLocation().X;
 		}
 		if (playerId == 1 || playerId == 2)
 		{
-			NewLocation = RightSideCollisionInternal->GetActorLocation();
+			NewLocation.X = RightSideCollisionInternal->GetActorLocation().X;
 		}
 
 		// --- Possess the ghost character
@@ -296,10 +297,11 @@ void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectD
 
 		// --- Update ghost character 
 		FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
+		SpawnLocation.X = NewLocation.X;
 		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
 		GhostPlayerCharacterInternal->SetVisibility(true);
 
-		GhostPlayerCharacterInternal->SetActorLocation(NewLocation);
+		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
 	}
 }
 
