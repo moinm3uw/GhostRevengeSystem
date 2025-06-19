@@ -70,10 +70,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetupCapsuleComponent();
 
-	/** Request to possess pawn from client */
-	UFUNCTION(Server, Reliable)
-	void ServerRequestPossess(APawn* NewPawn);
-
 public:
 	friend class UMyCheatManager;
 
@@ -83,6 +79,8 @@ public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void PossessedBy(AController* NewController) override;
+	
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
 
@@ -172,4 +170,6 @@ public:
 	/** Add spline mesh to spline points */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
+	
+	virtual void OnRep_Controller() override;
 };

@@ -43,6 +43,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
 
+	/** Take from pool manager and spawn a ghost character to the current active game (on level map) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SpawnGhostCharacter();
+
+	UFUNCTION(BlueprintCallable, Category= "C++")
+	void SpawnGhost(AGRSPlayerCharacter* GhostPlayerCharacter);
+
+	/** Add ghost character to the current active game (on level map) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void AddGhostCharacter();
+
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -101,13 +112,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
 
-	/** Add ghost character to the current active game (on level map) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void AddGhostCharacter();
-
-	/** Take from pool manager and spawn a ghost character to the current active game (on level map) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SpawnGhostCharacter();
 
 	/** Spawn a collision box the side of the map */
 	UFUNCTION(BlueprintCallable, Category = "C++")

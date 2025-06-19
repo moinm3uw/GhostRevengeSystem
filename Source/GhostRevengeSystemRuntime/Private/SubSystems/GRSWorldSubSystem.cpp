@@ -118,7 +118,13 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EEndGameState EndG
 	{
 	case EEndGameState::Lose:
 		{
-			AddGhostCharacter();
+			AMyPlayerController* PlayerController = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+			if (PlayerController)
+			{
+				bool bHasAuth = PlayerController->HasAuthority();
+				UE_LOG(LogTemp, Warning, TEXT("UGRSWorldSubSystem::OnEndGameStateChanged hasAuthority: %i"), bHasAuth);
+				//AddGhostCharacter();
+			}
 		}
 
 	/*
@@ -145,7 +151,20 @@ void UGRSWorldSubSystem::AddGhostCharacter()
 	//SpawnMapCollisionOnSide();
 
 	// --- take from pool and spawn character to level
-	SpawnGhostCharacter();
+	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (!ensureMsgf(PC, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	if (PC->HasAuthority())
+	{
+		SpawnGhostCharacter();
+	}
+	else
+	{
+		//PC->ServerSpawnPlayerCharacter();
+	}
 }
 
 //  Spawn a collision box the side of the map
@@ -248,6 +267,22 @@ void UGRSWorldSubSystem::SpawnGhostCharacter()
 // Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
+	// something wrong if there are more than 1 object found
+	if (CreatedObjects.Num() > 1)
+	{
+		return;
+	}
+
+	// Setup spawned widget
+	for (const FPoolObjectData& CreatedObject : CreatedObjects)
+	{
+		AGRSPlayerCharacter& Character = CreatedObject.GetChecked<AGRSPlayerCharacter>();
+		SpawnGhost(&Character);
+	}
+}
+
+void UGRSWorldSubSystem::SpawnGhost(AGRSPlayerCharacter* GhostPlayerCharacter)
+{
 	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
@@ -260,49 +295,32 @@ void UGRSWorldSubSystem::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectD
 		return;
 	}
 
-	// something wrong if there are more than 1 object found
-	if (CreatedObjects.Num() > 1)
+	GhostPlayerCharacterInternal = GhostPlayerCharacter;
+
+	int32 playerId = PlayerCharacter->GetPlayerId();
+	FVector NewLocation = GhostPlayerCharacterInternal->GetActorLocation();
+	if (playerId == 0 || playerId == 3)
 	{
-		return;
+		NewLocation.X = LeftSideCollisionInternal->GetActorLocation().X;
+	}
+	if (playerId == 1 || playerId == 2)
+	{
+		NewLocation.X = RightSideCollisionInternal->GetActorLocation().X;
 	}
 
-	// Setup spawned widget
-	for (const FPoolObjectData& CreatedObject : CreatedObjects)
-	{
-		GhostPlayerCharacterInternal = CreatedObject.GetChecked<AGRSPlayerCharacter>();
+	// --- Possess the ghost character
+	//PC->ServerRequestPossess(GhostPlayerCharacterInternal);
 
-		int32 playerId = PlayerCharacter->GetPlayerId();
-		FVector NewLocation = GhostPlayerCharacterInternal->GetActorLocation();
-		if (playerId == 0 || playerId == 3)
-		{
-			NewLocation.X = LeftSideCollisionInternal->GetActorLocation().X;
-		}
-		if (playerId == 1 || playerId == 2)
-		{
-			NewLocation.X = RightSideCollisionInternal->GetActorLocation().X;
-		}
+	// --- Enables ghost character input (Input Manage Context) 
+	SetManagedInputContextEnabled(true);
 
-		// --- Possess the ghost character
-		if (GhostPlayerCharacterInternal->HasAuthority())
-		{
-			PC->Possess(GhostPlayerCharacterInternal);
-		}
-		else
-		{
-			GhostPlayerCharacterInternal->ServerRequestPossess_Implementation(GhostPlayerCharacterInternal);
-		}
+	// --- Update ghost character 
+	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
+	SpawnLocation.X = NewLocation.X;
+	GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
+	GhostPlayerCharacterInternal->SetVisibility(true);
 
-		// --- Enables ghost character input (Input Manage Context) 
-		SetManagedInputContextEnabled(true);
-
-		// --- Update ghost character 
-		FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
-		SpawnLocation.X = NewLocation.X;
-		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
-		GhostPlayerCharacterInternal->SetVisibility(true);
-
-		GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
-	}
+	GhostPlayerCharacterInternal->SetActorLocation(SpawnLocation);
 }
 
 // Enables or disables the input context

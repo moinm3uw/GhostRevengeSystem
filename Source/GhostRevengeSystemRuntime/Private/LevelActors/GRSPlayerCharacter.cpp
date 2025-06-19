@@ -206,21 +206,6 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
-// Request to possess pawn from client
-void AGRSPlayerCharacter::ServerRequestPossess_Implementation(APawn* NewPawn)
-{
-	AMyPlayerController* PC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
-	if (!PC)
-	{
-		return;
-	}
-	
-	if (HasAuthority() && NewPawn)
-	{
-		PC->Possess(NewPawn);
-	}
-}
-
 // Called when an instance of this class is placed (in editor) or spawned
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
@@ -251,6 +236,12 @@ void AGRSPlayerCharacter::BeginPlay()
 
 	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
 	SphereComp->SetVisibility(false);
+}
+
+void AGRSPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter Possessed. "));
 }
 
 // Called every frame
@@ -630,4 +621,12 @@ void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 
 		SplineMeshArrayInternal.AddUnique(SplineMesh);
 	}
+}
+
+void AGRSPlayerCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	UGRSWorldSubSystem::Get().SpawnGhost(this);
+	
 }
