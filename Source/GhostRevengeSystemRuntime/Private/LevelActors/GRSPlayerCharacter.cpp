@@ -7,9 +7,11 @@
 #include "InputActionValue.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
+#include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/GhostRevengeSystemSpotComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
+#include "Components/MapComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
@@ -29,6 +31,7 @@
 #include "LevelActors/GRSBombProjectile.h"
 #include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
+#include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/PlayerNameWidget.h"
@@ -52,15 +55,6 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	// Initialize skeletal mesh of the character
 	InitializeSkeletalMesh();
 
-	// Initialize the nameplate mesh component
-	InitializeNameplateMeshComponent();
-
-	// set a name plate material
-	InitializeNamePlateMaterial();
-
-	// Initialize 3D widget component for the player name
-	Initialize3DWidgetComponent();
-
 	// Configure the movement component
 	MovementComponentConfiguration();
 
@@ -77,6 +71,10 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	{
 		SphereComp->SetStaticMesh(SphereMesh.Object);
 	}
+
+	// Initialize 3D widget component for the player name
+	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
+	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
 }
 
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
@@ -87,7 +85,6 @@ void AGRSPlayerCharacter::SetDefaultParams()
 
 	// Replicate an actor
 	bReplicates = true;
-	bAlwaysRelevant = true;
 	SetReplicatingMovement(true);
 
 	// Do not rotate player by camera
@@ -107,70 +104,6 @@ void AGRSPlayerCharacter::InitializeSkeletalMesh()
 	SkeletalMeshComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	// Enable all lighting channels, so it's clearly visible in the dark
 	SkeletalMeshComponent->SetLightingChannels(/*bChannel0*/true, /*bChannel1*/true, /*bChannel2*/true);
-}
-
-// Initialize the nameplate mesh component (background material of the player name)
-void AGRSPlayerCharacter::InitializeNameplateMeshComponent()
-{
-	NameplateMeshInternal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GRSNameplateMeshComponent"));
-	NameplateMeshInternal->SetupAttachment(RootComponent);
-	static const FVector NameplateRelativeLocation(0.f, 0.f, 210.f);
-	NameplateMeshInternal->SetRelativeLocation_Direct(NameplateRelativeLocation);
-	static const FVector NameplateRelativeScale(2.25f, 1.f, 1.f);
-	NameplateMeshInternal->SetRelativeScale3D_Direct(NameplateRelativeScale);
-	NameplateMeshInternal->SetUsingAbsoluteRotation(true);
-	NameplateMeshInternal->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-	UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
-	checkf(PlaneMesh, TEXT("ERROR: [%i] %hs:\n'PlaneMesh' failed to load!"), __LINE__, __FUNCTION__);
-	NameplateMeshInternal->SetStaticMesh(PlaneMesh);
-	NameplateMeshInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-}
-
-// Setup name plate material
-void AGRSPlayerCharacter::InitializeNamePlateMaterial()
-{
-	// Set a nameplate material
-	if (ensureMsgf(NameplateMeshInternal, TEXT("ASSERT: 'NameplateMeshComponent' is not valid")))
-	{
-		const UPlayerDataAsset& PlayerDataAsset = UPlayerDataAsset::Get();
-		const int32 NameplateMeshesNum = PlayerDataAsset.GetNameplateMaterialsNum();
-		if (NameplateMeshesNum > 0)
-		{
-			int32 CurrentPlayerId = GetPlayerId();
-			const int32 MaterialNo = CurrentPlayerId < NameplateMeshesNum ? CurrentPlayerId : CurrentPlayerId % NameplateMeshesNum;
-			if (UMaterialInterface* Material = PlayerDataAsset.GetNameplateMaterial(MaterialNo))
-			{
-				NameplateMeshInternal->SetMaterial(0, Material);
-			}
-		}
-	}
-}
-
-// Initialize 3D widget component for the player name
-void AGRSPlayerCharacter::Initialize3DWidgetComponent()
-{
-	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UWidgetComponent>(TEXT("GRSPlayerName3DWidgetComponent"));
-	PlayerName3DWidgetComponentInternal->SetupAttachment(NameplateMeshInternal);
-	static const FVector WidgetRelativeLocation(0.f, 0.f, 10.f);
-	PlayerName3DWidgetComponentInternal->SetRelativeLocation_Direct(WidgetRelativeLocation);
-	static const FRotator WidgetRelativeRotation(90.f, -90.f, 180.f);
-	PlayerName3DWidgetComponentInternal->SetRelativeRotation_Direct(WidgetRelativeRotation);
-	PlayerName3DWidgetComponentInternal->SetGenerateOverlapEvents(false);
-	static const FVector2D DrawSize(180.f, 50.f);
-	PlayerName3DWidgetComponentInternal->SetDrawSize(DrawSize);
-	static const FVector2D Pivot(0.5f, 0.4f);
-	PlayerName3DWidgetComponentInternal->SetPivot(Pivot);
-	PlayerName3DWidgetComponentInternal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-}
-
-// Set nickname
-void AGRSPlayerCharacter::InitPlayerNickName()
-{
-	if (AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
-	{
-		MyPlayerState->OnPlayerNameChanged.AddUniqueDynamic(this, &ThisClass::SetNicknameOnNameplate);
-		SetNicknameOnNameplate(*MyPlayerState->GetPlayerName());
-	}
 }
 
 // Configure the movement component of the character
@@ -206,6 +139,29 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
+// Subscribes to the player state.
+void AGRSPlayerCharacter::OnPlayerStateReady_Implementation(class AMyPlayerState* InPlayerState, int32 CharacterID)
+{
+	if (InPlayerState)
+	{
+		checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
+		PlayerName3DWidgetComponentInternal->Init(InPlayerState);
+	}
+}
+
+// Event triggered when the bomb has been explicitly destroyed.
+void AGRSPlayerCharacter::OnBombDestroyed_Implementation(class UMapComponent* MapComponent, UObject* DestroyCauser)
+{
+	if (!MapComponent
+		|| MapComponent->GetActorType() != EAT::Bomb
+		|| BombCountInternal >= 1)
+	{
+		return;
+	}
+	// reset count of bombs available
+	BombCountInternal = 1;
+}
+
 // Called when an instance of this class is placed (in editor) or spawned
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
@@ -219,29 +175,40 @@ void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Set the animation blueprint on very first character spawn
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
-		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
-	}
-
-	//TryPossessController();
-
-	// Update nickname and subscribe to the player name change
-	InitPlayerNickName();
-
-	ClearTrajectorySplines();
-
-	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	SphereComp->SetVisibility(false);
 }
 
 void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+
+	if (!NewController->HasAuthority())
+	{
+		return;
+	}
+
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
+
 	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter Possessed. "));
+
+	// Optionally, cast to your specific class:
+	for (AActor* Actor : PlayerCharactersInternal)
+	{
+		APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
+		if (MyActor)
+		{
+			if (MyActor->IsBotControlled())
+			{
+				continue;
+			}
+
+			// Use MyActor
+			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
+			if (MapComponent)
+			{
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+			}
+		}
+	}
 }
 
 // Called every frame
@@ -250,10 +217,22 @@ void AGRSPlayerCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-// Called to bind functionality to input
-void AGRSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+//  Perform init character once added to the level
+void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	// Set the animation blueprint on very first character spawn
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
+		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
+	}
+
+	TryPossessController(PlayerController);
+
+	ClearTrajectorySplines();
+
+	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	SphereComp->SetVisibility(false);
 }
 
 // Clean up the character
@@ -279,24 +258,9 @@ void AGRSPlayerCharacter::PerfromCleanUp()
 		MovementComponent->DestroyComponent();
 	}
 
-	if (AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
-	{
-		MyPlayerState->OnPlayerNameChanged.RemoveDynamic(this, &ThisClass::SetNicknameOnNameplate);
-	}
-
 	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
 	{
 		RootCapsuleComponent->DestroyComponent();
-	}
-
-	if (NameplateMeshInternal)
-	{
-		NameplateMeshInternal->DestroyComponent();
-	}
-
-	if (PlayerName3DWidgetComponentInternal)
-	{
-		PlayerName3DWidgetComponentInternal->DestroyComponent();
 	}
 
 	if (MeshComponentInternal)
@@ -322,8 +286,6 @@ void AGRSPlayerCharacter::PerfromCleanUp()
 void AGRSPlayerCharacter::SetVisibility(bool Visibility)
 {
 	GetMesh()->SetVisibility(Visibility, true);
-	NameplateMeshInternal->SetVisibility(Visibility, true);
-	PlayerName3DWidgetComponentInternal->SetVisibility(Visibility, true);
 }
 
 // Returns the Skeletal Mesh of ghost revenge character
@@ -333,7 +295,7 @@ UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 }
 
 // Possess a player 
-void AGRSPlayerCharacter::TryPossessController()
+void AGRSPlayerCharacter::TryPossessController(APlayerController* PlayerController)
 {
 	if (!HasAuthority()
 		|| !IsActorInitialized() // Engine doesn't allow to possess before BeginPlay\PostInitializeComponents
@@ -345,14 +307,21 @@ void AGRSPlayerCharacter::TryPossessController()
 
 
 	AController* ControllerToPossess = nullptr;
-	AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
-	if (MyPC)
+	//AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	/*
+	if (PlayerController)
 	{
-		ControllerToPossess = MyPC;
+		ControllerToPossess = PlayerController;
 	}
-
+	
 	if (!ControllerToPossess
 		|| ControllerToPossess == Controller)
+	{
+		return;
+	}
+	*/
+
+	if (PlayerController == Controller)
 	{
 		return;
 	}
@@ -363,7 +332,7 @@ void AGRSPlayerCharacter::TryPossessController()
 		Controller->UnPossess();
 	}
 
-	ControllerToPossess->Possess(this);
+	PlayerController->Possess(this);
 }
 
 // Set and apply default skeletal mesh for this player
@@ -434,28 +403,6 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 	AddMovementInput(RightDirection, MovementVector.X);
 }
 
-// Update player name on a 3D widget component
-void AGRSPlayerCharacter::SetNicknameOnNameplate_Implementation(FName NewName)
-{
-	const UWidgetsSubsystem* WidgetsSubsystem = UWidgetsSubsystem::GetWidgetsSubsystem();
-	UPlayerNameWidget* PlayerNameWidget = WidgetsSubsystem ? WidgetsSubsystem->GetNicknameWidget(GetPlayerId()) : nullptr;
-	if (!PlayerNameWidget)
-	{
-		// Widget is not created yet, might be called before UI Subsystem is initialized
-		return;
-	}
-
-	PlayerNameWidget->SetPlayerName(FText::FromName(NewName));
-	PlayerNameWidget->SetAssociatedPlayerId(GetPlayerId());
-
-	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
-	const UUserWidget* LastWidget = PlayerName3DWidgetComponentInternal->GetWidget();
-	if (LastWidget != PlayerNameWidget)
-	{
-		PlayerName3DWidgetComponentInternal->SetWidget(PlayerNameWidget);
-	}
-}
-
 // Returns own character ID, e.g: 0, 1, 2, 3
 int32 AGRSPlayerCharacter::GetPlayerId() const
 {
@@ -514,17 +461,44 @@ void AGRSPlayerCharacter::ShowVisualTrajectory()
 // Spawn and send projectile
 void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 {
+	if (BombCountInternal < 1)
+	{
+		return;
+	}
+
 	// Calculate Cell to spawn bomb:
 	FVector SpawnLocation = SphereComp->GetComponentLocation();
 	FCell CurrentCell;
 	CurrentCell.Location = SpawnLocation;
 	SphereComp->SetVisibility(false);
 	const FCell& SpawnBombCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-	UGhostRevengeSystemSpotComponent* Spot = UGRSWorldSubSystem::Get().GetSpotComponent();
+	//UGhostRevengeSystemSpotComponent* Spot = UGRSWorldSubSystem::Get().GetSpotComponent();
+
+	const TFunction<void(UMapComponent&)> OnBombSpawned = [WeakThis = TWeakObjectPtr(this), this](UMapComponent& MapComponent)
+	{
+		AGRSPlayerCharacter* PlayerCharacter = WeakThis.Get();
+		if (!PlayerCharacter)
+		{
+			return;
+		}
+
+		ACharacter* Character = Cast<ACharacter>(PlayerCharacter);
+
+		// Init Bomb
+		BombActorInternal = CastChecked<ABombActor>(MapComponent.GetOwner());
+
+		// Start listening this bomb
+		MapComponent.OnPostRemovedFromLevel.AddUniqueDynamic(PlayerCharacter, &ThisClass::OnBombDestroyed);
+	};
 
 	// Spawn bomb
 	//const FBmrMeshData& PlayerMeshData = Spot->GetMeshChecked().GetMeshData();
-	AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Bomb, SpawnBombCell, UBombDataAsset::Get().GetRowByIndex(0));
+	const struct FBmrMeshData& MeshData = FBmrMeshData(UBombDataAsset::Get().GetRowByIndex(0));
+	const auto& OnSpawned = [MeshData](UMapComponent& MapComponent) { MapComponent.SetReplicatedMeshData(MeshData); };
+	AGeneratedMap::Get().SpawnActorByType(EAT::Bomb, SpawnBombCell, OnBombSpawned);
+
+	// empty bomb count to spawn
+	BombCountInternal = 0;
 
 	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f);
 	ThrowDirection.Normalize();
@@ -627,6 +601,40 @@ void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-	UGRSWorldSubSystem::Get().SpawnGhost(this);
-	
+	SetDefaultPlayerMeshData();
+	// Set the animation blueprint on very first character spawn
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
+		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::OnRep_Controller. "));
+}
+
+// Returns spawned by ghost character bomb  or nullptr
+ABombActor* AGRSPlayerCharacter::GetGhostCharacterSpawnedBomb_Implementation()
+{
+	return BombActorInternal ? BombActorInternal : nullptr;
+}
+
+// Called right before owner actor going to remove from the Generated Map, on both server and clients.
+void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+{
+	if (BombActorInternal == DestroyCauser)
+	{
+		FVector SpawnLocation = MapComponent->GetOwner()->GetActorLocation();
+		//this->SetActorLocation(SpawnLocation);
+
+		FCell CurrentCell = SpawnLocation;
+		// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
+		if (!Controller)
+		{
+			return;
+		}
+		Controller->UnPossess();
+		this->SetVisibility(false);
+		AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, MapComponent->GetReplicatedMeshData());
+		FString Name = MapComponent->GetOwner()->GetName();
+		UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
+	}
 }

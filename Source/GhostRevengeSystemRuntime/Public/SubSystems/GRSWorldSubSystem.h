@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "PoolManagerTypes.h"
 #include "GRSWorldSubSystem.generated.h"
 
 /**
@@ -39,20 +38,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class UGhostRevengeSystemSpotComponent* GetSpotComponent() const { return SpotComponentInternal; }
 
+	/** Register the ghost revenge player character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RegisterGhostPlayerCharacter(class AGRSPlayerCharacter* GhostPlayer);
+
 	/** Get current player character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
-
-	/** Take from pool manager and spawn a ghost character to the current active game (on level map) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SpawnGhostCharacter();
-
-	UFUNCTION(BlueprintCallable, Category= "C++")
-	void SpawnGhost(AGRSPlayerCharacter* GhostPlayerCharacter);
-
-	/** Add ghost character to the current active game (on level map) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void AddGhostCharacter();
 
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
@@ -62,83 +54,22 @@ protected:
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	class APlayerCharacter* LocalPlayerCharacterInternal;
-
-	/** Array of pool actors handlers of characters which should be released */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
-	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
-
-	/** Array of pool actors handlers of collisions that should be released */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
-	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
+	/** AGRSPlayerCharacter, set once game state changes into in-game */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
+	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
 
 	/** Spot Component for the current character */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
 	TObjectPtr<class UGhostRevengeSystemSpotComponent> SpotComponentInternal;
 
-	/** AGRSPlayerCharacter, set once game state changes into in-game */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
-	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
-
-	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<class AActor> LeftSideCollisionInternal;
-
-	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<class AActor> RightSideCollisionInternal;
-
-	/** Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors */
-	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
-
-	/** Called when the ghost revenge system is ready loaded (when game transitions to in-game state) */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnInit();
-
-	/** Listen game states to switch character skin. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+	/** Begin play of the subsystem */
+	void OnWorldBeginPlay(UWorld& InWorld) override;
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnLocalCharacterReady(class APlayerCharacter* PlayerCharacter, int32 CharacterID);
 
-	/** Subscribes to the end game state change notification on the player state. */
+	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnLocalPlayerStateReady(class AMyPlayerState* PlayerState, int32 CharacterID);
-
-	/** Called when the end game state was changed to recalculate progression according to endgame (win, loss etc.)  */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnEndGameStateChanged(EEndGameState EndGameState);
-
-
-	/** Spawn a collision box the side of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SpawnMapCollisionOnSide();
-
-	/** Remove a collision box the sides of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveMapCollisionOnSide();
-
-	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
-	 * @param CreatedObjects - Handles of objects from Pool Manager
-	 */
-	UFUNCTION(BlueprintCallable, Category= "C++")
-	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-
-	/** Grabs a side collision asset from the pool manager (Object pooling patter)
-	 * @param CreatedObjects - Handles of objects from Pool Manager
-	 */
-	UFUNCTION(BlueprintCallable, Category= "C++")
-	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-
-	/** Enables or disables the input context.
-	 * * @param bEnable - true to enable, false to disable */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetManagedInputContextEnabled(bool bEnable);
-
-	/** Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveGhostCharacterFromMap();
+	void OnGameStateChanged(ECurrentGameState CurrentGameState);
 };

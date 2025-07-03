@@ -26,14 +26,6 @@ public:
 	 * Mesh and Initialization
 	 **********************************************************************************************/
 protected:
-	/** The static mesh nameplate (background material of the player name). */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Nameplate Mesh Component"))
-	TObjectPtr<class UStaticMeshComponent> NameplateMeshInternal = nullptr;
-
-	/** 3D widget component that displays the player name above the character. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
-	TObjectPtr<class UWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
-
 	/** Mesh of component. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
@@ -46,22 +38,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void InitializeSkeletalMesh();
 
-	/** Initialize the nameplate mesh component (background material of the player name) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void InitializeNameplateMeshComponent();
-
-	/** Setup name plate material */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void InitializeNamePlateMaterial();
-
-	/** Initialize 3D widget component for the player name */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void Initialize3DWidgetComponent();
-
-	/** Set nickname */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void InitPlayerNickName();
-
 	/** Configure the movement component of the character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void MovementComponentConfiguration();
@@ -69,6 +45,23 @@ protected:
 	/** Set up the capsule component of the character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetupCapsuleComponent();
+
+	/** Subscribes to the player state. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnPlayerStateReady(class AMyPlayerState* InPlayerState, int32 CharacterID);
+
+	/*********************************************************************************************
+	* Nickname
+	********************************************************************************************* */
+public:
+	/** Returns the 3D widget component that displays the player name above the character. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponentInternal; }
+
+protected:
+	/** 3D widget component that displays the player name above the character. */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
+	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
 
 public:
 	friend class UMyCheatManager;
@@ -80,13 +73,13 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void PossessedBy(AController* NewController) override;
-	
+
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
 
-	/** Called to bind functionality to input */
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	/** Perform init character once added to the level */
+	void Initialize(APlayerController* PlayerController);
+	
 	/** Clean up the character */
 	void PerfromCleanUp();
 
@@ -98,7 +91,7 @@ public:
 
 	/** Possess a player */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
-	void TryPossessController();
+	void TryPossessController(APlayerController* PlayerController);
 
 	/** Set and apply default skeletal mesh for this player.
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
@@ -108,10 +101,6 @@ public:
 	/** Move the player character. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
-
-	/** Updates new player name on a 3D widget component. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void SetNicknameOnNameplate(FName NewName);
 
 	/** Returns own character ID, e.g: 0, 1, 2, 3 */
 	UFUNCTION(BlueprintPure, Category = "C++")
@@ -170,6 +159,32 @@ public:
 	/** Add spline mesh to spline points */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
-	
+
 	virtual void OnRep_Controller() override;
+
+	/*********************************************************************************************
+	 * Bomb
+	 **********************************************************************************************/
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+	class ABombActor* BombActorInternal = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+	int32 BombCountInternal = 1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+	TArray<AActor*> PlayerCharactersInternal;
+
+	/** Event triggered when the bomb has been explicitly destroyed. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnBombDestroyed(class UMapComponent* MapComponent, UObject* DestroyCauser = nullptr);
+
+	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
+
+public:
+	/** Returns spawned by ghost character bomb  or nullptr */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	ABombActor* GetGhostCharacterSpawnedBomb();
 };
