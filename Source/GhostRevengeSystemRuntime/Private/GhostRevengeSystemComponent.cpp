@@ -106,7 +106,7 @@ void UGhostRevengeSystemComponent::OnPostRemovedFromLevel_Implementation(class U
 		if (PlayerCharacter)
 		{
 			PreviousPlayerControllerInternal = Cast<AMyPlayerController>(PlayerCharacter->Controller);
-			UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.RemoveAll(PreviousPlayerControllerInternal);
+			//UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.RemoveAll(PreviousPlayerControllerInternal);
 		}
 		AddGhostCharacter();
 	}
@@ -131,7 +131,7 @@ void UGhostRevengeSystemComponent::OnGameStateChanged_Implementation(ECurrentGam
 			RemoveMapCollisionOnSide();
 			if (PreviousPlayerControllerInternal)
 			{
-				UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.AddUniqueDynamic(PreviousPlayerControllerInternal, &AMyPlayerController::OnGameStateChanged);
+				//UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.AddUniqueDynamic(PreviousPlayerControllerInternal, &AMyPlayerController::OnGameStateChanged);
 			}
 		}
 		break;
