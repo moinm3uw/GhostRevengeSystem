@@ -23,44 +23,37 @@ public:
 	APlayerController* GetPlayerController() const;
 	APlayerController& GetPlayerControllerChecked() const;
 
+	/** Adds ghost character to the level */
 	UFUNCTION(BlueprintCallable, Category= "C++")
-	void SpawnGhost(AGRSPlayerCharacter* GhostPlayerCharacter);
+	void SpawnGhost(class AGRSPlayerCharacter* GhostPlayerCharacter);
+
+	/** Called when the ghost player killed */
+	UFUNCTION(BlueprintCallable, Category= "C++")
+	void OnGhostPlayerKilled();
 
 	/** Add ghost character to the current active game (on level map) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "C++")
 	void AddGhostCharacter();
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	/** Initial (main) player character */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
 	class ACharacter* PreviousPlayerCharacterInternal;
 
+	/** Initial (main) player character location */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	FVector PreviousPlayerCharacterLocationInternal;
+
+	/** Initial (main) player controller */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
 	class AMyPlayerController* PreviousPlayerControllerInternal;
 
 	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
-
-	/** Array of pool actors handlers of collisions that should be released */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
-	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
-
-	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<class AActor> LeftSideCollisionInternal;
-
-	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<class AActor> RightSideCollisionInternal;
-
-	UPROPERTY()
-	int32 PlayerIdInternal;
-
-	UPROPERTY()
-	FCell ActorSpawnCellLocationInternal;
 
 	/** Called when this level actor is reconstructed or added on the Generated Map, on both server and clients. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -78,25 +71,11 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EEndGameState EndGameState);
 
-	/** Spawn a collision box the side of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SpawnMapCollisionOnSide();
-
-	/** Remove a collision box the sides of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveMapCollisionOnSide();
-
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category= "C++")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-
-	/** Grabs a side collision asset from the pool manager (Object pooling patter)
-	 * @param CreatedObjects - Handles of objects from Pool Manager
-	 */
-	UFUNCTION(BlueprintCallable, Category= "C++")
-	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */

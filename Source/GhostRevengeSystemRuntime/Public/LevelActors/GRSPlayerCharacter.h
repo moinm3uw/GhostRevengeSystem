@@ -19,8 +19,14 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPlayerKilled);
+	
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+
+	/** Is called when ghost killed a player */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnGhostPlayerKilled OnGhostPlayerKilled;
 
 	/*********************************************************************************************
 	 * Mesh and Initialization
@@ -71,11 +77,6 @@ public:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	virtual void PossessedBy(AController* NewController) override;
-
-	/** Called every frame */
-	virtual void Tick(float DeltaTime) override;
 
 	/** Perform init character once added to the level */
 	void Initialize(APlayerController* PlayerController);

@@ -6,16 +6,16 @@
 #include "PoolManagerSubsystem.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
-#include "DataAssets/GeneratedMapDataAsset.h"
 #include "Engine/Engine.h"
 #include "GameFramework/MyGameStateBase.h"
-#include "GameFramework/MyPlayerState.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 #include "LevelActors/BombActor.h"
+#include "UtilityLibraries/CellsUtilsLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeSystemComponent)
 
@@ -24,6 +24,8 @@ UGhostRevengeSystemComponent::UGhostRevengeSystemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
+
+	SetIsReplicatedByDefault(true);
 }
 
 // Returns Player Controller of this component
@@ -52,35 +54,38 @@ void UGhostRevengeSystemComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
-	if (!PlayerCharacter || !PlayerCharacter->IsPlayerControlled())
+	if (!GetOwner()->HasAuthority())
 	{
 		return;
 	}
 
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 	UMapComponent* MapComponent = UMapComponent::GetMapComponent(GetOwner());
+
 	if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n'MapComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
 	MapComponent->OnAddedToLevel.AddUniqueDynamic(this, &ThisClass::OnAddedToLevel);
-	//MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
 	MapComponent->OnPostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
 
-	ActorSpawnCellLocationInternal = MapComponent->GetCell();
 	PreviousPlayerCharacterInternal = Cast<APlayerCharacter>(GetOwner());
+	if (PreviousPlayerCharacterInternal)
+	{
+		PreviousPlayerCharacterLocationInternal = PreviousPlayerCharacterInternal->GetActorLocation();
+	}
 }
 
 // Called when this level actor is reconstructed or added on the Generated Map, on both server and clients.
 void UGhostRevengeSystemComponent::OnAddedToLevel_Implementation(class UMapComponent* MapComponent)
 {
-	ActorSpawnCellLocationInternal = MapComponent->GetCell();
 	PreviousPlayerCharacterInternal = Cast<APlayerCharacter>(GetOwner());
+	if (PreviousPlayerCharacterInternal)
+	{
+		PreviousPlayerCharacterLocationInternal = PreviousPlayerCharacterInternal->GetActorLocation();
+	}
 }
-
 
 // Called right before owner actor going to remove from the Generated Map
 void UGhostRevengeSystemComponent::OnPostRemovedFromLevel_Implementation(class UMapComponent* MapComponent, UObject* DestroyCauser)
@@ -93,8 +98,6 @@ void UGhostRevengeSystemComponent::OnPostRemovedFromLevel_Implementation(class U
 
 	if (MapComponent == UMapComponent::GetMapComponent(GetOwner()))
 	{
-		SpawnMapCollisionOnSide();
-
 		APlayerController& PlayerController = GetPlayerControllerChecked();
 		bool bHasAuth = PlayerController.HasAuthority();
 		if (!bHasAuth)
@@ -106,7 +109,6 @@ void UGhostRevengeSystemComponent::OnPostRemovedFromLevel_Implementation(class U
 		if (PlayerCharacter)
 		{
 			PreviousPlayerControllerInternal = Cast<AMyPlayerController>(PlayerCharacter->Controller);
-			//UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.RemoveAll(PreviousPlayerControllerInternal);
 		}
 		AddGhostCharacter();
 	}
@@ -125,87 +127,10 @@ void UGhostRevengeSystemComponent::OnGameStateChanged_Implementation(ECurrentGam
 				return;
 			}
 
-			// MapComponent->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-			// UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.RemoveDynamic(this, &ThisClass::OnGameStateChanged);
 			RemoveGhostCharacterFromMap();
-			RemoveMapCollisionOnSide();
-			if (PreviousPlayerControllerInternal)
-			{
-				//UGlobalEventsSubsystem::Get().BP_OnGameStateChanged.AddUniqueDynamic(PreviousPlayerControllerInternal, &AMyPlayerController::OnGameStateChanged);
-			}
 		}
 		break;
 	default: break;
-	}
-}
-
-
-//  Spawn a collision box the side of the map
-void UGhostRevengeSystemComponent::SpawnMapCollisionOnSide()
-{
-	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
-	/*
-	if (!CollisionPoolActorHandlersInternal.IsEmpty())
-	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
-		CollisionPoolActorHandlersInternal.Empty();
-	}
-	*/
-
-	// --- Prepare spawn request
-	const TWeakObjectPtr<ThisClass> WeakThis = this;
-	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
-	{
-		if (UGhostRevengeSystemComponent* This = WeakThis.Get())
-		{
-			This->OnTakeCollisionActorsFromPoolCompleted(CreatedObjects);
-		}
-	};
-
-	// --- Spawn actor
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGeneratedMapDataAsset::Get().GetCollisionsAssetClass(), 1, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
-}
-
-void UGhostRevengeSystemComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
-{
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
-	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	PlayerIdInternal = PlayerCharacter->GetPlayerId();
-
-	// Spawn side collision
-	for (const FPoolObjectData& CreatedObject : CreatedObjects)
-	{
-		AActor& SpawnCollision = CreatedObject.GetChecked<AActor>();
-		SpawnCollision.SetReplicates(true);
-
-		if (PlayerIdInternal == 0 || PlayerIdInternal == 3)
-		{
-			ActorSpawnCellLocationInternal.Location.X = ActorSpawnCellLocationInternal.Location.X - FCell::CellSize;
-			LeftSideCollisionInternal = SpawnCollision;
-		}
-		if (PlayerIdInternal == 1 || PlayerIdInternal == 2)
-		{
-			ActorSpawnCellLocationInternal.Location.X = ActorSpawnCellLocationInternal.Location.X + FCell::CellSize;
-			RightSideCollisionInternal = SpawnCollision;
-		}
-
-		SpawnCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
-		SpawnCollision.SetActorLocation(FVector(ActorSpawnCellLocationInternal.Location.X, 0, 0));
-	}
-}
-
-// Remove a collision box the sides of the map
-void UGhostRevengeSystemComponent::RemoveMapCollisionOnSide()
-{
-	// --- Return to pool character
-	if (!CollisionPoolActorHandlersInternal.IsEmpty())
-	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
-		CollisionPoolActorHandlersInternal.Empty();
 	}
 }
 
@@ -239,7 +164,7 @@ void UGhostRevengeSystemComponent::OnEndGameStateChanged_Implementation(EEndGame
 }
 
 // Add ghost character to the current active game (on level map)
-void UGhostRevengeSystemComponent::AddGhostCharacter()
+void UGhostRevengeSystemComponent::AddGhostCharacter_Implementation()
 {
 	APlayerController& PlayerController = GetPlayerControllerChecked();
 
@@ -249,8 +174,8 @@ void UGhostRevengeSystemComponent::AddGhostCharacter()
 		return;
 	}
 
-	// --- spawn collisions box on the sides of the map
-	//SpawnMapCollisionOnSide();
+	bool bHasAuthority = GetOwner()->HasAuthority();
+	UE_LOG(LogTemp, Warning, TEXT("AddGhostCharacter Has authority: %i"), bHasAuthority);
 
 	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
 	if (!PoolActorHandlersInternal.IsEmpty())
@@ -282,6 +207,9 @@ void UGhostRevengeSystemComponent::OnTakeActorsFromPoolCompleted(const TArray<FP
 		return;
 	}
 
+	bool bHasAuthority = GetOwner()->HasAuthority();
+	UE_LOG(LogTemp, Warning, TEXT("OnTakeActorsFromPoolCompleted Has authority: %i"), bHasAuthority);
+
 	// --- Setup spawned widget
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
@@ -290,10 +218,10 @@ void UGhostRevengeSystemComponent::OnTakeActorsFromPoolCompleted(const TArray<FP
 	}
 }
 
+// Adds ghost character to the level
 void UGhostRevengeSystemComponent::SpawnGhost(AGRSPlayerCharacter* GhostPlayerCharacter)
 {
 	APlayerController& PlayerController = GetPlayerControllerChecked();
-	PlayerIdInternal = PlayerController.PlayerState->GetPlayerId();
 
 	// --- Only server can spawn character and posses it
 	if (!PlayerController.HasAuthority())
@@ -304,40 +232,48 @@ void UGhostRevengeSystemComponent::SpawnGhost(AGRSPlayerCharacter* GhostPlayerCh
 	// --- needed for input action binding at the moment
 	UGRSWorldSubSystem::Get().RegisterGhostPlayerCharacter(GhostPlayerCharacter);
 
-	if (PlayerIdInternal == 0 || PlayerIdInternal == 3)
-	{
-		if (!ensureMsgf(LeftSideCollisionInternal, TEXT("ASSERT: [%i] %hs:\n'LeftSideCollisionInternal' is null!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
+	FCell ActorSpawnLocation;
+	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+	int32 PlayerId = PreviousPlayerCharacterInternal->GetPlayerState()->GetPlayerId();
 
-		ActorSpawnCellLocationInternal.Location.X = LeftSideCollisionInternal->GetActorLocation().X;
+	if (PlayerId == 0 || PlayerId == 2)
+	{
+		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
+		ActorSpawnLocation.Location.Y = PreviousPlayerCharacterLocationInternal.Y;
+		ActorSpawnLocation.Location.Z = PreviousPlayerCharacterLocationInternal.Z;
 	}
-
-	if (PlayerIdInternal == 1 || PlayerIdInternal == 2)
+	else
 	{
-		if (!ensureMsgf(RightSideCollisionInternal, TEXT("ASSERT: [%i] %hs:\n'RightSideCollisionInternal' is null!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-
-		ActorSpawnCellLocationInternal.Location.X = RightSideCollisionInternal->GetActorLocation().X;
+		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
+		ActorSpawnLocation.Location.Y = PreviousPlayerCharacterLocationInternal.Y;
+		ActorSpawnLocation.Location.Z = PreviousPlayerCharacterLocationInternal.Z;
 	}
 
 	// --- Possess the ghost character
-	// comment to be removed if all works 
+	// comment to be removed if all works
 	//PlayerController.Possess(GhostPlayerCharacter);
 
-	// --- Enables ghost character input (Input Manage Context) 
-	SetManagedInputContextEnabled(true);
+	// --- Enables ghost character input (Input Manage Context)
+	//SetManagedInputContextEnabled(true);
 
 	// --- Update ghost character 
-	FVector SpawnLocation = UGRSDataAsset::Get().GetSpawnLocation();
-	SpawnLocation.X = ActorSpawnCellLocationInternal.Location.X;
+	FVector SpawnLocation = ActorSpawnLocation;
 	GhostPlayerCharacter->SetActorLocation(SpawnLocation);
 	GhostPlayerCharacter->SetVisibility(true);
 	GhostPlayerCharacter->Initialize(&PlayerController);
+	GhostPlayerCharacter->OnGhostPlayerKilled.AddUniqueDynamic(this, &ThisClass::OnGhostPlayerKilled);
 	PlayerController.ResetIgnoreMoveInput();
+
+	bool bHasAuthority = GetOwner()->HasAuthority();
+	UE_LOG(LogTemp, Warning, TEXT("SpawnGhost Has authority: %i"), bHasAuthority);
+}
+
+// Called when the ghost player killed
+void UGhostRevengeSystemComponent::OnGhostPlayerKilled()
+{
+	RemoveGhostCharacterFromMap();
 }
 
 // Enables or disables the input context
@@ -381,7 +317,6 @@ void UGhostRevengeSystemComponent::RemoveGhostCharacterFromMap()
 	{
 		return;
 	}
-
 
 	// --- Disable ghost character input
 	SetManagedInputContextEnabled(false);

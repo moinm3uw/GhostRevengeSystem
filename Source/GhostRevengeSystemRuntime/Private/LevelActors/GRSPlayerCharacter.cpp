@@ -4,6 +4,7 @@
 #include "LevelActors/GRSPlayerCharacter.h"
 
 #include "GeneratedMap.h"
+#include "GhostRevengeSystemComponent.h"
 #include "InputActionValue.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
@@ -84,7 +85,7 @@ void AGRSPlayerCharacter::SetDefaultParams()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	// Replicate an actor
-	bReplicates = true;
+	SetReplicates(true);
 	SetReplicatingMovement(true);
 
 	// Do not rotate player by camera
@@ -177,18 +178,26 @@ void AGRSPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AGRSPlayerCharacter::PossessedBy(AController* NewController)
+//  Perform init character once added to the level
+void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
 {
-	Super::PossessedBy(NewController);
-
-	if (!NewController->HasAuthority())
+	// Set the animation blueprint on very first character spawn
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
-		return;
+		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
+		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
 	}
+
+	TryPossessController(PlayerController);
+
+	ClearTrajectorySplines();
+
+	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	SphereComp->SetVisibility(false);
 
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
 
-	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter Possessed. "));
+	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter Initialized. "));
 
 	// Optionally, cast to your specific class:
 	for (AActor* Actor : PlayerCharactersInternal)
@@ -211,28 +220,27 @@ void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 	}
 }
 
-// Called every frame
-void AGRSPlayerCharacter::Tick(float DeltaTime)
+// Called right before owner actor going to remove from the Generated Map, on both server and clients.
+void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
 {
-	Super::Tick(DeltaTime);
-}
-
-//  Perform init character once added to the level
-void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
-{
-	// Set the animation blueprint on very first character spawn
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	if (BombActorInternal == DestroyCauser)
 	{
-		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
-		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
+		FVector SpawnLocation = MapComponent->GetOwner()->GetActorLocation();
+		//this->SetActorLocation(SpawnLocation);
+
+		FCell CurrentCell = SpawnLocation;
+		// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
+		if (!Controller)
+		{
+			return;
+		}
+		Controller->UnPossess();
+		this->SetVisibility(false);
+		AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, MapComponent->GetReplicatedMeshData());
+		OnGhostPlayerKilled.Broadcast();
+		FString Name = MapComponent->GetOwner()->GetName();
+		UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
 	}
-
-	TryPossessController(PlayerController);
-
-	ClearTrajectorySplines();
-
-	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	SphereComp->SetVisibility(false);
 }
 
 // Clean up the character
@@ -283,6 +291,7 @@ void AGRSPlayerCharacter::PerfromCleanUp()
 	}
 }
 
+// Set visibility of the player character
 void AGRSPlayerCharacter::SetVisibility(bool Visibility)
 {
 	GetMesh()->SetVisibility(Visibility, true);
@@ -421,6 +430,10 @@ int32 AGRSPlayerCharacter::GetPlayerId() const
 // Hold button to increase trajectory on button release trow bomb
 void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 {
+	if (BombCountInternal < 1)
+	{
+		return;
+	}
 	ShowVisualTrajectory();
 
 	if (CurrentHoldTimeInternal < 1.0f)
@@ -615,26 +628,4 @@ void AGRSPlayerCharacter::OnRep_Controller()
 ABombActor* AGRSPlayerCharacter::GetGhostCharacterSpawnedBomb_Implementation()
 {
 	return BombActorInternal ? BombActorInternal : nullptr;
-}
-
-// Called right before owner actor going to remove from the Generated Map, on both server and clients.
-void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
-{
-	if (BombActorInternal == DestroyCauser)
-	{
-		FVector SpawnLocation = MapComponent->GetOwner()->GetActorLocation();
-		//this->SetActorLocation(SpawnLocation);
-
-		FCell CurrentCell = SpawnLocation;
-		// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-		if (!Controller)
-		{
-			return;
-		}
-		Controller->UnPossess();
-		this->SetVisibility(false);
-		AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, MapComponent->GetReplicatedMeshData());
-		FString Name = MapComponent->GetOwner()->GetName();
-		UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
-	}
 }
