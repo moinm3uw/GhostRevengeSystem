@@ -21,7 +21,7 @@ public:
 	/** Returns Player Controller of this component. */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	APlayerController* GetPlayerController() const;
-	APlayerController& GetPlayerControllerChecked() const;
+	APlayerController* GetPlayerControllerChecked() const;
 
 	/** Adds ghost character to the level */
 	UFUNCTION(BlueprintCallable, Category= "C++")
@@ -38,14 +38,6 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-
-	/** Initial (main) player character */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	class ACharacter* PreviousPlayerCharacterInternal;
-
-	/** Initial (main) player character location */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	FVector PreviousPlayerCharacterLocationInternal;
 
 	/** Initial (main) player controller */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
@@ -76,11 +68,6 @@ protected:
 	 */
 	UFUNCTION(BlueprintCallable, Category= "C++")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-
-	/** Enables or disables the input context.
-	 * * @param bEnable - true to enable, false to disable */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetManagedInputContextEnabled(bool bEnable);
 
 	/** Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern) */
 	UFUNCTION(BlueprintCallable, Category = "C++")

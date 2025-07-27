@@ -46,6 +46,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
 
+	/** Register main player character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RegisterMainPlayerCharacter(class APlayerCharacter* MainPlayerCharacter);
+	
+	/** Returns main player character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	class APlayerCharacter* GetMainPlayerCharacter();
+
+	/** Returns main player character spawn location */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	FORCEINLINE FVector GetMainPlayerCharacterSpawnLocation() const { return MainPlayerCharacterSpawnLocationInternal; }
+
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -61,6 +73,14 @@ protected:
 	/** Spot Component for the current character */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
 	TObjectPtr<class UGhostRevengeSystemSpotComponent> SpotComponentInternal;
+
+	/** Main player character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	TArray<TObjectPtr<class APlayerCharacter>> MainPlayerCharacterArrayInternal;
+
+	/** Main player character spawn location */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	FVector MainPlayerCharacterSpawnLocationInternal;
 
 	/** Begin play of the subsystem */
 	void OnWorldBeginPlay(UWorld& InWorld) override;

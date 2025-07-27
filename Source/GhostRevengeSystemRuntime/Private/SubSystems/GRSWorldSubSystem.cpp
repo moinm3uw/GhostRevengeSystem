@@ -8,6 +8,7 @@
 #include "Engine/Engine.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
@@ -87,4 +88,27 @@ void UGRSWorldSubSystem::RegisterGhostPlayerCharacter(class AGRSPlayerCharacter*
 	{
 		GhostPlayerCharacterInternal = GhostPlayer;
 	}
+}
+
+// Register main player character
+void UGRSWorldSubSystem::RegisterMainPlayerCharacter(class APlayerCharacter* MainPlayerCharacter)
+{
+	if (MainPlayerCharacter)
+	{
+		MainPlayerCharacterArrayInternal.AddUnique(MainPlayerCharacter);
+		MainPlayerCharacterSpawnLocationInternal = MainPlayerCharacter->GetActorLocation();
+	}
+}
+
+class APlayerCharacter* UGRSWorldSubSystem::GetMainPlayerCharacter()
+{
+	for (TObjectPtr<APlayerCharacter> Player : MainPlayerCharacterArrayInternal)
+	{
+		if (Player->IsPlayerControlled())
+		{
+			MainPlayerCharacterSpawnLocationInternal = Player->GetActorLocation();
+			return Player;
+		}
+	}
+	return nullptr;
 }

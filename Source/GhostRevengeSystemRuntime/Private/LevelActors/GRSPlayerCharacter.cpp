@@ -167,20 +167,34 @@ void AGRSPlayerCharacter::OnBombDestroyed_Implementation(class UMapComponent* Ma
 void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	SetDefaultPlayerMeshData();
 }
 
 // Called when the game starts or when spawned
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	UGRSWorldSubSystem::Get().RegisterGhostPlayerCharacter(this);
+	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	SetDefaultPlayerMeshData();
+	Initialize();
 }
 
 //  Perform init character once added to the level
-void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
+void AGRSPlayerCharacter::Initialize()
 {
+	APlayerCharacter* MainPlayerCharacter = UGRSWorldSubSystem::Get().GetMainPlayerCharacter();
+	if (!MainPlayerCharacter)
+	{
+		return;
+	}
+
+	if (AMyPlayerState* MyPlayerState = Cast<AMyPlayerState>(MainPlayerCharacter->GetPlayerState()))
+	{
+		checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
+		PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
+	}
+
 	// Set the animation blueprint on very first character spawn
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
@@ -188,18 +202,23 @@ void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
 		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
 	}
 
-	TryPossessController(PlayerController);
+	UMySkeletalMeshComponent& MainCharacterMeshComponent = MainPlayerCharacter->GetMeshChecked();
+	const int32 CurrentSkinIndex = MainCharacterMeshComponent.GetAppliedSkinIndex();
+
+	UMySkeletalMeshComponent& CurrentMeshComponent = GetMeshChecked();
+	CurrentMeshComponent.InitMySkeletalMesh(MainCharacterMeshComponent.GetMeshData());
+	//CurrentMeshComponent.ApplySkinByIndex(CurrentSkinIndex);
+
+	//TryPossessController(PlayerController);
 
 	ClearTrajectorySplines();
 
 	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	SphereComp->SetVisibility(false);
+	SphereComp->SetVisibility(true);
 
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
 
-	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter Initialized. "));
-
-	// Optionally, cast to your specific class:
+	// find all PlayerCharacters and subscribe to their death in order to see if a ghost player killed it or not
 	for (AActor* Actor : PlayerCharactersInternal)
 	{
 		APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
@@ -210,7 +229,6 @@ void AGRSPlayerCharacter::Initialize(APlayerController* PlayerController)
 				continue;
 			}
 
-			// Use MyActor
 			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
 			if (MapComponent)
 			{
@@ -303,65 +321,16 @@ UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
 }
 
-// Possess a player 
-void AGRSPlayerCharacter::TryPossessController(APlayerController* PlayerController)
-{
-	if (!HasAuthority()
-		|| !IsActorInitialized() // Engine doesn't allow to possess before BeginPlay\PostInitializeComponents
-		|| UUtilsLibrary::IsEditorNotPieWorld())
-	{
-		// Should not possess in PIE
-		return;
-	}
-
-
-	AController* ControllerToPossess = nullptr;
-	//AMyPlayerController* MyPC = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
-	/*
-	if (PlayerController)
-	{
-		ControllerToPossess = PlayerController;
-	}
-	
-	if (!ControllerToPossess
-		|| ControllerToPossess == Controller)
-	{
-		return;
-	}
-	*/
-
-	if (PlayerController == Controller)
-	{
-		return;
-	}
-
-	if (Controller)
-	{
-		// At first, unpossess previous controller
-		Controller->UnPossess();
-	}
-
-	PlayerController->Possess(this);
-}
-
 // Set and apply default skeletal mesh for this player
 void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = false*/)
 {
-	if (!HasAuthority())
+	APlayerCharacter* PlayerCharacter = UGRSWorldSubSystem::Get().GetMainPlayerCharacter();
+	if (!PlayerCharacter)
 	{
 		return;
 	}
-
-	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter();
-
 	const ELevelType PlayerFlag = UMyBlueprintFunctionLibrary::GetLevelType();
 	ELevelType LevelType = PlayerFlag;
-
-	if (bForcePlayerSkin)
-	{
-		// Force each bot to look like different player
-		LevelType = static_cast<ELevelType>(1 << PlayerCharacter->GetPlayerId());
-	}
 
 	const UPlayerRow* Row = UPlayerDataAsset::Get().GetRowByLevelType<UPlayerRow>(TO_ENUM(ELevelType, LevelType));
 	if (!ensureMsgf(Row, TEXT("ASSERT: [%i] %hs:\n'Row' is not found!"), __LINE__, __FUNCTION__))
@@ -370,7 +339,7 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = fal
 	}
 
 	const int32 SkinsNum = Row->GetSkinTexturesNum();
-	FBmrMeshData MeshData = FBmrMeshData::Empty;
+	FBmrMeshData MeshData;
 	MeshData.Row = Row;
 	MeshData.SkinIndex = PlayerCharacter->GetPlayerId() % SkinsNum;
 
@@ -614,14 +583,39 @@ void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-	SetDefaultPlayerMeshData();
-	// Set the animation blueprint on very first character spawn
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
-		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
-	}
+	SetManagedInputContextEnabled(true);
 	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::OnRep_Controller. "));
+}
+
+// Enables or disables the input context
+void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
+{
+	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	TArray<const UMyInputMappingContext*> InputContexts;
+	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+	InputContexts.AddUnique(InputContext);
+
+	if (!bEnable)
+	{
+		// --- Remove related input contexts
+		PlayerController->RemoveInputContexts(InputContexts);
+		return;
+	}
+
+	// --- Remove all previous input contexts managed by Controller
+	PlayerController->RemoveInputContexts(InputContexts);
+
+	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
+	if (InputContext
+		&& InputContext->GetChosenGameStatesBitmask() > 0)
+	{
+		PlayerController->SetupInputContexts(InputContexts);
+	}
 }
 
 // Returns spawned by ghost character bomb  or nullptr

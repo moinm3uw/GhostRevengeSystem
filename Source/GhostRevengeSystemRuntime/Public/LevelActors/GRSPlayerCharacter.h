@@ -79,7 +79,7 @@ public:
 	virtual void BeginPlay() override;
 
 	/** Perform init character once added to the level */
-	void Initialize(APlayerController* PlayerController);
+	void Initialize();
 	
 	/** Clean up the character */
 	void PerfromCleanUp();
@@ -89,10 +89,6 @@ public:
 
 	/** Returns the Skeletal Mesh of ghost revenge character. */
 	UMySkeletalMeshComponent& GetMeshChecked() const;
-
-	/** Possess a player */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
-	void TryPossessController(APlayerController* PlayerController);
 
 	/** Set and apply default skeletal mesh for this player.
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
@@ -162,6 +158,11 @@ public:
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
 
 	virtual void OnRep_Controller() override;
+
+	/** Enables or disables the input context.
+	 * * @param bEnable - true to enable, false to disable */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetManagedInputContextEnabled(bool bEnable);
 
 	/*********************************************************************************************
 	 * Bomb
