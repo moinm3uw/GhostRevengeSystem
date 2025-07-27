@@ -52,10 +52,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetupCapsuleComponent();
 
-	/** Subscribes to the player state. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnPlayerStateReady(class AMyPlayerState* InPlayerState, int32 CharacterID);
-
 	/*********************************************************************************************
 	* Nickname
 	********************************************************************************************* */
@@ -72,17 +68,20 @@ protected:
 public:
 	friend class UMyCheatManager;
 
-	/** Called when an instance of this class is placed (in editor) or spawned */
-	virtual void OnConstruction(const FTransform& Transform) override;
-
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	/** Perform init character once added to the level */
 	void Initialize();
+
+	/** Set initial location on spawn */
+	void SetLocation(const class APlayerCharacter* MainCharacter);
+
+	/** Initialize Player Name */
+	void InitializePlayerName(const APlayerCharacter* MainCharacter) const;
 	
 	/** Clean up the character */
-	void PerfromCleanUp();
+	void PerformCleanUp();
 
 	/** Set visibility of the player character */
 	void SetVisibility(bool Visibility);
@@ -102,6 +101,14 @@ public:
 	/** Returns own character ID, e.g: 0, 1, 2, 3 */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	int32 GetPlayerId() const;
+
+	/** Possess a player controller */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	void TryPossessController(APlayerController* PlayerController);
+
+	/** UnPossess a player controller */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	void UnPossessController();
 
 	/*********************************************************************************************
 	 * Hold To Charge and aim
@@ -157,6 +164,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
 
+	/** Called when a controller has been replicated to the client */
 	virtual void OnRep_Controller() override;
 
 	/** Enables or disables the input context.
@@ -184,9 +192,4 @@ protected:
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
-
-public:
-	/** Returns spawned by ghost character bomb  or nullptr */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	ABombActor* GetGhostCharacterSpawnedBomb();
 };

@@ -140,129 +140,20 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
-// Subscribes to the player state.
-void AGRSPlayerCharacter::OnPlayerStateReady_Implementation(class AMyPlayerState* InPlayerState, int32 CharacterID)
+// Returns the Skeletal Mesh of ghost revenge character
+UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 {
-	if (InPlayerState)
-	{
-		checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
-		PlayerName3DWidgetComponentInternal->Init(InPlayerState);
-	}
+	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
 }
 
-// Event triggered when the bomb has been explicitly destroyed.
-void AGRSPlayerCharacter::OnBombDestroyed_Implementation(class UMapComponent* MapComponent, UObject* DestroyCauser)
+// Set visibility of the player character
+void AGRSPlayerCharacter::SetVisibility(bool Visibility)
 {
-	if (!MapComponent
-		|| MapComponent->GetActorType() != EAT::Bomb
-		|| BombCountInternal >= 1)
-	{
-		return;
-	}
-	// reset count of bombs available
-	BombCountInternal = 1;
-}
-
-// Called when an instance of this class is placed (in editor) or spawned
-void AGRSPlayerCharacter::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-}
-
-// Called when the game starts or when spawned
-void AGRSPlayerCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	UGRSWorldSubSystem::Get().RegisterGhostPlayerCharacter(this);
-	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	SetDefaultPlayerMeshData();
-	Initialize();
-}
-
-//  Perform init character once added to the level
-void AGRSPlayerCharacter::Initialize()
-{
-	APlayerCharacter* MainPlayerCharacter = UGRSWorldSubSystem::Get().GetMainPlayerCharacter();
-	if (!MainPlayerCharacter)
-	{
-		return;
-	}
-
-	if (AMyPlayerState* MyPlayerState = Cast<AMyPlayerState>(MainPlayerCharacter->GetPlayerState()))
-	{
-		checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
-		PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
-	}
-
-	// Set the animation blueprint on very first character spawn
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
-		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
-	}
-
-	UMySkeletalMeshComponent& MainCharacterMeshComponent = MainPlayerCharacter->GetMeshChecked();
-	const int32 CurrentSkinIndex = MainCharacterMeshComponent.GetAppliedSkinIndex();
-
-	UMySkeletalMeshComponent& CurrentMeshComponent = GetMeshChecked();
-	CurrentMeshComponent.InitMySkeletalMesh(MainCharacterMeshComponent.GetMeshData());
-	//CurrentMeshComponent.ApplySkinByIndex(CurrentSkinIndex);
-
-	//TryPossessController(PlayerController);
-
-	ClearTrajectorySplines();
-
-	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	SphereComp->SetVisibility(true);
-
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
-
-	// find all PlayerCharacters and subscribe to their death in order to see if a ghost player killed it or not
-	for (AActor* Actor : PlayerCharactersInternal)
-	{
-		APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
-		if (MyActor)
-		{
-			if (MyActor->IsBotControlled())
-			{
-				continue;
-			}
-
-			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
-			if (MapComponent)
-			{
-				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-			}
-		}
-	}
-}
-
-// Called right before owner actor going to remove from the Generated Map, on both server and clients.
-void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
-{
-	if (BombActorInternal == DestroyCauser)
-	{
-		FVector SpawnLocation = MapComponent->GetOwner()->GetActorLocation();
-		//this->SetActorLocation(SpawnLocation);
-
-		FCell CurrentCell = SpawnLocation;
-		// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-		if (!Controller)
-		{
-			return;
-		}
-		Controller->UnPossess();
-		this->SetVisibility(false);
-		AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, MapComponent->GetReplicatedMeshData());
-		OnGhostPlayerKilled.Broadcast();
-		FString Name = MapComponent->GetOwner()->GetName();
-		UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
-	}
+	GetMesh()->SetVisibility(Visibility, true);
 }
 
 // Clean up the character
-void AGRSPlayerCharacter::PerfromCleanUp()
+void AGRSPlayerCharacter::PerformCleanUp()
 {
 	ClearTrajectorySplines();
 
@@ -309,16 +200,105 @@ void AGRSPlayerCharacter::PerfromCleanUp()
 	}
 }
 
-// Set visibility of the player character
-void AGRSPlayerCharacter::SetVisibility(bool Visibility)
+// Returns own character ID, e.g: 0, 1, 2, 3
+int32 AGRSPlayerCharacter::GetPlayerId() const
 {
-	GetMesh()->SetVisibility(Visibility, true);
+	if (const AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
+	{
+		return MyPlayerState->GetPlayerId();
+	}
+
+	return 0;
 }
 
-// Returns the Skeletal Mesh of ghost revenge character
-UMySkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
+//  Possess a player controller
+void AGRSPlayerCharacter::TryPossessController(APlayerController* PlayerController)
 {
-	return *CastChecked<UMySkeletalMeshComponent>(GetMesh());
+	if (!PlayerController || !PlayerController->HasAuthority())
+	{
+		return;
+	}
+
+	PlayerController->ResetIgnoreMoveInput();
+
+	if (PlayerController)
+	{
+		// Unpossess current pawn first
+		if (PlayerController->GetPawn())
+		{
+			PlayerController->UnPossess();
+		}
+	}
+
+	PlayerController->Possess(this);
+}
+
+// UnPossess a player controller
+void AGRSPlayerCharacter::UnPossessController()
+{
+	// --- Posses to play character
+	AController* GhostPlayerController = UGRSWorldSubSystem::Get().GetGhostPlayerCharacter()->Controller;
+	APlayerCharacter* MainPlayerCharacter = UGRSWorldSubSystem::Get().GetMainPlayerCharacter();
+	if (!GhostPlayerController || !GhostPlayerController->HasAuthority() || !MainPlayerCharacter)
+	{
+		return;
+	}
+
+	GhostPlayerController->Possess(MainPlayerCharacter);
+}
+
+// Called when a controller has been replicated to the client 
+void AGRSPlayerCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	SetManagedInputContextEnabled(true);
+	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::OnRep_Controller. "));
+}
+
+// Enables or disables the input context
+void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
+{
+	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	TArray<const UMyInputMappingContext*> InputContexts;
+	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+	InputContexts.AddUnique(InputContext);
+
+	if (!bEnable)
+	{
+		// --- Remove related input contexts
+		PlayerController->RemoveInputContexts(InputContexts);
+		return;
+	}
+
+	// --- Remove all previous input contexts managed by Controller
+	PlayerController->RemoveInputContexts(InputContexts);
+
+	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
+	if (InputContext
+		&& InputContext->GetChosenGameStatesBitmask() > 0)
+	{
+		PlayerController->SetupInputContexts(InputContexts);
+	}
+}
+
+/*********************************************************************************************
+ * Begin play (on spawned on the level)
+ **********************************************************************************************/
+
+// Called when the game starts or when spawned
+void AGRSPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	SetDefaultPlayerMeshData();
+	Initialize();
 }
 
 // Set and apply default skeletal mesh for this player
@@ -353,6 +333,161 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin/* = fal
 	}
 }
 
+//  Perform init character once added to the level
+void AGRSPlayerCharacter::Initialize()
+{
+	APlayerCharacter* MainCharacter = UGRSWorldSubSystem::Get().GetMainPlayerCharacter();
+	if (!MainCharacter)
+	{
+		return;
+	}
+
+	// --- Only server can spawn character and posses it
+	APlayerController* PlayerController = Cast<APlayerController>(MainCharacter->GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// -- Set actor spawn location 
+	SetLocation(MainCharacter);
+
+	// --- Init Player name
+	InitializePlayerName(MainCharacter);
+
+	// --- Set the animation blueprint on very first character spawn
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		const TSubclassOf<UAnimInstance> AnimInstanceClass = UPlayerDataAsset::Get().GetAnimInstanceClass();
+		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
+	}
+
+	UMySkeletalMeshComponent* MainCharacterMeshComponent = &MainCharacter->GetMeshChecked();
+
+	if (!ensureMsgf(MainCharacterMeshComponent, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	const int32 CurrentSkinIndex = MainCharacterMeshComponent->GetAppliedSkinIndex();
+
+	UMySkeletalMeshComponent* CurrentMeshComponent = &GetMeshChecked();
+	if (!ensureMsgf(CurrentMeshComponent, TEXT("ASSERT: [%i] %hs:\n'CurrentMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	CurrentMeshComponent->InitMySkeletalMesh(MainCharacterMeshComponent->GetMeshData());
+	//CurrentMeshComponent.ApplySkinByIndex(CurrentSkinIndex);
+
+	// --- Clear splines if spawned
+	ClearTrajectorySplines();
+
+	// --- Initialize aiming point
+	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	SphereComp->SetVisibility(true);
+
+	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody 
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
+
+	for (AActor* Actor : PlayerCharactersInternal)
+	{
+		APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
+		if (MyActor)
+		{
+			if (MyActor->IsBotControlled())
+			{
+				continue;
+			}
+
+			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
+			if (MapComponent)
+			{
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+			}
+		}
+	}
+
+	// --- Possess the ghost character
+	TryPossessController(PlayerController);
+}
+
+// Set initial location on spawn
+void AGRSPlayerCharacter::SetLocation(const APlayerCharacter* MainCharacter)
+{
+	if (!MainCharacter)
+	{
+		return;
+	}
+
+	FCell ActorSpawnLocation;
+	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+
+	int32 PlayerId = MainCharacter->GetPlayerId();
+
+	ActorSpawnLocation.Location = UGRSWorldSubSystem::Get().GetMainPlayerCharacterSpawnLocation();
+
+	if (PlayerId == 0 || PlayerId == 2)
+	{
+		//ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+		//ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
+		ActorSpawnLocation.Location.X = UGRSWorldSubSystem::Get().GetMainPlayerCharacterSpawnLocation().X - CellSize;
+	}
+	else
+	{
+		//ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+		//ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
+		ActorSpawnLocation.Location.X = UGRSWorldSubSystem::Get().GetMainPlayerCharacterSpawnLocation().X + CellSize;
+	}
+
+	// --- Update ghost character 
+	SetActorLocation(ActorSpawnLocation);
+	SetVisibility(true);
+}
+
+//  Initialize Player Name
+void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainCharacter) const
+{
+	if (!MainCharacter)
+	{
+		return;
+	}
+	AMyPlayerState* MyPlayerState = Cast<AMyPlayerState>(MainCharacter->GetPlayerState());
+	if (!MyPlayerState)
+	{
+		return;
+	}
+
+	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
+	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
+}
+
+// Called right before owner actor going to remove from the Generated Map, on both server and clients.
+void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+{
+	if (BombActorInternal == DestroyCauser)
+	{
+		FVector SpawnLocation = MapComponent->GetOwner()->GetActorLocation();
+		//this->SetActorLocation(SpawnLocation);
+
+		FCell CurrentCell = SpawnLocation;
+		// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
+		if (!Controller)
+		{
+			return;
+		}
+		Controller->UnPossess();
+		this->SetVisibility(false);
+		AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, MapComponent->GetReplicatedMeshData());
+		OnGhostPlayerKilled.Broadcast();
+		FString Name = MapComponent->GetOwner()->GetName();
+		UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
+	}
+}
+
+
+/*********************************************************************************************
+ * Hold To Charge aim, spawn bomb (enhanced input)
+ **********************************************************************************************/
+
 // Move the player character
 void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 {
@@ -380,21 +515,6 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 	AddMovementInput(ForwardDirection, MovementVector.Y);
 	AddMovementInput(RightDirection, MovementVector.X);
 }
-
-// Returns own character ID, e.g: 0, 1, 2, 3
-int32 AGRSPlayerCharacter::GetPlayerId() const
-{
-	if (const AMyPlayerState* MyPlayerState = UMyBlueprintFunctionLibrary::GetLocalPlayerState())
-	{
-		return MyPlayerState->GetPlayerId();
-	}
-
-	return 0;
-}
-
-/*********************************************************************************************
- * Hold To Charge and aim
- **********************************************************************************************/
 
 // Hold button to increase trajectory on button release trow bomb
 void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
@@ -437,6 +557,73 @@ void AGRSPlayerCharacter::ShowVisualTrajectory()
 	{
 		AddSplinePoints(Result);
 		AddSplineMesh(Result);
+	}
+}
+
+// Configure PredictProjectilePath settings and get result
+void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
+{
+	// Set launch velocity (forward direction with some upward angle)
+	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
+	// 45-degree vector between up and right
+	FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
+
+	// Predict and draw the trajectory
+	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
+	Params.StartLocation = GetActorLocation();
+	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVelocity.X * CurrentHoldTimeInternal, 0 + LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
+	Params.ActorsToIgnore.Add(this);
+
+	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
+}
+
+// Add a mesh to the last element of the predict Projectile path results
+void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result)
+{
+	SphereComp->SetVisibility(true);
+	SphereComp->SetWorldLocation(Result.LastTraceDestination.Location);
+}
+
+// Add spline points to the spline component
+void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
+{
+	ClearTrajectorySplines();
+	for (int32 i = 0; i < Result.PathData.Num(); i++)
+	{
+		FVector SplinePoint = Result.PathData[i].Location;
+		ProjectileSplineComponentInternal->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
+		ProjectileSplineComponentInternal->Mobility = EComponentMobility::Static;
+	}
+
+	ProjectileSplineComponentInternal->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
+	ProjectileSplineComponentInternal->UpdateSpline();
+}
+
+// Add spline mesh to spline points 
+void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
+{
+	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
+	{
+		// Create and attach the spline mesh component
+		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this); // 'this' is usually your actor
+		SplineMesh->AttachToComponent(ProjectileSplineComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
+		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
+		SplineMesh->Mobility = EComponentMobility::Static;
+		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+
+		// Set mesh and material
+		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
+		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
+		FVector TangentStart = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
+		FVector TangentEnd = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
+
+		// Set start and end
+		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
+		// Register the component so it appears in the game
+		SplineMesh->RegisterComponent();
+
+		SplineMeshArrayInternal.AddUnique(SplineMesh);
 	}
 }
 
@@ -512,114 +699,15 @@ void AGRSPlayerCharacter::ClearTrajectorySplines()
 	ProjectileSplineComponentInternal->ClearSplinePoints();
 }
 
-// Configure PredictProjectilePath settings and get result
-void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
+// Event triggered when the bomb has been explicitly destroyed.
+void AGRSPlayerCharacter::OnBombDestroyed_Implementation(class UMapComponent* MapComponent, UObject* DestroyCauser)
 {
-	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
-	// 45-degree vector between up and right
-	FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
-
-	// Predict and draw the trajectory
-	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
-	Params.StartLocation = GetActorLocation();
-	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVelocity.X * CurrentHoldTimeInternal, 0 + LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
-	Params.ActorsToIgnore.Add(this);
-
-	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
-}
-
-// Add a mesh to the last element of the predict Projectile path results
-void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result)
-{
-	SphereComp->SetVisibility(true);
-	SphereComp->SetWorldLocation(Result.LastTraceDestination.Location);
-}
-
-// Add spline points to the spline component
-void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
-{
-	ClearTrajectorySplines();
-	for (int32 i = 0; i < Result.PathData.Num(); i++)
-	{
-		FVector SplinePoint = Result.PathData[i].Location;
-		ProjectileSplineComponentInternal->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
-		ProjectileSplineComponentInternal->Mobility = EComponentMobility::Static;
-	}
-
-	ProjectileSplineComponentInternal->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
-	ProjectileSplineComponentInternal->UpdateSpline();
-}
-
-// Add spline mesh to spline points 
-void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
-{
-	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
-	{
-		// Create and attach the spline mesh component
-		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this); // 'this' is usually your actor
-		SplineMesh->AttachToComponent(ProjectileSplineComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
-		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
-		SplineMesh->Mobility = EComponentMobility::Static;
-		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
-		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
-
-		// Set mesh and material
-		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
-		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
-		FVector TangentStart = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
-		FVector TangentEnd = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
-
-		// Set start and end
-		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
-		// Register the component so it appears in the game
-		SplineMesh->RegisterComponent();
-
-		SplineMeshArrayInternal.AddUnique(SplineMesh);
-	}
-}
-
-void AGRSPlayerCharacter::OnRep_Controller()
-{
-	Super::OnRep_Controller();
-
-	SetManagedInputContextEnabled(true);
-	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::OnRep_Controller. "));
-}
-
-// Enables or disables the input context
-void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
-{
-	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
-	if (!PlayerController)
+	if (!MapComponent
+		|| MapComponent->GetActorType() != EAT::Bomb
+		|| BombCountInternal >= 1)
 	{
 		return;
 	}
-
-	TArray<const UMyInputMappingContext*> InputContexts;
-	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-	InputContexts.AddUnique(InputContext);
-
-	if (!bEnable)
-	{
-		// --- Remove related input contexts
-		PlayerController->RemoveInputContexts(InputContexts);
-		return;
-	}
-
-	// --- Remove all previous input contexts managed by Controller
-	PlayerController->RemoveInputContexts(InputContexts);
-
-	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
-	if (InputContext
-		&& InputContext->GetChosenGameStatesBitmask() > 0)
-	{
-		PlayerController->SetupInputContexts(InputContexts);
-	}
-}
-
-// Returns spawned by ghost character bomb  or nullptr
-ABombActor* AGRSPlayerCharacter::GetGhostCharacterSpawnedBomb_Implementation()
-{
-	return BombActorInternal ? BombActorInternal : nullptr;
+	// reset count of bombs available
+	BombCountInternal = 1;
 }

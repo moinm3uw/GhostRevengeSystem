@@ -32,6 +32,5 @@ UMySkeletalMeshComponent& UGhostRevengeSystemSpotComponent::GetMeshChecked() con
 void UGhostRevengeSystemSpotComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	UGRSWorldSubSystem::Get().RegisterSpotComponent(this);
+	
 }

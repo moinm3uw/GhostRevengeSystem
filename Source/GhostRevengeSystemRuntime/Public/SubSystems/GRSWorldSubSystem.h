@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PoolManagerTypes.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "GRSWorldSubSystem.generated.h"
 
@@ -30,33 +31,25 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	const class UGRSDataAsset* GetGRSDataAsset() const;
 
-	/** Register the ghost revenge system spot component */
+	/** Register main player character from ghost revenge system spot component */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterSpotComponent(class UGhostRevengeSystemSpotComponent* SpotComponent);
+	void RegisterMainCharacter(class APlayerCharacter* PlayerCharacter);
 
-	/** Get current spot component */
+	/** When a main player character was removed from level spawn a new ghost character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	FORCEINLINE class UGhostRevengeSystemSpotComponent* GetSpotComponent() const { return SpotComponentInternal; }
-
-	/** Register the ghost revenge player character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterGhostPlayerCharacter(class AGRSPlayerCharacter* GhostPlayer);
+	void MainCharacterRemovedFromLevel(UMapComponent* MapComponent);
 
 	/** Get current player character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
 
-	/** Register main player character */
+	/** Get current player character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterMainPlayerCharacter(class APlayerCharacter* MainPlayerCharacter);
-	
+	FORCEINLINE FVector GetMainPlayerCharacterSpawnLocation() const { return MainPlayerCharacterSpawnLocationInternal; }
+
 	/** Returns main player character */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	class APlayerCharacter* GetMainPlayerCharacter();
-
-	/** Returns main player character spawn location */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	FORCEINLINE FVector GetMainPlayerCharacterSpawnLocation() const { return MainPlayerCharacterSpawnLocationInternal; }
 
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
@@ -70,17 +63,21 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
 	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
 
-	/** Spot Component for the current character */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Spot Component"))
-	TObjectPtr<class UGhostRevengeSystemSpotComponent> SpotComponentInternal;
-
 	/** Main player character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	TObjectPtr<class APlayerCharacter> MainPlayerCharacterInternal;
+
+	/** Main player character spawn location on added to level */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	FVector MainPlayerCharacterSpawnLocationInternal;
+
+	/** Array of main players */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
 	TArray<TObjectPtr<class APlayerCharacter>> MainPlayerCharacterArrayInternal;
 
-	/** Main player character spawn location */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	FVector MainPlayerCharacterSpawnLocationInternal;
+	/** Array of pool actors handlers of characters which should be released */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
+	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
 
 	/** Begin play of the subsystem */
 	void OnWorldBeginPlay(UWorld& InWorld) override;
@@ -92,4 +89,22 @@ protected:
 	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+
+	/** Add ghost character to the current active game (on level map) */
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "C++")
+	void AddGhostCharacter();
+
+	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
+	 * @param CreatedObjects - Handles of objects from Pool Manager
+	 */
+	UFUNCTION(BlueprintCallable, Category= "C++")
+	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
+
+	/** Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveGhostCharacterFromMap();
+
+	/** Called when the ghost player kills another player and will be swaped with him */
+	UFUNCTION(BlueprintCallable, Category= "C++")
+	void OnGhostEliminatesPlayer();
 };
