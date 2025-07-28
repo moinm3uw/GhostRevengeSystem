@@ -10,14 +10,11 @@
 #include "Animation/AnimInstance.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/GhostRevengeSystemSpotComponent.h"
 #include "Components/MySkeletalMeshComponent.h"
 #include "Components/MapComponent.h"
-#include "Components/SphereComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/WidgetComponent.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "DataAssets/BombDataAsset.h"
@@ -31,10 +28,7 @@
 #include "LevelActors/BombActor.h"
 #include "LevelActors/GRSBombProjectile.h"
 #include "LevelActors/PlayerCharacter.h"
-#include "MyUtilsLibraries/UtilsLibrary.h"
-#include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/WidgetsSubsystem.h"
 #include "UI/Widgets/PlayerNameWidget.h"
 #include "UObject/ConstructorHelpers.h"
 #include "UtilityLibraries/CellsUtilsLibrary.h"
@@ -85,6 +79,7 @@ void AGRSPlayerCharacter::SetDefaultParams()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	// Replicate an actor
+	bReplicates = true;
 	SetReplicates(true);
 	SetReplicatingMovement(true);
 
@@ -298,7 +293,6 @@ void AGRSPlayerCharacter::BeginPlay()
 
 	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	SetDefaultPlayerMeshData();
-	Initialize();
 }
 
 // Set and apply default skeletal mesh for this player
@@ -342,13 +336,12 @@ void AGRSPlayerCharacter::Initialize()
 		return;
 	}
 
-	// --- Only server can spawn character and posses it
-	APlayerController* PlayerController = Cast<APlayerController>(MainCharacter->GetController());
-	if (!PlayerController)
+
+	APlayerController* MainPlayerController = Cast<APlayerController>(MainCharacter->Controller);
+	if (!MainPlayerController)
 	{
 		return;
 	}
-
 	// -- Set actor spawn location 
 	SetLocation(MainCharacter);
 
@@ -407,7 +400,7 @@ void AGRSPlayerCharacter::Initialize()
 	}
 
 	// --- Possess the ghost character
-	TryPossessController(PlayerController);
+	TryPossessController(MainPlayerController);
 }
 
 // Set initial location on spawn
