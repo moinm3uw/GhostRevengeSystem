@@ -3,8 +3,10 @@
 
 #include "Components/GhostRevengeCollisionComponent.h"
 
+#include "GhostRevengeSystemComponent.h"
 #include "PoolManagerSubsystem.h"
 #include "Components/MouseActivityComponent.h"
+#include "Data/GRSDataAsset.h"
 #include "DataAssets/GeneratedMapDataAsset.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "Net/UnrealNetwork.h"
