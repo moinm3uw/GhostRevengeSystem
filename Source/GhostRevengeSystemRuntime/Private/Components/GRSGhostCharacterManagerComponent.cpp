@@ -7,10 +7,11 @@
 #include "PoolManagerSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/MyGameStateBase.h"
-#include "LevelActors/GRSActorRep.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
+
+#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 
 // Sets default values for this component's properties
@@ -26,17 +27,14 @@ UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
 void UGRSGhostCharacterManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	FActorSpawnParameters SpawnParameters;
 
-	if (GetOwner()->HasAuthority())
+	if (!GetOwner()->HasAuthority())
 	{
-		AGRSActorRep* Ghost = GetWorld()->SpawnActor<AGRSActorRep>(AGRSActorRep::StaticClass(), FVector(0, 0, 200), FRotator::ZeroRotator);
-		Ghost->SetNetCullDistanceSquared(9999999999.0f); // Huge culling distance
-		Ghost->bAlwaysRelevant = true;
+		return;
 	}
 
-	//BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-	//UGRSWorldSubSystem::Get().OnMainCharacterRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnMainCharacterRemovedFromLevel);
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+	UGRSWorldSubSystem::Get().OnMainCharacterRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnMainCharacterRemovedFromLevel);
 }
 
 // Listen game states to remove ghost character from level
@@ -119,14 +117,14 @@ void UGRSGhostCharacterManagerComponent::AddGhostCharacter()
 	};
 
 	// --- Spawn actor
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(PoolActorHandlersInternal, AGRSPlayerCharacter::StaticClass(), 1, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(PoolActorHandlersInternal, AGRSPlayerCharacter::StaticClass(), 2, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
 // Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
-	// --- something wrong if there are more than 1 object found
-	if (CreatedObjects.Num() > 1)
+	// --- something wrong if there are less than 1 object found
+	if (CreatedObjects.Num() < 1)
 	{
 		return;
 	}

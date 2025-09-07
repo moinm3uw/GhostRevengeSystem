@@ -355,7 +355,7 @@ void AGRSPlayerCharacter::Initialize()
 		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
 	}
 
-	UMySkeletalMeshComponent* MainCharacterMeshComponent = &MainCharacter->GetMeshChecked();
+	UMySkeletalMeshComponent* MainCharacterMeshComponent = &MainCharacter->GetMeshComponentChecked();
 
 	if (!ensureMsgf(MainCharacterMeshComponent, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{

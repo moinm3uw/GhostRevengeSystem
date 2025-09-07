@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "Structures/Cell.h"
 #include "PoolManagerTypes.h"
+#include "Net/UnrealNetwork.h"
 #include "GhostRevengeCollisionComponent.generated.h"
 
 
@@ -35,7 +36,11 @@ protected:
 	virtual void BeginPlay() override;
 
 	/** Returns properties that are replicated for the lifetime of the actor channel. */
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
+	/** The spawner is considered as loaded only when the subsystem is loaded */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnInitialize();
 
 	/** Called when game state is changed. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

@@ -5,13 +5,18 @@
 
 #include "GhostRevengeSystemComponent.h"
 #include "PoolManagerSubsystem.h"
-#include "Components/MouseActivityComponent.h"
+
+
+#include "Controllers/MyPlayerController.h"
+
 #include "Data/GRSDataAsset.h"
-#include "DataAssets/GeneratedMapDataAsset.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "Net/UnrealNetwork.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
+#include "SubSystems/GRSWorldSubSystem.h"
+
 #include "UtilityLibraries/CellsUtilsLibrary.h"
+#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeCollisionComponent)
 
@@ -20,6 +25,8 @@ UGhostRevengeCollisionComponent::UGhostRevengeCollisionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
+
+	SetIsReplicatedByDefault(true);
 }
 
 // Called when the game starts
@@ -32,12 +39,11 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 		return;
 	}
 
-	// Listen to handle input for each game state
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::UGhostRevengeCollisionComponent::OnInitialize);
 }
 
 // Returns properties that are replicated for the lifetime of the actor channel.
-void UGhostRevengeCollisionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UGhostRevengeCollisionComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
@@ -55,8 +61,15 @@ void UGhostRevengeCollisionComponent::GetLifetimeReplicatedProps(TArray<FLifetim
 	}
 }
 
-//  Spawn a collision box the side of the map
-void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
+// The spawner is considered as loaded only when the subsystem is loaded
+void UGhostRevengeCollisionComponent::OnInitialize()
+{
+	// Listen to handle input for each game state
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+}
+
+// Called when game state is changed.
+void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
 {
 	// --- Only server can spawn character and posses it
 	if (!GetOwner()->HasAuthority())
@@ -64,59 +77,25 @@ void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 		return;
 	}
 
-	// --- Return to Pool Manager the list of handles which is not needed (if there are any) 
-	/*
-	if (!CollisionPoolActorHandlersInternal.IsEmpty())
+	switch (CurrentGameState)
 	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
-		CollisionPoolActorHandlersInternal.Empty();
-	}
-	*/
-
-	// --- Prepare spawn request
-	const TWeakObjectPtr<ThisClass> WeakThis = this;
-	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
-	{
-		if (UGhostRevengeCollisionComponent* This = WeakThis.Get())
+	case ECurrentGameState::Menu:
 		{
-			This->OnTakeCollisionActorsFromPoolCompleted(CreatedObjects);
+			// potentially do not needed logic. Remove later. 
+			//RemoveMapCollisionOnSide();
+			break;
 		}
-	};
-
-	// --- Spawn actor
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGeneratedMapDataAsset::Get().GetCollisionsAssetClass(), 2, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
-}
-
-// Grabs a side collision asset from the pool manager (Object pooling patter)
-void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
-{
-	// Spawn side collision
-	for (const FPoolObjectData& CreatedObject : CreatedObjects)
-	{
-		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
-		SpawnedCollision.SetReplicates(true);
-
-		// base cell for the calculation
-		FCell SpawnLocation;
-
-		// calculate the distance from the center of current cell 
-		float CellSize = FCell::CellSize + (FCell::CellSize / 2);
-
-		if (!LeftSideCollisionInternal)
+	case ECurrentGameState::GameStarting:
 		{
-			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
-			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
-			LeftSideCollisionInternal = SpawnedCollision;
+			// check if collision spawned, ignore if yes.
+			if (!UGRSWorldSubSystem::Get().IsCollisionSpawned())
+			{
+				SpawnMapCollisionOnSide();
+			}
+			break;
 		}
-		else
-		{
-			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
-			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
-			RightSideCollisionInternal = SpawnedCollision;
-		}
-
-		SpawnedCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
-		SpawnedCollision.SetActorLocation(FVector(SpawnLocation.Location.X, 0, 0));
+	default:
+		break;
 	}
 }
 
@@ -131,9 +110,8 @@ void UGhostRevengeCollisionComponent::RemoveMapCollisionOnSide()
 	}
 }
 
-
-// Called when game state is changed.
-void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+//  Spawn a collision box the side of the map
+void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 {
 	// --- Only server can spawn character and posses it
 	if (!GetOwner()->HasAuthority())
@@ -141,19 +119,62 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 		return;
 	}
 
-	switch (CurrentGameState)
+	// Clean previous
+	//RemoveMapCollisionOnSide(); // potentially do not needed logic. Remove later. 
+
+	// --- Prepare spawn request
+	const TWeakObjectPtr<ThisClass> WeakThis = this;
+	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
 	{
-	case ECurrentGameState::GameStarting:
+		if (UGhostRevengeCollisionComponent* This = WeakThis.Get())
 		{
-			SpawnMapCollisionOnSide();
-			break;
+			This->OnTakeCollisionActorsFromPoolCompleted(CreatedObjects);
 		}
-	case ECurrentGameState::Menu:
+	};
+
+	// --- Spawn actor
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGRSDataAsset::Get().GetCollisionsAssetClass(), 2, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+}
+
+// Grabs a side collision asset from the pool manager (Object pooling patter)
+void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
+{
+	APlayerController* PlayerController = UMyBlueprintFunctionLibrary::GetLocalPlayerController(this);
+	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	
+	// Spawn side collision
+	for (const FPoolObjectData& CreatedObject : CreatedObjects)
+	{
+		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
+		SpawnedCollision.SetOwner(PlayerController);
+
+		UE_LOG(LogTemp, Warning, TEXT("Spawned collision --- %s - %s"), *SpawnedCollision.GetName(), SpawnedCollision.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+		// base cell for the calculation
+		FCell SpawnLocation;
+
+		// calculate the distance from the center of current cell 
+		float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+
+		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
 		{
-			RemoveMapCollisionOnSide();
-			break;
+			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
+			LeftSideCollisionInternal = SpawnedCollision;
+			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 		}
-	default:
-		break;
+		else
+		{
+			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
+			RightSideCollisionInternal = SpawnedCollision;
+			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
+		}
+
+		SpawnedCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
+		SpawnedCollision.SetActorLocation(FVector(SpawnLocation.Location.X, 0, 0));
 	}
 }

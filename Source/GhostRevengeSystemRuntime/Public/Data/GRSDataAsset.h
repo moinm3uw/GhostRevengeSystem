@@ -23,11 +23,11 @@ public:
 	/** Returns if the display of trajectory is enabled */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE bool ShouldDisplayTrajectory() const { return bEnableTrajectoryVisualInternal; }
-	
+
 	/** Returns if the display of trajectory is enabled */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE bool ShouldSpawnBombOnMaxChargeTime() const { return bSpawnBombOnMaxChargingTimeInternal; }
-	
+
 	/** Returns spawn location */
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
@@ -81,6 +81,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector2D GetTrajectoryMeshScale() const { return TrajectoryMeshScaleInternal; }
 
+	/** Get collision asset class for the sides */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class AActor> GetCollisionsAssetClass() const { return CollisionsAssetInternal; }
+
 protected:
 	/** Input mapping context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
@@ -132,4 +136,8 @@ protected:
 	/** Aiming area mesh element */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Temporarry")
 	TObjectPtr<UStaticMesh> AimingAreaStaticMesh;
+
+	/** Asset that contains scalable collision. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Collisions Asset", ShowOnlyInnerProperties))
+	TSubclassOf<class AActor> CollisionsAssetInternal = nullptr;
 };

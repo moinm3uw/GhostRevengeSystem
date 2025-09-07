@@ -7,7 +7,9 @@
 #include "PoolManagerTypes.h"
 #include "GRSGhostCharacterManagerComponent.generated.h"
 
-
+/**
+ * Actor component attached to game state to spawn ghost characters
+ */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public UActorComponent
 {
@@ -18,11 +20,10 @@ public:
 	UGRSGhostCharacterManagerComponent();
 
 protected:
-	
 	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
-	
+
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
@@ -53,5 +54,4 @@ protected:
 	void OnGhostEliminatesPlayer();
 
 public:
-	
 };

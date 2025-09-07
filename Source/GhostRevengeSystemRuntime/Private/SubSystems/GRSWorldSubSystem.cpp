@@ -50,6 +50,46 @@ void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
 }
 
+// Add spawned collision actors to be cached
+void UGRSWorldSubSystem::AddCollisionActor(class AActor* Actor)
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	if (!LeftSideCollisionInternal)
+	{
+		LeftSideCollisionInternal = Actor;
+	}
+	else
+	{
+		RightSideCollisionInternal = Actor;
+	}
+}
+
+// Returns TRUE if collision are spawned
+bool UGRSWorldSubSystem::IsCollisionSpawned()
+{
+	if (LeftSideCollisionInternal && RightSideCollisionInternal)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+// Returns left side spawned collision or nullptr
+AActor* UGRSWorldSubSystem::GetLeftCollisionActor()
+{
+	if (!IsCollisionSpawned())
+	{
+		return nullptr;
+	}
+
+	return LeftSideCollisionInternal;
+}
+
 // Called when the local player character is spawned, possessed, and replicated
 void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerCharacter* PlayerCharacter, int32 CharacterID)
 {
@@ -58,10 +98,7 @@ void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerChara
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
-{
-	
-}
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState) {}
 
 // Register main player character from ghost revenge system spot component
 void UGRSWorldSubSystem::RegisterMainCharacter(APlayerCharacter* PlayerCharacter)

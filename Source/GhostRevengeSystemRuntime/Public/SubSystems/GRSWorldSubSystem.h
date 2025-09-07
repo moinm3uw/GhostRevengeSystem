@@ -41,7 +41,7 @@ protected:
 	 * It can't be put to DevelopSettings class because it does work properly for MGF-modules. */
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
-	
+
 	/** Begin play of the subsystem */
 	void OnWorldBeginPlay(UWorld& InWorld) override;
 
@@ -52,6 +52,31 @@ protected:
 	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+
+	/*********************************************************************************************
+	 * Side Collisions actors 
+	**********************************************************************************************/
+public:
+	/** Add spawned collision actors to be cached */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void AddCollisionActor(class AActor* Actor);
+
+	/** Returns TRUE if collision are spawned */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	bool IsCollisionSpawned();
+
+	/** Returns left side spawned collision or nullptr */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	class AActor* GetLeftCollisionActor();
+
+protected:
+	/** Left Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
+	TObjectPtr<class AActor> LeftSideCollisionInternal;
+
+	/** Right Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
+	TObjectPtr<class AActor> RightSideCollisionInternal;
 
 	/*********************************************************************************************
 	 * Main Character

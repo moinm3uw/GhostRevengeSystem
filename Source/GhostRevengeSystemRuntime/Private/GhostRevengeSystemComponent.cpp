@@ -25,10 +25,18 @@ UGhostRevengeSystemComponent::UGhostRevengeSystemComponent()
 	SetIsReplicatedByDefault(true);
 }
 
+// Returns owner (main) player character
+APlayerCharacter* UGhostRevengeSystemComponent::GetMainPlayerCharacter() const
+{
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
+
+	return PlayerCharacter ? PlayerCharacter : nullptr;
+}
+
 // Returns Player Controller of this component
 APlayerController* UGhostRevengeSystemComponent::GetPlayerController() const
 {
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
+	APlayerCharacter* PlayerCharacter = GetMainPlayerCharacter();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
@@ -46,21 +54,13 @@ APlayerController* UGhostRevengeSystemComponent::GetPlayerControllerChecked() co
 	return PlayerController;
 }
 
-// Returns owner (main) player character
-APlayerCharacter* UGhostRevengeSystemComponent::GetMainPlayerCharacter() const
-{
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
-
-	return PlayerCharacter ? PlayerCharacter : nullptr;
-}
-
 // Called when the game starts
 void UGhostRevengeSystemComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-	UMapComponent* MapComponent = UMapComponent::GetMapComponent(GetOwner());
+	UMapComponent* MapComponent = UMapComponent::GetMapComponent(GetMainPlayerCharacter());
 
 	if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n'MapComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
@@ -102,6 +102,7 @@ void UGhostRevengeSystemComponent::RegisterMainCharacter()
 			return;
 		}
 
+		// @ToDo: strange logic, remove this
 		UGRSWorldSubSystem::Get().RegisterMainCharacter(PlayerCharacter);
 	}
 }
