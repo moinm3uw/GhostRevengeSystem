@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "GRSBombProjectile.generated.h"
 
 UCLASS()
@@ -33,7 +34,7 @@ protected:
 
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	           FVector NormalImpulse, const FHitResult& Hit);
+	    FVector NormalImpulse, const FHitResult& Hit);
 
 public:
 	// Called every frame

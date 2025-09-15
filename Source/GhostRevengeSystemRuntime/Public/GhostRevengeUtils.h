@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+
 #include "GhostRevengeUtils.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeUtils : public UBlueprintFunctionLibrary

@@ -2,9 +2,8 @@
 
 #include "SubSystems/GRSWorldSubSystem.h"
 
-#include "GhostRevengeSystemComponent.h"
-#include "Data/MyPrimaryDataAsset.h"
 #include "Data/GRSDataAsset.h"
+#include "Data/MyPrimaryDataAsset.h"
 #include "Engine/Engine.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -42,12 +41,76 @@ const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 	return UMyPrimaryDataAsset::GetOrLoadOnce(DataAssetInternal);
 }
 
+// Register character manager component
+void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* CharacterManagerComponent)
+{
+	if (CharacterManagerComponent && CharacterManagerComponent != CharacterMangerComponent)
+	{
+		CharacterMangerComponent = CharacterManagerComponent;
+	}
+}
+
+// Register ghost character
+void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter)
+{
+	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
+
+	if (!GhostCharacterLeftSide)
+	{
+		GhostCharacterLeftSide = GhostPlayerCharacter;
+	}
+	else if (!GhostCharacterRightSide)
+	{
+		GhostCharacterRightSide = GhostPlayerCharacter;
+	}
+}
+
+// Returns the side of the ghost character (left, or right)
+EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter)
+{
+	if (PlayerCharacter == nullptr)
+	{
+		return EGRSCharacterSide::None;
+	}
+
+	if (GhostCharacterLeftSide == PlayerCharacter)
+	{
+		return EGRSCharacterSide::Left;
+	}
+
+	if (GhostCharacterRightSide == PlayerCharacter)
+	{
+		return EGRSCharacterSide::Right;
+	}
+
+	return EGRSCharacterSide::None;
+}
+
+// Broadcasts the activation of ghost character, can be called from outside
+void UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter* PlayerCharacter)
+{
+	if (!GhostCharacterLeftSide->GetController())
+	{
+		GhostCharacterLeftSide->ActivateCharacter(PlayerCharacter);
+	}
+	else if (!GhostCharacterRightSide->GetController())
+	{
+		GhostCharacterRightSide->ActivateCharacter(PlayerCharacter);
+	}
+}
+
 // Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors
 void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 
 	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
+}
+
+// Return a ghost character.
+class AGRSPlayerCharacter* UGRSWorldSubSystem::GetGhostPlayerCharacter()
+{
+	return nullptr;
 }
 
 // Add spawned collision actors to be cached
@@ -98,84 +161,15 @@ void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerChara
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState) {}
-
-// Register main player character from ghost revenge system spot component
-void UGRSWorldSubSystem::RegisterMainCharacter(APlayerCharacter* PlayerCharacter)
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
 {
-	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__)
-		|| !PlayerCharacter->IsPlayerControlled())
-	{
-		return;
-	}
-
-	// store locally controller player data 
-	if (PlayerCharacter->IsLocallyControlled())
-	{
-		MainPlayerCharacterInternal = PlayerCharacter;
-		MainPlayerCharacterSpawnLocationInternal = PlayerCharacter->GetActorLocation();
-	}
-
-	if (PlayerCharacter->HasAuthority())
-	{
-		MainPlayerCharacterArrayInternal.Add(PlayerCharacter);
-	}
 }
-
-//  When a main player character was removed from level spawn a new ghost character
-void UGRSWorldSubSystem::MainCharacterRemovedFromLevel(UMapComponent* MapComponent)
-{
-	// spawn ghost character
-	if (!MapComponent)
-	{
-		return;
-	}
-
-	for (TObjectPtr PlayerCharacter : MainPlayerCharacterArrayInternal)
-	{
-		if (MapComponent == UMapComponent::GetMapComponent(PlayerCharacter))
-		{
-			APlayerController* PlayerController = Cast<APlayerController>(PlayerCharacter->Controller);
-			bool bHasAuth = PlayerController->HasAuthority();
-			if (!bHasAuth)
-			{
-				return;
-			}
-
-			OnMainCharacterRemovedFromLevel.Broadcast();
-		}
-	}
-}
-
-// Register ghost player character spawned
-void UGRSWorldSubSystem::RegisterGhostCharacter(AGRSPlayerCharacter* PlayerCharacter)
-{
-	if (PlayerCharacter)
-	{
-		GhostPlayerCharacterInternal = PlayerCharacter;
-	}
-}
-
-// Reset ghost player character
-void UGRSWorldSubSystem::ResetGhostCharacter()
-{
-	if (GhostPlayerCharacterInternal)
-	{
-		GhostPlayerCharacterInternal = nullptr;
-	}
-}
-
-APlayerCharacter* UGRSWorldSubSystem::GetMainPlayerCharacter()
-{
-	return MainPlayerCharacterInternal ? MainPlayerCharacterInternal : nullptr;
-}
-
 
 /** EngGameState:
 //HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
 if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
 {
-	break;
+    break;
 }
 HUD->SetVisibility(ESlateVisibility::Collapsed);
 PlayerStateInternal->SetCharacterDead(false);

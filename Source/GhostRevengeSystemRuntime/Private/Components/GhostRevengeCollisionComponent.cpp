@@ -1,20 +1,14 @@
 ﻿// Copyright (c) Yevhenii Selivanov
 
-
 #include "Components/GhostRevengeCollisionComponent.h"
 
-#include "GhostRevengeSystemComponent.h"
-#include "PoolManagerSubsystem.h"
-
-
 #include "Controllers/MyPlayerController.h"
-
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/MyGameStateBase.h"
 #include "Net/UnrealNetwork.h"
-#include "Subsystems/GlobalEventsSubsystem.h"
+#include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-
+#include "Subsystems/GlobalEventsSubsystem.h"
 #include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
@@ -39,26 +33,7 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 		return;
 	}
 
-	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::UGhostRevengeCollisionComponent::OnInitialize);
-}
-
-// Returns properties that are replicated for the lifetime of the actor channel.
-void UGhostRevengeCollisionComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	FDoRepLifetimeParams Params;
-	Params.bIsPushBased = true;
-
-	if (LeftSideCollisionInternal)
-	{
-		DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, LeftSideCollisionInternal, Params);
-	}
-
-	if (RightSideCollisionInternal)
-	{
-		DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, RightSideCollisionInternal, Params);
-	}
+	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded
@@ -79,13 +54,13 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 
 	switch (CurrentGameState)
 	{
-	case ECurrentGameState::Menu:
+		case ECurrentGameState::Menu:
 		{
-			// potentially do not needed logic. Remove later. 
-			//RemoveMapCollisionOnSide();
+			// potentially do not needed logic. Remove later.
+			// RemoveMapCollisionOnSide();
 			break;
 		}
-	case ECurrentGameState::GameStarting:
+		case ECurrentGameState::GameStarting:
 		{
 			// check if collision spawned, ignore if yes.
 			if (!UGRSWorldSubSystem::Get().IsCollisionSpawned())
@@ -94,8 +69,8 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 			}
 			break;
 		}
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -120,7 +95,7 @@ void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 	}
 
 	// Clean previous
-	//RemoveMapCollisionOnSide(); // potentially do not needed logic. Remove later. 
+	// RemoveMapCollisionOnSide(); // potentially do not needed logic. Remove later.
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
@@ -144,7 +119,7 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 	{
 		return;
 	}
-	
+
 	// Spawn side collision
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
@@ -156,21 +131,19 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 		// base cell for the calculation
 		FCell SpawnLocation;
 
-		// calculate the distance from the center of current cell 
+		// calculate the distance from the center of current cell
 		float CellSize = FCell::CellSize + (FCell::CellSize / 2);
 
 		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
 		{
 			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
 			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
-			LeftSideCollisionInternal = SpawnedCollision;
 			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 		}
 		else
 		{
 			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
 			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
-			RightSideCollisionInternal = SpawnedCollision;
 			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 		}
 

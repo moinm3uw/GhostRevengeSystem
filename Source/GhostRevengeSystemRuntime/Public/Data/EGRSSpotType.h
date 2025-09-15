@@ -14,6 +14,6 @@ enum class EGRSSpotType : uint8
 	None,
 	///< Left side of the map
 	Left,
-	///< Right side of the map 
+	///< Right side of the map
 	Right,
 };

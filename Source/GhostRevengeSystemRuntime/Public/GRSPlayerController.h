@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "LevelActors/GRSPlayerCharacter.h"
+
 #include "GRSPlayerController.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerController : public APlayerController
@@ -28,7 +29,7 @@ public:
 	virtual void SetupInputComponent() override;
 
 protected:
-	virtual void OnPossess(APawn *InPawn) override;
+	virtual void OnPossess(APawn* InPawn) override;
 
 	void Move(const struct FInputActionValue& ActionValue);
 };

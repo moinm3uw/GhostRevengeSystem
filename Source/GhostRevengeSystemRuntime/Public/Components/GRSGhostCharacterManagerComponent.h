@@ -2,15 +2,17 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
+#include "Net/UnrealNetwork.h"
 #include "PoolManagerTypes.h"
+
 #include "GRSGhostCharacterManagerComponent.generated.h"
 
 /**
  * Actor component attached to game state to spawn ghost characters
  */
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -27,13 +29,21 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	/** The component is considered as loaded only when the subsystem is loaded */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnInitialize();
+
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnGameStateChanged(ECurrentGameState CurrentGameState);
 
-	/** Remove (hide) ghost character from the level. Hides and return character to pool manager (object pooling pattern) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveGhostCharacterFromMap();
+	/** Subscribes to PlayerCharacters death events in order to see if a player died */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RegisterForPlayerDeath();
+
+	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnPostRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Whenever a main player character is removed from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -46,12 +56,12 @@ protected:
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
-	UFUNCTION(BlueprintCallable, Category= "C++")
+	UFUNCTION(BlueprintCallable, Category = "C++")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 
 	/** Called when the ghost player kills another player and will be swaped with him */
-	UFUNCTION(BlueprintCallable, Category= "C++")
-	void OnGhostEliminatesPlayer();
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void OnGhostEliminatesPlayer(class APlayerCharacter* PlayerCharacter, class AGRSPlayerCharacter* GhostCharacter);
 
 public:
 };

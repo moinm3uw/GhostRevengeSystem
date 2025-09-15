@@ -3,11 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "LevelActors/GRSPlayerCharacter.h"
 #include "Subsystems/WorldSubsystem.h"
+
 #include "GRSWorldSubSystem.generated.h"
 
 /**
- * Implements the world subsystem to access different components in the module 
+ * Implements the world subsystem to access different components in the module
  */
 UCLASS(BlueprintType, Blueprintable, Config = "GhostRevengeSystem", DefaultConfig)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UWorldSubsystem
@@ -16,10 +18,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UWorldSubsystem
 
 public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnInitialize);
-
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnMainCharacterRegistered);
-
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnMainCharacterRemovedFromLevel);
 
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
 	static UGRSWorldSubSystem& Get();
@@ -34,6 +32,38 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	const class UGRSDataAsset* GetGRSDataAsset() const;
 
+	/** Return a ghost character. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	class AGRSPlayerCharacter* GetGhostPlayerCharacter();
+
+	/** Register character manager component. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* CharacterManagerComponent);
+
+	/** Register ghost character */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RegisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter);
+
+	/** Register character manager component. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	FORCEINLINE class UGRSGhostCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterMangerComponent; }
+
+	/** Returns the left side ghost player character */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	FORCEINLINE class AGRSPlayerCharacter* GetGRSPlayerCharacterLeftSide() const { return GhostCharacterLeftSide; }
+
+	/** Returns the left side ghost player character */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	FORCEINLINE class AGRSPlayerCharacter* GetGRSPlayerCharacterRightSide() const { return GhostCharacterRightSide; }
+
+	/** Returns the side of the ghost character (left, or right)  */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	EGRSCharacterSide GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter);
+
+	/** Broadcasts the activation of ghost character, can be called from outside */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void ActivateGhostCharacter(APlayerCharacter* PlayerCharacter);
+
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -41,6 +71,18 @@ protected:
 	 * It can't be put to DevelopSettings class because it does work properly for MGF-modules. */
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
+
+	/** Current Character Manager Component */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "C++")
+	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterMangerComponent;
+
+	/** Ghost character spawned on left side of the map */
+	UPROPERTY(VisibleDefaultsOnly, Category = "C++")
+	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterLeftSide;
+
+	/** Ghost character spawned on right side of the map */
+	UPROPERTY(VisibleDefaultsOnly, Category = "C++")
+	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterRightSide;
 
 	/** Begin play of the subsystem */
 	void OnWorldBeginPlay(UWorld& InWorld) override;
@@ -54,8 +96,8 @@ protected:
 	void OnGameStateChanged(ECurrentGameState CurrentGameState);
 
 	/*********************************************************************************************
-	 * Side Collisions actors 
-	**********************************************************************************************/
+	 * Side Collisions actors
+	 **********************************************************************************************/
 public:
 	/** Add spawned collision actors to be cached */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -77,66 +119,4 @@ protected:
 	/** Right Side collision */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
 	TObjectPtr<class AActor> RightSideCollisionInternal;
-
-	/*********************************************************************************************
-	 * Main Character
-	 **********************************************************************************************/
-public:
-	/* Delegate to inform that module is loaded. To have better loading control of the MGF  */
-	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
-	FGRSOnMainCharacterRegistered OnMainCharacterRegistered;
-
-	/* Delegate to inform that module is loaded. To have better loading control of the MGF  */
-	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
-	FGRSOnMainCharacterRemovedFromLevel OnMainCharacterRemovedFromLevel;
-
-	/** Returns main player character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	class APlayerCharacter* GetMainPlayerCharacter();
-
-	/** Register main player character from ghost revenge system spot component */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterMainCharacter(class APlayerCharacter* PlayerCharacter);
-
-	/** When a main player character was removed from level spawn a new ghost character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void MainCharacterRemovedFromLevel(UMapComponent* MapComponent);
-
-	/** Get current player character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	FORCEINLINE FVector GetMainPlayerCharacterSpawnLocation() const { return MainPlayerCharacterSpawnLocationInternal; }
-
-protected:
-	/** Main player character */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	TObjectPtr<class APlayerCharacter> MainPlayerCharacterInternal;
-
-	/** Main player character spawn location on added to level */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	FVector MainPlayerCharacterSpawnLocationInternal;
-
-	/** Array of main players */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	TArray<TObjectPtr<class APlayerCharacter>> MainPlayerCharacterArrayInternal;
-
-	/*********************************************************************************************
-	 * Ghost Character
-	 **********************************************************************************************/
-protected:
-	/** AGRSPlayerCharacter, set once game state changes into in-game */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Current Player Character"))
-	TObjectPtr<class AGRSPlayerCharacter> GhostPlayerCharacterInternal;
-
-public:
-	/** Register ghost player character spawned */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RegisterGhostCharacter(class AGRSPlayerCharacter* PlayerCharacter);
-
-	/** Get current player character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	FORCEINLINE class AGRSPlayerCharacter* GetGhostPlayerCharacter() const { return GhostPlayerCharacterInternal; }
-
-	/** Reset ghost player character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void ResetGhostCharacter();
 };

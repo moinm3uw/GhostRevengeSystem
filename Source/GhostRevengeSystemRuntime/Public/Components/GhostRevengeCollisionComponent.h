@@ -2,15 +2,15 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Structures/Cell.h"
-#include "PoolManagerTypes.h"
+#include "CoreMinimal.h"
 #include "Net/UnrealNetwork.h"
+#include "PoolManagerTypes.h"
+#include "Structures/Cell.h"
+
 #include "GhostRevengeCollisionComponent.generated.h"
 
-
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeCollisionComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -24,19 +24,8 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
 	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
 
-	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Replicated, Category = "C++", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<class AActor> LeftSideCollisionInternal;
-
-	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Replicated, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<class AActor> RightSideCollisionInternal;
-
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
-
-	/** Returns properties that are replicated for the lifetime of the actor channel. */
-	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
 	/** The spawner is considered as loaded only when the subsystem is loaded */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -53,7 +42,7 @@ protected:
 	/** Grabs a side collision asset from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
-	UFUNCTION(BlueprintCallable, Category= "C++")
+	UFUNCTION(BlueprintCallable, Category = "C++")
 	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 
 	/** Remove a collision box the sides of the map */

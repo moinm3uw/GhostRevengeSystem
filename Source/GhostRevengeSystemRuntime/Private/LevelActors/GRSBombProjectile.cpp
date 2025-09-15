@@ -1,6 +1,5 @@
 // Copyright (c) Yevhenii Selivanov
 
-
 #include "LevelActors/GRSBombProjectile.h"
 
 #include "Bomber.h"

@@ -6,10 +6,11 @@
 #include "Data/MyPrimaryDataAsset.h"
 #include "DataAssets/MyInputMappingContext.h"
 #include "Kismet/GameplayStaticsTypes.h"
+
 #include "GRSDataAsset.generated.h"
 
 /**
- * Contains all ghost revenge assets used in the module 
+ * Contains all ghost revenge assets used in the module
  */
 UCLASS(Blueprintable, BlueprintType)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UMyPrimaryDataAsset
@@ -36,32 +37,32 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FTransform GetCollisionTransform() const { return CollisionTransformInternal; }
 
-	/** Returns input context. 
+	/** Returns input context.
 	 * @see UGRSDataAsset::InputContextsInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UMyInputMappingContext* GetInputContext() const { return InputContextInternal; }
 
-	/** Returns projectile class 
+	/** Returns projectile class
 	 * @see UGRSDataAsset::BombClass.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class TSubclassOf<class AGRSBombProjectile> GetProjectileClass() const { return BombClass; }
 
-	/** Returns projectile mesh 
+	/** Returns projectile mesh
 	 * @see UGRSDataAsset::StaticMesh.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return AimingAreaStaticMesh; }
 
-	/** Returns projectile mesh 
+	/** Returns projectile mesh
 	 * @see UGRSDataAsset::ChargeTrajectoryMeshInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE class UStaticMesh* GetChargeMesh() const { return AimingTrajectoryMeshInternal; }
 
-	/** Returns projectile predict parameters 
+	/** Returns projectile predict parameters
 	 * @see UGRSDataAsset::PredictParams.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FPredictProjectilePathParams GetChargePredictParams() const { return PredictParamsInternal; }
 
-	/** Returns projectile predict velocity  
+	/** Returns projectile predict velocity
 	 * @see UGRSDataAsset::VelocityInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE FVector GetVelocityParams() const { return VelocityInternal; }

@@ -2,31 +2,49 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "Components/MapComponent.h"
+#include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStaticsTypes.h"
 #include "LevelActors/PlayerCharacter.h"
+#include "Net/UnrealNetwork.h"
+
 #include "GRSPlayerCharacter.generated.h"
+
+/**
+ * Represents the side of ghost character
+ */
+UENUM(BlueprintType, DisplayName = "Ghost Character Side")
+enum class EGRSCharacterSide : uint8
+{
+	///< Is not defined
+	None,
+	///< Star is locked
+	Left,
+	///< Star is unlocked
+	Right,
+};
 
 /**
  * Ghost Players (only for players, no AI) whose goal is to perform revenge as ghost (spawned on side of map).
  * Copy the died player mesh and skin.
  */
 UCLASS()
-class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter
+class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
+                                                          public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPlayerKilled);
-	
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostPlayerEliminates, APlayerCharacter*, EliminatedPlayerCharacter, AGRSPlayerCharacter*, GhostCharacter);
+
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
 	/** Is called when ghost killed a player */
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
-	FOnGhostPlayerKilled OnGhostPlayerKilled;
+	FOnGhostPlayerEliminates OnGhostPlayerEliminates;
 
 	/*********************************************************************************************
 	 * Mesh and Initialization
@@ -35,6 +53,10 @@ protected:
 	/** Mesh of component. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
+
+	/** Ghost Character Side*/
+	UPROPERTY(VisibleDefaultsOnly, Transient, Category = "C++")
+	EGRSCharacterSide CharacterSide = EGRSCharacterSide::None;
 
 	/** Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc. */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -53,8 +75,8 @@ protected:
 	void SetupCapsuleComponent();
 
 	/*********************************************************************************************
-	* Nickname
-	********************************************************************************************* */
+	 * Nickname
+	 ********************************************************************************************* */
 public:
 	/** Returns the 3D widget component that displays the player name above the character. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
@@ -71,15 +93,39 @@ public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	/** Perform init character once added to the level */
-	void Initialize();
+	/** Set ghost character side (left or right) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetGhostCharacterSide();
+
+	/** Perform ghost character activation (possessing controller) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ActivateCharacter(const APlayerCharacter* PlayerCharacter);
+
+	/** Returns the Ability System Component from the Player State.
+	 * In blueprints, call 'Get Ability System Component' as interface function. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	/** Listen game states to remove ghost character from level */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+
+	/** Perform init character once added to the level from a refence character (visuals, animations) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void InitializeCharacterVisual(const APlayerCharacter* PlayerCharacter);
 
 	/** Set initial location on spawn */
-	void SetLocation(const class APlayerCharacter* MainCharacter);
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetLocation();
 
 	/** Initialize Player Name */
+	UFUNCTION(BlueprintCallable, Category = "C++")
 	void InitializePlayerName(const APlayerCharacter* MainCharacter) const;
-	
+
+	/** Remove ghost character from the level */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveGhostCharacterFromMap();
+
 	/** Clean up the character */
 	void PerformCleanUp();
 
@@ -104,11 +150,7 @@ public:
 
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
-	void TryPossessController(APlayerController* PlayerController);
-
-	/** UnPossess a player controller */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
-	void UnPossessController();
+	void TryPossessController(AController* PlayerController);
 
 	/*********************************************************************************************
 	 * Hold To Charge and aim
@@ -182,8 +224,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
 	int32 BombCountInternal = 1;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
-	TArray<AActor*> PlayerCharactersInternal;
+	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+	// TArray<AActor*> PlayerCharactersInternal;
 
 	/** Event triggered when the bomb has been explicitly destroyed. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -192,4 +234,8 @@ protected:
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
+
+	/** Subscribes to PlayerCharacters death events in order to see if a player died */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RegisterForPlayerDeath();
 };
