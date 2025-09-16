@@ -205,8 +205,8 @@ public:
 	/** Called when a controller has been replicated to the client */
 	virtual void OnRep_Controller() override;
 
-	/** Called when a character has been possessed by a new controller. */
-	virtual void PossessedBy(AController* NewController) override;
+	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */
+	virtual void UnPossessed() override;
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */

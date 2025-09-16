@@ -44,8 +44,4 @@ protected:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-
-	/** Remove a collision box the sides of the map */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveMapCollisionOnSide();
 };

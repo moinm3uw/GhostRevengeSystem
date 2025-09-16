@@ -54,15 +54,9 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 
 	switch (CurrentGameState)
 	{
-		case ECurrentGameState::Menu:
-		{
-			// potentially do not needed logic. Remove later.
-			// RemoveMapCollisionOnSide();
-			break;
-		}
 		case ECurrentGameState::GameStarting:
 		{
-			// check if collision spawned, ignore if yes.
+			// spawn collisions only once
 			if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 			{
 				SpawnMapCollisionOnSide();
@@ -74,17 +68,6 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 	}
 }
 
-// Remove a collision box the sides of the map
-void UGhostRevengeCollisionComponent::RemoveMapCollisionOnSide()
-{
-	// --- Return to pool character
-	if (!CollisionPoolActorHandlersInternal.IsEmpty())
-	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
-		CollisionPoolActorHandlersInternal.Empty();
-	}
-}
-
 //  Spawn a collision box the side of the map
 void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 {
@@ -93,9 +76,6 @@ void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 	{
 		return;
 	}
-
-	// Clean previous
-	// RemoveMapCollisionOnSide(); // potentially do not needed logic. Remove later.
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
