@@ -311,7 +311,6 @@ void AGRSPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	SetGhostCharacterSide();
 	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
 	// --- Initialize aiming point
@@ -319,11 +318,6 @@ void AGRSPlayerCharacter::BeginPlay()
 	SphereComp->SetVisibility(true);
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-}
-
-// Set ghost character side (left or right)
-void AGRSPlayerCharacter::SetGhostCharacterSide()
-{
 }
 
 // Perform ghost character activation (possessing controller)

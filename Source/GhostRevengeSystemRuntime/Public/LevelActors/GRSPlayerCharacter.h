@@ -93,10 +93,6 @@ public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	/** Set ghost character side (left or right) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetGhostCharacterSide();
-
 	/** Perform ghost character activation (possessing controller) */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void ActivateCharacter(const APlayerCharacter* PlayerCharacter);
