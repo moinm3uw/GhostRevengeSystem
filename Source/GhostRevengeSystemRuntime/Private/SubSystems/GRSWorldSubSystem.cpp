@@ -125,14 +125,14 @@ void UGRSWorldSubSystem::AddCollisionActor(class AActor* Actor)
 	{
 		LeftSideCollisionInternal = Actor;
 	}
-	else
+	else if (!RightSideCollisionInternal)
 	{
 		RightSideCollisionInternal = Actor;
 	}
 }
 
 // Returns TRUE if collision are spawned
-bool UGRSWorldSubSystem::IsCollisionSpawned()
+bool UGRSWorldSubSystem::IsCollisionsSpawned()
 {
 	if (LeftSideCollisionInternal && RightSideCollisionInternal)
 	{
@@ -145,12 +145,23 @@ bool UGRSWorldSubSystem::IsCollisionSpawned()
 // Returns left side spawned collision or nullptr
 AActor* UGRSWorldSubSystem::GetLeftCollisionActor()
 {
-	if (!IsCollisionSpawned())
+	if (LeftSideCollisionInternal)
 	{
-		return nullptr;
+		return LeftSideCollisionInternal;
 	}
 
-	return LeftSideCollisionInternal;
+	return nullptr;
+}
+
+// Returns right side spawned collision or nullptr
+class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
+{
+	if (RightSideCollisionInternal)
+	{
+		return RightSideCollisionInternal;
+	}
+
+	return nullptr;
 }
 
 // Called when the local player character is spawned, possessed, and replicated

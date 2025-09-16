@@ -105,11 +105,15 @@ public:
 
 	/** Returns TRUE if collision are spawned */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	bool IsCollisionSpawned();
+	bool IsCollisionsSpawned();
 
 	/** Returns left side spawned collision or nullptr */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	class AActor* GetLeftCollisionActor();
+
+	/** Returns right side spawned collision or nullptr */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	class AActor* GetRightCollisionActor();
 
 protected:
 	/** Left Side collision */

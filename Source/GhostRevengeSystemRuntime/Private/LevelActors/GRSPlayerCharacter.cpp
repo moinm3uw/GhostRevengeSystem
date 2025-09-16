@@ -232,6 +232,9 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	PlayerController->Possess(this);
 
 	RegisterForPlayerDeath();
+
+	// --- enable inputs for ghost characters
+	SetManagedInputContextEnabled(true);
 }
 
 // Called when a controller has been replicated to the client
@@ -239,8 +242,16 @@ void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
+	// --- enable inputs for ghost characters
 	SetManagedInputContextEnabled(true);
-	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::OnRep_Controller. "));
+}
+
+// Called when a character has been possessed by a new controller
+void AGRSPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::PossessedBy happened"));
 }
 
 // Enables or disables the input context

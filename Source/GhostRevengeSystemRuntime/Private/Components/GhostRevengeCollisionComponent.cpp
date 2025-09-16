@@ -63,7 +63,7 @@ void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrent
 		case ECurrentGameState::GameStarting:
 		{
 			// check if collision spawned, ignore if yes.
-			if (!UGRSWorldSubSystem::Get().IsCollisionSpawned())
+			if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 			{
 				SpawnMapCollisionOnSide();
 			}
@@ -125,7 +125,6 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 	{
 		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
 		SpawnedCollision.SetOwner(PlayerController);
-
 		UE_LOG(LogTemp, Warning, TEXT("Spawned collision --- %s - %s"), *SpawnedCollision.GetName(), SpawnedCollision.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		// base cell for the calculation
@@ -138,14 +137,14 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 		{
 			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
 			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
-			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 		}
-		else
+		else if (!UGRSWorldSubSystem::Get().GetRightCollisionActor())
 		{
 			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
 			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
-			UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 		}
+
+		UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 
 		SpawnedCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
 		SpawnedCollision.SetActorLocation(FVector(SpawnLocation.Location.X, 0, 0));
