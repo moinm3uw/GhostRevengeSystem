@@ -2,6 +2,7 @@
 
 #include "LevelActors/GRSPlayerCharacter.h"
 
+#include "AbilitySystemComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -28,6 +29,7 @@
 #include "LevelActors/BombActor.h"
 #include "LevelActors/GRSBombProjectile.h"
 #include "LevelActors/PlayerCharacter.h"
+#include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
 #include "TimerManager.h"
@@ -62,16 +64,24 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
 	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
 
-	SphereComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
+	AimingSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (SphereMesh.Succeeded())
 	{
-		SphereComp->SetStaticMesh(SphereMesh.Object);
+		AimingSphereComponent->SetStaticMesh(SphereMesh.Object);
 	}
 
 	// Initialize 3D widget component for the player name
 	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
 	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
+}
+
+// Get the character side
+EGRSCharacterSide AGRSPlayerCharacter::GetCharacterSide() const
+{
+	const FCell ArenaCenter = UCellsUtilsLibrary::GetCenterCellOnLevel();
+	const FVector ToArenaDirection = ArenaCenter.Location - GetActorLocation().GetSafeNormal();
+	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
 }
 
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
@@ -193,9 +203,9 @@ void AGRSPlayerCharacter::PerformCleanUp()
 		BombProjectileInternal->Destroy();
 	}
 
-	if (SphereComp)
+	if (AimingSphereComponent)
 	{
-		SphereComp->DestroyComponent();
+		AimingSphereComponent->DestroyComponent();
 	}
 }
 
@@ -325,11 +335,13 @@ void AGRSPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
+
 	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
 	// --- Initialize aiming point
-	SphereComp->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	SphereComp->SetVisibility(true);
+	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	AimingSphereComponent->SetVisibility(true);
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 }
@@ -344,6 +356,7 @@ void AGRSPlayerCharacter::ActivateCharacter(const APlayerCharacter* PlayerCharac
 
 	AController* PlayerController = PlayerCharacter->GetController();
 	TryPossessController(PlayerController);
+	InitializePlayerName(PlayerCharacter);
 }
 
 // Returns the Ability System Component from the Player State
@@ -365,7 +378,7 @@ void AGRSPlayerCharacter::OnGameStateChanged_Implementation(ECurrentGameState Cu
 			// -- Set actor spawn location
 			SetLocation();
 			// --- Init Player name
-			InitializePlayerName(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
+			// InitializePlayerName(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
 			// --- Init character visuals (animations, skin)
 			InitializeCharacterVisual(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
 			// --- Clear splines
@@ -448,48 +461,32 @@ void AGRSPlayerCharacter::SetLocation()
 	FCell ActorSpawnLocation;
 	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
 
-	if (CharacterSide == EGRSCharacterSide::None)
+	/**
+
+	switch (CurrentPlayerSide)
 	{
-		const EGRSCharacterSide CurrentCharacterSide = UGRSWorldSubSystem::Get().GetGhostPlayerCharacterSide(this);
+	    case EGRSCharacterSide::Left:
+	    {
+	        ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+	        ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
+	        ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
+	        break;
+	    }
+	    case EGRSCharacterSide::Right:
+	    {
+	        ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+	        ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
+	        ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
+	        break;
+	    }
 
-		// --- not good
-		if (CurrentCharacterSide == EGRSCharacterSide::None)
-		{
-			return;
-		}
-
-		if (CharacterSide != CurrentCharacterSide)
-		{
-			CharacterSide = CurrentCharacterSide;
-		}
+	    default:
+	        break;
 	}
-
-	switch (CharacterSide)
-	{
-		case EGRSCharacterSide::Left:
-		{
-			ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
-			ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
-			ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
-			break;
-		}
-		case EGRSCharacterSide::Right:
-		{
-			ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
-			ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
-			ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
-			break;
-		}
-
-		default:
-			break;
-	}
-
-	// Match the Z axis to what we have on the level
-	ActorSpawnLocation.Location.Z = UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter()->GetActorLocation().Z;
+	*/
 
 	// --- Update ghost character
-	SetActorLocation(ActorSpawnLocation);
+	// SetActorLocation(ActorSpawnLocation);
 	SetVisibility(true);
 }
 
@@ -508,6 +505,18 @@ void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainChara
 
 	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is null!"), __LINE__, __FUNCTION__);
 	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
+
+	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
+	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(GetCharacterSide()));
+
+	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
+	UPlayerNameWidget* NickName = Cast<UPlayerNameWidget>(Widget);
+	if (!ensureMsgf(NickName, TEXT("ASSERT: [%i] %hs:\n'NickName' condition is FALSE"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	NickName->SetPlayerName(FText::FromString(SideName));
 }
 
 // Remove ghost character from the level
@@ -571,10 +580,6 @@ void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
 // Hold button to increase trajectory on button release trow bomb
 void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 {
-	if (BombCountInternal < 1)
-	{
-		return;
-	}
 	ShowVisualTrajectory();
 
 	if (CurrentHoldTimeInternal < 1.0f)
@@ -585,7 +590,7 @@ void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
 	{
 		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
 		{
-			ThrowProjectile(ActionValue);
+			ThrowProjectile();
 		}
 		CurrentHoldTimeInternal = 0;
 	}
@@ -623,7 +628,15 @@ void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& Pr
 	// Predict and draw the trajectory
 	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
 	Params.StartLocation = GetActorLocation();
-	Params.LaunchVelocity = FVector(UpRight45.X + LaunchVelocity.X * CurrentHoldTimeInternal, 0 + LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
+
+	// --- pick a direction based on the side of the map (left or right)
+	const float SideSign = GetCharacterSide() == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+
+	Params.LaunchVelocity = FVector(
+	    UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal),
+	    LaunchVelocity.Y,
+	    UpRight45.Z + LaunchVelocity.Z);
+
 	Params.ActorsToIgnore.Add(this);
 
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
@@ -632,8 +645,8 @@ void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& Pr
 // Add a mesh to the last element of the predict Projectile path results
 void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result)
 {
-	SphereComp->SetVisibility(true);
-	SphereComp->SetWorldLocation(Result.LastTraceDestination.Location);
+	AimingSphereComponent->SetVisibility(true);
+	AimingSphereComponent->SetWorldLocation(Result.LastTraceDestination.Location);
 }
 
 // Add spline points to the spline component
@@ -680,49 +693,17 @@ void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 }
 
 // Spawn and send projectile
-void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
+void AGRSPlayerCharacter::ThrowProjectile()
 {
-	if (BombCountInternal < 1)
-	{
-		return;
-	}
-
-	// Calculate Cell to spawn bomb:
-	FVector SpawnLocation = SphereComp->GetComponentLocation();
+	//--- Calculate Cell to spawn bomb
 	FCell CurrentCell;
-	CurrentCell.Location = SpawnLocation;
-	SphereComp->SetVisibility(false);
-	const FCell& SpawnBombCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-	// UGhostRevengeSystemSpotComponent* Spot = UGRSWorldSubSystem::Get().GetSpotComponent();
+	CurrentCell.Location = AimingSphereComponent->GetComponentLocation();
 
-	const TFunction<void(UMapComponent&)> OnBombSpawned = [WeakThis = TWeakObjectPtr(this), this](UMapComponent& MapComponent)
-	{
-		AGRSPlayerCharacter* PlayerCharacter = WeakThis.Get();
-		if (!PlayerCharacter)
-		{
-			return;
-		}
+	//--- hide aiming sphere from ui
+	AimingSphereComponent->SetVisibility(false);
 
-		ACharacter* Character = Cast<ACharacter>(PlayerCharacter);
-
-		// Init Bomb
-		BombActorInternal = CastChecked<ABombActor>(MapComponent.GetOwner());
-
-		// Start listening this bomb
-		MapComponent.OnPostRemovedFromLevel.AddUniqueDynamic(PlayerCharacter, &ThisClass::OnBombDestroyed);
-	};
-
-	// Spawn bomb
-	// const FBmrMeshData& PlayerMeshData = Spot->GetMeshChecked().GetMeshData();
-	const struct FBmrMeshData& MeshData = FBmrMeshData(UBombDataAsset::Get().GetRowByIndex(0));
-	const auto& OnSpawned = [MeshData](UMapComponent& MapComponent)
-	{
-		MapComponent.SetReplicatedMeshData(MeshData);
-	};
-	AGeneratedMap::Get().SpawnActorByType(EAT::Bomb, SpawnBombCell, OnBombSpawned);
-
-	// empty bomb count to spawn
-	BombCountInternal = 0;
+	//--- spawn bomb on the server
+	SpawnBomb(CurrentCell);
 
 	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f);
 	ThrowDirection.Normalize();
@@ -742,6 +723,18 @@ void AGRSPlayerCharacter::ThrowProjectile(const FInputActionValue& ActionValue)
 	}
 }
 
+// Spawn bomb on aiming sphere position
+void AGRSPlayerCharacter::SpawnBomb(FCell TargetCell)
+{
+	const FCell& SpawnBombCell = UCellsUtilsLibrary::GetNearestFreeCell(TargetCell);
+
+	// Activate bomb ability
+	FGameplayEventData EventData;
+	EventData.Instigator = this;
+	EventData.EventMagnitude = UCellsUtilsLibrary::GetIndexByCellLevel(SpawnBombCell);
+	GetAbilitySystemComponent()->HandleGameplayEvent(BmrGameplayTags::Event::Bomb_Placed, &EventData);
+}
+
 // Hide spline elements (trajectory)
 void AGRSPlayerCharacter::ClearTrajectorySplines()
 {
@@ -752,17 +745,4 @@ void AGRSPlayerCharacter::ClearTrajectorySplines()
 
 	SplineMeshArrayInternal.Empty();
 	ProjectileSplineComponentInternal->ClearSplinePoints();
-}
-
-// Event triggered when the bomb has been explicitly destroyed.
-void AGRSPlayerCharacter::OnBombDestroyed_Implementation(class UMapComponent* MapComponent, UObject* DestroyCauser)
-{
-	if (!MapComponent
-	    || MapComponent->GetActorType() != EAT::Bomb
-	    || BombCountInternal >= 1)
-	{
-		return;
-	}
-	// reset count of bombs available
-	BombCountInternal = 1;
 }

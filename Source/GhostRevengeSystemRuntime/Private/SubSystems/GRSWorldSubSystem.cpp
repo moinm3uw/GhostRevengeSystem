@@ -11,6 +11,7 @@
 #include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
+#include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
@@ -55,14 +56,29 @@ void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* Ghost
 {
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
+	FCell ActorSpawnLocation;
+	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+
 	if (!GhostCharacterLeftSide)
 	{
 		GhostCharacterLeftSide = GhostPlayerCharacter;
+
+		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
+		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
 	}
 	else if (!GhostCharacterRightSide)
 	{
 		GhostCharacterRightSide = GhostPlayerCharacter;
+
+		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
+		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
 	}
+
+	// Match the Z axis to what we have on the level
+	ActorSpawnLocation.Location.Z = 100.0f;
+	GhostPlayerCharacter->SetActorLocation(ActorSpawnLocation);
 }
 
 // Returns the side of the ghost character (left, or right)
@@ -93,7 +109,8 @@ void UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter* PlayerCharacte
 	{
 		GhostCharacterLeftSide->ActivateCharacter(PlayerCharacter);
 	}
-	else if (!GhostCharacterRightSide->GetController())
+
+	if (!GhostCharacterRightSide->GetController())
 	{
 		GhostCharacterRightSide->ActivateCharacter(PlayerCharacter);
 	}

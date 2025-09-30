@@ -152,7 +152,6 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 	{
 		AGRSPlayerCharacter& GhostCharacter = CreatedObject.GetChecked<AGRSPlayerCharacter>();
 		UE_LOG(LogTemp, Warning, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-		UGRSWorldSubSystem::Get().RegisterGhostCharacter(&GhostCharacter);
 
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostPlayerEliminates.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);

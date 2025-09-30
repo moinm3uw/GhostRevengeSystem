@@ -46,6 +46,10 @@ public:
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
 	FOnGhostPlayerEliminates OnGhostPlayerEliminates;
 
+	/** Get the character side  */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	EGRSCharacterSide GetCharacterSide() const;
+
 	/*********************************************************************************************
 	 * Mesh and Initialization
 	 **********************************************************************************************/
@@ -53,10 +57,6 @@ protected:
 	/** Mesh of component. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
-
-	/** Ghost Character Side*/
-	UPROPERTY(VisibleDefaultsOnly, Transient, Category = "C++")
-	EGRSCharacterSide CharacterSide = EGRSCharacterSide::None;
 
 	/** Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc. */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -166,8 +166,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TArray<class USplineMeshComponent*> SplineMeshArrayInternal;
 
+	/** Aiming sphere used when a player aiming*/
 	UPROPERTY(VisibleAnywhere)
-	class UStaticMeshComponent* SphereComp;
+	class UStaticMeshComponent* AimingSphereComponent;
 
 public:
 	/** Hold button to increase trajectory on max level achieved throw projectile */
@@ -178,9 +179,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ShowVisualTrajectory();
 
-	/** Spawn and send projectile */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void ThrowProjectile(const FInputActionValue& ActionValue);
+	/** Throw projectile event, binded to onetime button press */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ThrowProjectile();
 
 	/** Hide spline elements (trajectory) */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
@@ -190,7 +191,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
 
-	/** Add a mesh to the last element of the predict Projectile path results */
+	/** Add a mesh to the last element of the predicцt Projectile path results */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result);
 
@@ -220,15 +221,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
 	class ABombActor* BombActorInternal = nullptr;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
-	int32 BombCountInternal = 1;
-
 	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
 	// TArray<AActor*> PlayerCharactersInternal;
-
-	/** Event triggered when the bomb has been explicitly destroyed. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnBombDestroyed(class UMapComponent* MapComponent, UObject* DestroyCauser = nullptr);
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -237,4 +231,8 @@ protected:
 	/** Subscribes to PlayerCharacters death events in order to see if a player died */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void RegisterForPlayerDeath();
+
+	/** Spawn bomb on aiming sphere position. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SpawnBomb(FCell TargetCell);
 };

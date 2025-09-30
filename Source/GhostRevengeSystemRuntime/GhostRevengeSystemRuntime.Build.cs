@@ -6,13 +6,14 @@ public class GhostRevengeSystemRuntime : ModuleRules
 {
 	public GhostRevengeSystemRuntime(ReadOnlyTargetRules Target) : base(Target)
 	{
-		CppStandard = CppStandardVersion.Latest; 
+		CppStandard = CppStandardVersion.Latest;
 		bEnableNonInlinedGenCppWarnings = true;
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;  
+		
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{
-				"Core", "UMG", "EnhancedInput" // Created UMyInputAction, UMyInputMappingContext
+				"Core", "UMG", "EnhancedInput", "GameplayAbilities" // Created UMyInputAction, UMyInputMappingContext
 				// Bomber
 				,
 				"Bomber"
