@@ -74,6 +74,8 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	// Initialize 3D widget component for the player name
 	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
 	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
+
+	ReceiveControllerChangedDelegate.AddDynamic(this, &ThisClass::OnControllerChanged);
 }
 
 // Get the character side
@@ -267,6 +269,28 @@ void AGRSPlayerCharacter::UnPossessed()
 	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::UnPossessed happened"));
 }
 
+// Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance
+void AGRSPlayerCharacter::OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController)
+{
+	if (OldController && OldController->HasAuthority() || NewController && NewController->HasAuthority())
+	{
+		return;
+	}
+
+	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(OldController);
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	TArray<const UMyInputMappingContext*> InputContexts;
+	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+	InputContexts.AddUnique(InputContext);
+
+	// --- Remove related input contexts
+	PlayerController->RemoveInputContexts(InputContexts);
+}
+
 // Enables or disables the input context
 void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
 {
@@ -375,15 +399,12 @@ void AGRSPlayerCharacter::OnGameStateChanged_Implementation(ECurrentGameState Cu
 		{
 			// --- default params required for the fist start to have character prepared
 			SetDefaultPlayerMeshData();
-			// -- Set actor spawn location
-			SetLocation();
 			// --- Init Player name
 			// InitializePlayerName(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
 			// --- Init character visuals (animations, skin)
 			InitializeCharacterVisual(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
 			// --- Clear splines
 			ClearTrajectorySplines();
-
 			break;
 		}
 
@@ -455,41 +476,6 @@ void AGRSPlayerCharacter::InitializeCharacterVisual(const APlayerCharacter* Play
 	CurrentMeshComponent->ApplySkinByIndex(CurrentSkinIndex);
 }
 
-// Set initial location on spawn
-void AGRSPlayerCharacter::SetLocation()
-{
-	FCell ActorSpawnLocation;
-	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
-
-	/**
-
-	switch (CurrentPlayerSide)
-	{
-	    case EGRSCharacterSide::Left:
-	    {
-	        ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
-	        ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
-	        ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
-	        break;
-	    }
-	    case EGRSCharacterSide::Right:
-	    {
-	        ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
-	        ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
-	        ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + CellSize; // temporary, debug row
-	        break;
-	    }
-
-	    default:
-	        break;
-	}
-	*/
-
-	// --- Update ghost character
-	// SetActorLocation(ActorSpawnLocation);
-	SetVisibility(true);
-}
-
 //  Initialize Player Name
 void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainCharacter) const
 {
@@ -522,10 +508,12 @@ void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainChara
 // Remove ghost character from the level
 void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 {
+	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AimingSphereComponent->SetVisibility(false);
+
 	// --- not ghost character controlled, could be null
-	if (GetController())
+	if (GetController() && GetController()->HasAuthority())
 	{
-		SetLocation(); // reset location
 		GetController()->UnPossess();
 	}
 }
@@ -539,9 +527,18 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapCompone
 		return;
 	}
 
-	if (BombActorInternal == DestroyCauser)
+	const APawn* Causer = Cast<APawn>(DestroyCauser);
+	if (Causer)
 	{
-		OnGhostPlayerEliminates.Broadcast(PlayerCharacter, this);
+		const AActor* CauserActor = Cast<AActor>(DestroyCauser);
+		Causer = CauserActor ? CauserActor->GetInstigator() : nullptr;
+		const AGRSPlayerCharacter* GRSCharacter = Cast<AGRSPlayerCharacter>(Causer);
+		if (GRSCharacter == this)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- Spawner is an instigator"), __LINE__, __FUNCTION__);
+			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter, this);
+			RemoveGhostCharacterFromMap();
+		}
 	}
 }
 

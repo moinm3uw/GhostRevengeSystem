@@ -154,7 +154,7 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 		UE_LOG(LogTemp, Warning, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		// we can path a current local player since it needed only for the skin init
-		GhostCharacter.OnGhostPlayerEliminates.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
+		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
 	}
 }
 
@@ -172,14 +172,31 @@ void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(class APlayerCh
 		return;
 	}
 
-	GhostCharacter->SetLocation(); // reset to default position
 	PlayerController->UnPossess();
 
 	FVector SpawnLocation = PlayerCharacter->GetActorLocation();
 
 	FCell CurrentCell = SpawnLocation;
 	// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-	AGeneratedMap::Get().SpawnActorWithMesh(EActorType::Player, CurrentCell, UMapComponent::GetMapComponent(PlayerCharacter)->GetReplicatedMeshData());
+
+	const TFunction<void(UMapComponent&)> OnPlayerSpawned = [WeakThis = TWeakObjectPtr(this), PlayerController, SpawnLocation](const UMapComponent& MapComponent)
+	{
+		UGRSGhostCharacterManagerComponent* This = WeakThis.Get();
+		if (!This || !PlayerController || !PlayerController->HasAuthority())
+		{
+			return;
+		}
+
+		APlayerCharacter* PlayerCharacter = MapComponent.GetOwner<APlayerCharacter>();
+		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+		PlayerCharacter->SetActorLocation(SpawnLocation);
+		PlayerCharacter->SetController(PlayerController);
+		PlayerCharacter->TryPossessController(EPlayerType::Human);
+	};
+	AGeneratedMap::Get().SpawnActorByType(EActorType::Player, CurrentCell, OnPlayerSpawned);
 
 	FString Name = PlayerCharacter->GetName();
 	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);

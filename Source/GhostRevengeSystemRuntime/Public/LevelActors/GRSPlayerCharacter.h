@@ -37,14 +37,14 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
 	GENERATED_BODY()
 
 public:
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostPlayerEliminates, APlayerCharacter*, EliminatedPlayerCharacter, AGRSPlayerCharacter*, GhostCharacter);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, APlayerCharacter*, EliminatedPlayerCharacter, AGRSPlayerCharacter*, GhostCharacter);
 
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
-	/** Is called when ghost killed a player */
+	/** Is called when a ghost characters kills another player */
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
-	FOnGhostPlayerEliminates OnGhostPlayerEliminates;
+	FOnGhostEliminatesPlayer OnGhostEliminatesPlayer;
 
 	/** Get the character side  */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -109,10 +109,6 @@ public:
 	/** Perform init character once added to the level from a refence character (visuals, animations) */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void InitializeCharacterVisual(const APlayerCharacter* PlayerCharacter);
-
-	/** Set initial location on spawn */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetLocation();
 
 	/** Initialize Player Name */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -208,6 +204,10 @@ public:
 
 	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */
 	virtual void UnPossessed() override;
+
+	/** Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance. */
+	UFUNCTION()
+	void OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController);
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */
