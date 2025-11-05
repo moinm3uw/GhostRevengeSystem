@@ -3,6 +3,8 @@
 #include "Components/GRSGhostCharacterManagerComponent.h"
 
 #include "Bomber.h"
+#include "Components/MySkeletalMeshComponent.h"
+#include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "Engine/World.h"
 #include "GameFramework/MyGameStateBase.h"
@@ -12,6 +14,7 @@
 #include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalEventsSubsystem.h"
+#include "UtilityLibraries/CellsUtilsLibrary.h"
 #include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
 
 // Sets default values for this component's properties
@@ -89,7 +92,8 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
 			if (MapComponent)
 			{
-				MapComponent->OnPostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
+				// MapComponent->OnPostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
 			}
 		}
 	}
@@ -155,29 +159,41 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
+		/// GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
 	}
 }
 
 // Called when the ghost player kills another player and will be swaped with him
-void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(class APlayerCharacter* PlayerCharacter, class AGRSPlayerCharacter* GhostCharacter)
+void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter)
 {
-	if (!GhostCharacter || !PlayerCharacter)
+	AddPlayerCharacter(AtLocation, GhostCharacter);
+}
+
+// Called when the ghost character should be removed from level to unpossess controller
+void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AGRSPlayerCharacter* GhostCharacter)
+{
+	AddPlayerCharacter(FVector::Zero(), GhostCharacter);
+}
+
+// Spawn and possess a regular player character to the level at location
+void UGRSGhostCharacterManagerComponent::AddPlayerCharacter(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter)
+{
+	if (!GhostCharacter)
 	{
 		return;
 	}
 
 	AController* PlayerController = GhostCharacter->GetController();
-	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__)
+	    || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	PlayerController->UnPossess();
-
-	FVector SpawnLocation = PlayerCharacter->GetActorLocation();
+	FVector SpawnLocation = AtLocation;
 
 	FCell CurrentCell = SpawnLocation;
-	// const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
+	const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
 
 	const TFunction<void(UMapComponent&)> OnPlayerSpawned = [WeakThis = TWeakObjectPtr(this), PlayerController, SpawnLocation](const UMapComponent& MapComponent)
 	{
@@ -192,12 +208,16 @@ void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(class APlayerCh
 		{
 			return;
 		}
-		PlayerCharacter->SetActorLocation(SpawnLocation);
-		PlayerCharacter->SetController(PlayerController);
-		PlayerCharacter->TryPossessController(EPlayerType::Human);
-	};
-	AGeneratedMap::Get().SpawnActorByType(EActorType::Player, CurrentCell, OnPlayerSpawned);
 
-	FString Name = PlayerCharacter->GetName();
-	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayer character bomb destroyed actor %s"), *Name);
+		PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		if (PlayerController->GetPawn())
+		{
+			// At first, unpossess previous controller
+			PlayerController->UnPossess();
+		}
+
+		PlayerController->Possess(PlayerCharacter);
+		// PlayerCharacter->SetActorTickEnabled(true);
+	};
+	AGeneratedMap::Get().SpawnActorByType(EActorType::Player, SnappedCell, OnPlayerSpawned);
 }

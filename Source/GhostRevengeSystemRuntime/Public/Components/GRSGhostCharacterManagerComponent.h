@@ -61,7 +61,15 @@ protected:
 
 	/** Called when the ghost player kills another player and will be swaped with him */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void OnGhostEliminatesPlayer(class APlayerCharacter* PlayerCharacter, class AGRSPlayerCharacter* GhostCharacter);
+	void OnGhostEliminatesPlayer(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter);
+
+	/** Called when the ghost character should be removed from level to unpossess controller */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void OnGhostRemovedFromLevel(AGRSPlayerCharacter* GhostCharacter);
+
+	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void AddPlayerCharacter(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter);
 
 public:
 };

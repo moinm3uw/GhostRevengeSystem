@@ -3,6 +3,7 @@
 #include "LevelActors/GRSPlayerCharacter.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 #include "Animation/AnimInstance.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -89,10 +90,10 @@ EGRSCharacterSide AGRSPlayerCharacter::GetCharacterSide() const
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
 void AGRSPlayerCharacter::SetDefaultParams()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	// Replicate an acto
+	// Replicate an actor
 	bReplicates = true;
 	bAlwaysRelevant = true;
 	SetReplicatingMovement(true);
@@ -230,7 +231,7 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 		return;
 	}
 
-	PlayerController->ResetIgnoreMoveInput();
+	// PlayerController->ResetIgnoreMoveInput();
 
 	if (PlayerController)
 	{
@@ -246,16 +247,32 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	RegisterForPlayerDeath();
 
 	// --- enable inputs for ghost character
-	SetManagedInputContextEnabled(true);
+	SetManagedInputContextEnabled(PlayerController, true);
 }
 
-// Called when a controller has been replicated to the client
+// Called when a controller has been replicated to the client. Used to enable input context only
 void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
+}
 
-	// --- enable inputs for ghost character
-	SetManagedInputContextEnabled(true);
+void AGRSPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	// Actor has ASC: apply damage through GAS
+
+	if (GASEffectHandle.IsValid())
+	{
+		return;
+	}
+	APlayerState* InPlayerState = GetPlayerState();
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(InPlayerState);
+	TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffect();
+	if (ensureMsgf(ExplosionDamageEffect, TEXT("ASSERT: [%i] %hs:\n'ExplosionDamageEffect' is not set!"), __LINE__, __FUNCTION__))
+	{
+		GASEffectHandle = ASC->ApplyGameplayEffectToSelf(ExplosionDamageEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
+	}
 }
 
 // Called when our Controller no longer possesses us. Only called on the server (or in standalone).
@@ -263,39 +280,50 @@ void AGRSPlayerCharacter::UnPossessed()
 {
 	Super::UnPossessed();
 
-	//--- disable inputs for ghost character once no more controller available
-	SetManagedInputContextEnabled(false);
-
 	UE_LOG(LogTemp, Warning, TEXT("GRSPlayerCharacter::UnPossessed happened"));
 }
 
-// Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance
+// Event called after a pawn's controller has changed. Used to disable input context on the clients only
 void AGRSPlayerCharacter::OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController)
 {
+	// --- ignore server calls as need to disable only on the client
 	if (OldController && OldController->HasAuthority() || NewController && NewController->HasAuthority())
 	{
 		return;
 	}
 
-	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(OldController);
+	if (!ensureMsgf(Pawn, TEXT("ASSERT: [%i] %hs:\n'Pawn' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	// --- case 1: unpossess. Old controller exist and new controller is not.
+	if (OldController && !NewController)
+	{
+		SetManagedInputContextEnabled(OldController, false);
+		if (OldController->GetPawn())
+		{
+			// OldController->GetPawn()->SetActorTickEnabled(true);
+		}
+	}
+
+	// --- case 2: possess. Old controller does not exist and a new controller is set.
+	if (!OldController && NewController)
+	{
+		SetManagedInputContextEnabled(NewController, true);
+	}
+}
+
+// Enables or disables the input context
+void AGRSPlayerCharacter::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
+{
 	if (!PlayerController)
 	{
 		return;
 	}
 
-	TArray<const UMyInputMappingContext*> InputContexts;
-	UMyInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-	InputContexts.AddUnique(InputContext);
-
-	// --- Remove related input contexts
-	PlayerController->RemoveInputContexts(InputContexts);
-}
-
-// Enables or disables the input context
-void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
-{
-	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
-	if (!PlayerController)
+	AMyPlayerController* MyPlayerController = Cast<AMyPlayerController>(PlayerController);
+	if (!MyPlayerController)
 	{
 		return;
 	}
@@ -307,18 +335,18 @@ void AGRSPlayerCharacter::SetManagedInputContextEnabled(bool bEnable)
 	if (!bEnable)
 	{
 		// --- Remove related input contexts
-		PlayerController->RemoveInputContexts(InputContexts);
+		MyPlayerController->RemoveInputContexts(InputContexts);
 		return;
 	}
 
 	// --- Remove all previous input contexts managed by Controller
-	PlayerController->RemoveInputContexts(InputContexts);
+	MyPlayerController->RemoveInputContexts(InputContexts);
 
 	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
 	if (InputContext
 	    && InputContext->GetChosenGameStatesBitmask() > 0)
 	{
-		PlayerController->SetupInputContexts(InputContexts);
+		MyPlayerController->SetupInputContexts(InputContexts);
 	}
 }
 
@@ -516,6 +544,13 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	{
 		GetController()->UnPossess();
 	}
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetInstigator());
+	if (!ASC)
+	{
+		return;
+	}
+	ASC->RemoveActiveGameplayEffect(GASEffectHandle);
+	GASEffectHandle.Invalidate();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -536,7 +571,7 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapCompone
 		if (GRSCharacter == this)
 		{
 			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- Spawner is an instigator"), __LINE__, __FUNCTION__);
-			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter, this);
+			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter->GetActorLocation(), this);
 			RemoveGhostCharacterFromMap();
 		}
 	}
@@ -729,7 +764,7 @@ void AGRSPlayerCharacter::SpawnBomb(FCell TargetCell)
 	FGameplayEventData EventData;
 	EventData.Instigator = this;
 	EventData.EventMagnitude = UCellsUtilsLibrary::GetIndexByCellLevel(SpawnBombCell);
-	GetAbilitySystemComponent()->HandleGameplayEvent(BmrGameplayTags::Event::Bomb_Placed, &EventData);
+	GetAbilitySystemComponent()->HandleGameplayEvent(UGRSDataAsset::Get().GetTriggerBombTag(), &EventData);
 }
 
 // Hide spline elements (trajectory)

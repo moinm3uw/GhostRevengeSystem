@@ -86,6 +86,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "C++")
 	FORCEINLINE TSubclassOf<class AActor> GetCollisionsAssetClass() const { return CollisionsAssetInternal; }
 
+	/** Returns the explosion damage gameplay effect applied when the bomb detonates.
+	 * @see UGRSDataAsset::ExplosionDamageEffectInternal */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetExplosionDamageEffect() const { return ExplosionDamageEffectInternal; }
+
+	/** Returns the trigger bomb placement tag */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE FGameplayTag GetTriggerBombTag() const { return TriggerBombTag; }
+
 protected:
 	/** Input mapping context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
@@ -141,4 +150,11 @@ protected:
 	/** Asset that contains scalable collision. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Collisions Asset", ShowOnlyInnerProperties))
 	TSubclassOf<class AActor> CollisionsAssetInternal = nullptr;
+
+	/** Explosion damage gameplay effect applied when the bomb detonates. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
+	TSubclassOf<class UGameplayEffect> ExplosionDamageEffectInternal = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
+	FGameplayTag TriggerBombTag = FGameplayTag::EmptyTag;
 };

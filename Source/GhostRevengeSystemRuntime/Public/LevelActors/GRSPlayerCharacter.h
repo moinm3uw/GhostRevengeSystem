@@ -3,6 +3,7 @@
 #pragma once
 
 #include "AbilitySystemInterface.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "Components/MapComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -37,7 +38,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
 	GENERATED_BODY()
 
 public:
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, APlayerCharacter*, EliminatedPlayerCharacter, AGRSPlayerCharacter*, GhostCharacter);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, FVector, AtLocation, AGRSPlayerCharacter*, GhostCharacter);
 
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
@@ -45,6 +46,9 @@ public:
 	/** Is called when a ghost characters kills another player */
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
 	FOnGhostEliminatesPlayer OnGhostEliminatesPlayer;
+
+	/** Cached handle of current applied effect*/
+	FActiveGameplayEffectHandle GASEffectHandle;
 
 	/** Get the character side  */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -199,20 +203,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
 
-	/** Called when a controller has been replicated to the client */
+	/** Called when a controller has been replicated to the client. Used to enable input context only */
 	virtual void OnRep_Controller() override;
+
+	virtual void PossessedBy(AController* NewController) override;
 
 	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */
 	virtual void UnPossessed() override;
 
-	/** Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance. */
+	/** Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance.
+	 * Used to disable input context on the clients only */
 	UFUNCTION()
 	void OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController);
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetManagedInputContextEnabled(bool bEnable);
+	void SetManagedInputContextEnabled(AController* PlayerController, bool bEnable);
 
 	/*********************************************************************************************
 	 * Bomb
