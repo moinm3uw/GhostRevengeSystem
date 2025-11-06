@@ -155,6 +155,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
 	TSubclassOf<class UGameplayEffect> ExplosionDamageEffectInternal = nullptr;
 
+	/** A tag used for GAS to trigger bomb placement */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
 	FGameplayTag TriggerBombTag = FGameplayTag::EmptyTag;
 };
