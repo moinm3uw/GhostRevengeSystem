@@ -231,8 +231,6 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 		return;
 	}
 
-	// PlayerController->ResetIgnoreMoveInput();
-
 	if (PlayerController)
 	{
 		// Unpossess current pawn first

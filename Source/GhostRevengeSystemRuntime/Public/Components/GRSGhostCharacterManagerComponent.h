@@ -43,11 +43,7 @@ protected:
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnPostRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
-
-	/** Whenever a main player character is removed from level */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnMainCharacterRemovedFromLevel();
+	void OnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Add ghost character to the current active game (on level map) */
 	UFUNCTION(BlueprintCallable, Category = "C++")

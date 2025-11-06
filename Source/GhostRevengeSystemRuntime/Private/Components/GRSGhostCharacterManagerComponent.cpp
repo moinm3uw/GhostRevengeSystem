@@ -47,7 +47,6 @@ void UGRSGhostCharacterManagerComponent::OnInitialize()
 
 	// spawn 2 characters right away
 	AddGhostCharacter();
-	// UGRSWorldSubSystem::Get().OnMainCharacterRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnMainCharacterRemovedFromLevel);
 }
 
 // Listen game states to remove ghost character from level
@@ -92,15 +91,14 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
 			if (MapComponent)
 			{
-				// MapComponent->OnPostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
-				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPostRemovedFromLevel);
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
 			}
 		}
 	}
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
-void UGRSGhostCharacterManagerComponent::OnPostRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+void UGRSGhostCharacterManagerComponent::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
 {
 	APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
@@ -110,12 +108,6 @@ void UGRSGhostCharacterManagerComponent::OnPostRemovedFromLevel_Implementation(c
 	}
 
 	UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
-}
-
-// Whenever a main player character is removed from level
-void UGRSGhostCharacterManagerComponent::OnMainCharacterRemovedFromLevel_Implementation()
-{
-	// take over controlls
 }
 
 // Add ghost character to the current active game (on level map)
@@ -159,7 +151,7 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
-		/// GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
+		// GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
 	}
 }
 
@@ -217,7 +209,6 @@ void UGRSGhostCharacterManagerComponent::AddPlayerCharacter(FVector AtLocation, 
 		}
 
 		PlayerController->Possess(PlayerCharacter);
-		// PlayerCharacter->SetActorTickEnabled(true);
 	};
 	AGeneratedMap::Get().SpawnActorByType(EActorType::Player, SnappedCell, OnPlayerSpawned);
 }
