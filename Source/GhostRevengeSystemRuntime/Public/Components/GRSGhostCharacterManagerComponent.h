@@ -26,6 +26,10 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
 
+	/** Current player character ids to restore when ghost is no longer possesses a controller */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Character Id"))
+	TArray<int32> DeadPlayerCharacterIds;
+
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
@@ -43,7 +47,7 @@ protected:
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
+	void PlayerCharacterOnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Add ghost character to the current active game (on level map) */
 	UFUNCTION(BlueprintCallable, Category = "C++")
@@ -61,11 +65,11 @@ protected:
 
 	/** Called when the ghost character should be removed from level to unpossess controller */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void OnGhostRemovedFromLevel(AGRSPlayerCharacter* GhostCharacter);
+	void OnGhostRemovedFromLevel(class AController* CurrentController);
 
 	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void AddPlayerCharacter(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter);
+	void RevivePlayerCharacter(class AController* PlayerController);
 
 public:
 };

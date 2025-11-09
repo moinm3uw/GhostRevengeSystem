@@ -2,12 +2,15 @@
 
 #include "Components/GRSGhostCharacterManagerComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 #include "Bomber.h"
 #include "Components/MySkeletalMeshComponent.h"
 #include "Controllers/MyPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "Engine/World.h"
 #include "GameFramework/MyGameStateBase.h"
+#include "GameFramework/PlayerState.h"
 #include "GeneratedMap.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
@@ -91,22 +94,36 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
 			if (MapComponent)
 			{
-				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+
+				// Actor has ASC: apply effect through GAS
+				APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
+				if (PlayerCharacter)
+				{
+					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
+					TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
+					if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
+					{
+						ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
+					}
+				}
 			}
 		}
 	}
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
-void UGRSGhostCharacterManagerComponent::OnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
 {
 	APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
-	    || PlayerCharacter->IsBotControlled())
+	    || PlayerCharacter->IsBotControlled()
+	    || !DestroyCauser)
 	{
 		return;
 	}
 
+	DeadPlayerCharacterIds.Add(PlayerCharacter->GetPlayerId());
 	UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
 }
 
@@ -151,64 +168,60 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
-		// GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
+		GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
 	}
 }
 
 // Called when the ghost player kills another player and will be swaped with him
 void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter)
 {
-	AddPlayerCharacter(AtLocation, GhostCharacter);
+	// RevivePlayerCharacter(GhostCharacter);
 }
 
 // Called when the ghost character should be removed from level to unpossess controller
-void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AGRSPlayerCharacter* GhostCharacter)
+void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AController* CurrentController)
 {
-	AddPlayerCharacter(FVector::Zero(), GhostCharacter);
-}
-
-// Spawn and possess a regular player character to the level at location
-void UGRSGhostCharacterManagerComponent::AddPlayerCharacter(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter)
-{
-	if (!GhostCharacter)
+	if (!CurrentController)
 	{
 		return;
 	}
 
-	AController* PlayerController = GhostCharacter->GetController();
+	RevivePlayerCharacter(CurrentController);
+}
+
+// Spawn and possess a regular player character to the level at location
+void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* PlayerController)
+{
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__)
 	    || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	FVector SpawnLocation = AtLocation;
-
-	FCell CurrentCell = SpawnLocation;
-	const FCell SnappedCell = UCellsUtilsLibrary::GetNearestFreeCell(CurrentCell);
-
-	const TFunction<void(UMapComponent&)> OnPlayerSpawned = [WeakThis = TWeakObjectPtr(this), PlayerController, SpawnLocation](const UMapComponent& MapComponent)
+	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetPlayerCharacter(DeadPlayerCharacterIds[0]);
+	if (!PlayerCharacter)
 	{
-		UGRSGhostCharacterManagerComponent* This = WeakThis.Get();
-		if (!This || !PlayerController || !PlayerController->HasAuthority())
-		{
-			return;
-		}
+		return;
+	}
 
-		APlayerCharacter* PlayerCharacter = MapComponent.GetOwner<APlayerCharacter>();
-		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
+	PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	if (PlayerController->GetPawn())
+	{
+		// At first, unpossess previous controller
+		PlayerController->UnPossess();
+	}
 
-		PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-		if (PlayerController->GetPawn())
-		{
-			// At first, unpossess previous controller
-			PlayerController->UnPossess();
-		}
+	PlayerController->Possess(PlayerCharacter);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
 
-		PlayerController->Possess(PlayerCharacter);
-	};
-	AGeneratedMap::Get().SpawnActorByType(EActorType::Player, SnappedCell, OnPlayerSpawned);
+	// SetManagedContextEnabled
+	DeadPlayerCharacterIds.RemoveAt(0, 1, /*bAllowShrinking=*/EAllowShrinking::No);
+
+	// Activate revive ability
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = UCellsUtilsLibrary::GetIndexByCellLevel(PlayerCharacter->GetActorLocation());
+	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
 }

@@ -91,9 +91,18 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetExplosionDamageEffect() const { return ExplosionDamageEffectInternal; }
 
+	/** Returns the player character revive gameplay effect applied to a player character.
+	 * @see UGRSDataAsset::PlayerReviveEffectInternal */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetPlayerReviveEffect() const { return PlayerReviveEffectInternal; }
+
 	/** Returns the trigger bomb placement tag */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	FORCEINLINE FGameplayTag GetTriggerBombTag() const { return TriggerBombTag; }
+
+	/** Returns the revive player character trigger tag */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE FGameplayTag GetReviePlayerCharacterTriggerTag() const { return ReviveCharacterTriggerTag; }
 
 protected:
 	/** Input mapping context for the GRSPlayerCharacter */
@@ -155,7 +164,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
 	TSubclassOf<class UGameplayEffect> ExplosionDamageEffectInternal = nullptr;
 
+	/** Player revive gameplay effect player character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Player Death Effect", ShowOnlyInnerProperties))
+	TSubclassOf<class UGameplayEffect> PlayerReviveEffectInternal = nullptr;
+
 	/** A tag used for GAS to trigger bomb placement */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Trigger Bomb Tag", ShowOnlyInnerProperties))
 	FGameplayTag TriggerBombTag = FGameplayTag::EmptyTag;
+
+	/** A tag used for GAS to trigger bomb placement */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Revive Player Character Tag", ShowOnlyInnerProperties))
+	FGameplayTag ReviveCharacterTriggerTag = FGameplayTag::EmptyTag;
 };

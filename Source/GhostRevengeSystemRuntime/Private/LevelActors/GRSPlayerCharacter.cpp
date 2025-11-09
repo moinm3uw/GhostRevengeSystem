@@ -252,14 +252,17 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
+
+	OnGhostPossesController_Client.Broadcast();
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostPossesController_Client.Broadcast"), __LINE__, __FUNCTION__);
 }
 
+// Called when a controller has been possessed by a new controller
 void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
 	// Actor has ASC: apply damage through GAS
-
 	if (GASEffectHandle.IsValid())
 	{
 		return;
@@ -271,6 +274,9 @@ void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 	{
 		GASEffectHandle = ASC->ApplyGameplayEffectToSelf(ExplosionDamageEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
 	}
+
+	OnGhostPossesController_Server.Broadcast();
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostPossesController_Server.Broadcast"), __LINE__, __FUNCTION__);
 }
 
 // Called when our Controller no longer possesses us. Only called on the server (or in standalone).
@@ -285,7 +291,7 @@ void AGRSPlayerCharacter::UnPossessed()
 void AGRSPlayerCharacter::OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController)
 {
 	// --- ignore server calls as need to disable only on the client
-	if (OldController && OldController->HasAuthority() || NewController && NewController->HasAuthority())
+	if (OldController && !OldController->IsLocalController() || NewController && !NewController->IsLocalController())
 	{
 		return;
 	}
@@ -299,10 +305,6 @@ void AGRSPlayerCharacter::OnControllerChanged(APawn* Pawn, AController* OldContr
 	if (OldController && !NewController)
 	{
 		SetManagedInputContextEnabled(OldController, false);
-		if (OldController->GetPawn())
-		{
-			// OldController->GetPawn()->SetActorTickEnabled(true);
-		}
 	}
 
 	// --- case 2: possess. Old controller does not exist and a new controller is set.
@@ -394,6 +396,8 @@ void AGRSPlayerCharacter::BeginPlay()
 	AimingSphereComponent->SetVisibility(true);
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+	OnGhostAddedToLevel.Broadcast();
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostAddedToLevel.Broadcast"), __LINE__, __FUNCTION__);
 }
 
 // Perform ghost character activation (possessing controller)
@@ -534,6 +538,9 @@ void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainChara
 // Remove ghost character from the level
 void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 {
+	OnGhostRemovedFromLevel.Broadcast(GetController());
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
+
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AimingSphereComponent->SetVisibility(false);
 
@@ -568,8 +575,8 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UMapCompone
 		const AGRSPlayerCharacter* GRSCharacter = Cast<AGRSPlayerCharacter>(Causer);
 		if (GRSCharacter == this)
 		{
-			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- Spawner is an instigator"), __LINE__, __FUNCTION__);
 			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter->GetActorLocation(), this);
+			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostEliminatesPlayer.Broadcast"), __LINE__, __FUNCTION__);
 			RemoveGhostCharacterFromMap();
 		}
 	}

@@ -38,16 +38,36 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
 	GENERATED_BODY()
 
 public:
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostAddedToLevel);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Client);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Server);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGhostRemovedFromLevel, AController*, CurrentPlayerController);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, FVector, AtLocation, AGRSPlayerCharacter*, GhostCharacter);
 
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
+	/** Is called when a ghost character added to level without possession */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnGhostAddedToLevel OnGhostAddedToLevel;
+
+	/** Is called when a ghost character is added to level and possessed a controller on client */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnGhostPossesController_Client OnGhostPossesController_Client;
+
+	/** Is called when a ghost character is added to level and possessed a controller on server*/
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnGhostPossesController_Server OnGhostPossesController_Server;
+
+	/** Is called when a ghost character removed from level */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnGhostRemovedFromLevel OnGhostRemovedFromLevel;
+
 	/** Is called when a ghost characters kills another player */
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
 	FOnGhostEliminatesPlayer OnGhostEliminatesPlayer;
 
-	/** Cached handle of current applied effect*/
+	/** Cached handle of current applied effect */
 	FActiveGameplayEffectHandle GASEffectHandle;
 
 	/** Get the character side  */
@@ -206,6 +226,7 @@ public:
 	/** Called when a controller has been replicated to the client. Used to enable input context only */
 	virtual void OnRep_Controller() override;
 
+	/** Called when a controller has been possessed by a new controller */
 	virtual void PossessedBy(AController* NewController) override;
 
 	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */
