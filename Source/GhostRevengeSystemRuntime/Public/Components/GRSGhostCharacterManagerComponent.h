@@ -26,9 +26,9 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
 
-	/** Current player character ids to restore when ghost is no longer possesses a controller */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Character Id"))
-	TArray<int32> DeadPlayerCharacterIds;
+	/** List of dead player characters to restore when ghost is no longer possesses a controller */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Dead Player Characters"))
+	TArray<class APlayerCharacter*> DeadPlayerCharacters;
 
 	// Called when the game starts
 	virtual void BeginPlay() override;

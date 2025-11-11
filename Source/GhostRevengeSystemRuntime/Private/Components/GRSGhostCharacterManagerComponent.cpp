@@ -123,7 +123,7 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 		return;
 	}
 
-	DeadPlayerCharacterIds.Add(PlayerCharacter->GetPlayerId());
+	DeadPlayerCharacters.AddUnique(PlayerCharacter);
 	UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
 }
 
@@ -198,7 +198,7 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 		return;
 	}
 
-	APlayerCharacter* PlayerCharacter = UMyBlueprintFunctionLibrary::GetPlayerCharacter(DeadPlayerCharacterIds[0]);
+	APlayerCharacter* PlayerCharacter = DeadPlayerCharacters[0];
 	if (!PlayerCharacter)
 	{
 		return;
@@ -217,7 +217,7 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
 
 	// SetManagedContextEnabled
-	DeadPlayerCharacterIds.RemoveAt(0, 1, /*bAllowShrinking=*/EAllowShrinking::No);
+	DeadPlayerCharacters.RemoveAt(0, 1, /*bAllowShrinking=*/EAllowShrinking::No);
 
 	// Activate revive ability
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);

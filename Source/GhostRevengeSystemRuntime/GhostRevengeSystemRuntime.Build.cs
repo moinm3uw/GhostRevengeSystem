@@ -6,10 +6,11 @@ public class GhostRevengeSystemRuntime : ModuleRules
 {
 	public GhostRevengeSystemRuntime(ReadOnlyTargetRules Target) : base(Target)
 	{
+		PCHUsage = PCHUsageMode.NoPCHs; //@Todo: DEBUG.  Instead of current UseExplicitOrSharedPCHs
 		CppStandard = CppStandardVersion.Latest;
-		bEnableNonInlinedGenCppWarnings = true;
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;  
-		
+        bEnableNonInlinedGenCppWarnings = true; // debug // ModuleRules.CppCompileWarningSettings.NonInlinedGenCppWarningLevel
+        OptimizeCode = CodeOptimization.Never;  // debug
+        bUseUnity = false; //@Todo: DEBUG
 
 		PublicDependencyModuleNames.AddRange(new string[]
 			{
