@@ -41,7 +41,7 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostAddedToLevel);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Client);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Server);
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGhostRemovedFromLevel, AController*, CurrentPlayerController);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostRemovedFromLevel, AController*, CurrentPlayerController, AGRSPlayerCharacter*, GhostPlayerCharacter);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, FVector, AtLocation, AGRSPlayerCharacter*, GhostCharacter);
 
 	/** Sets default values for this character's properties */

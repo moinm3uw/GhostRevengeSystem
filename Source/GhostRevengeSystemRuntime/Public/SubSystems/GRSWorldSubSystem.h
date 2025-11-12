@@ -62,7 +62,7 @@ public:
 
 	/** Broadcasts the activation of ghost character, can be called from outside */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void ActivateGhostCharacter(APlayerCharacter* PlayerCharacter);
+	class AGRSPlayerCharacter* ActivateGhostCharacter(APlayerCharacter* PlayerCharacter);
 
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.

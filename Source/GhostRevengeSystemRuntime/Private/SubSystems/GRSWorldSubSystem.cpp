@@ -103,17 +103,19 @@ EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerChar
 }
 
 // Broadcasts the activation of ghost character, can be called from outside
-void UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter* PlayerCharacter)
+AGRSPlayerCharacter* UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter* PlayerCharacter)
 {
 	if (!GhostCharacterLeftSide->GetController())
 	{
-		GhostCharacterLeftSide->ActivateCharacter(PlayerCharacter);
+		return GhostCharacterLeftSide;
 	}
 
 	if (!GhostCharacterRightSide->GetController())
 	{
-		GhostCharacterRightSide->ActivateCharacter(PlayerCharacter);
+		return GhostCharacterRightSide;
 	}
+
+	return nullptr;
 }
 
 // Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors

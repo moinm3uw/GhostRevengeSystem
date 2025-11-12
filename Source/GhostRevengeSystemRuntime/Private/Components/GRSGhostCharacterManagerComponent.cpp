@@ -59,6 +59,7 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(ECurr
 	{
 		case ECurrentGameState::GameStarting:
 		{
+			DeadPlayerCharacters.Empty();
 			if (GetOwner()->HasAuthority())
 			{
 				RegisterForPlayerDeath();
@@ -123,8 +124,40 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 		return;
 	}
 
-	DeadPlayerCharacters.AddUnique(PlayerCharacter);
-	UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
+	// --- check if already dead character was present
+	for (const TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	{
+		if (Pair.Key == PlayerCharacter)
+		{
+			if (!Pair.Value)
+			{
+				return;
+			}
+		}
+	}
+
+	// --- handle 3rd player character death to perform swap
+	AGRSPlayerCharacter* GRSCauser = Cast<AGRSPlayerCharacter>(DestroyCauser);
+	if (GRSCauser && DeadPlayerCharacters.Num() > 1)
+	{
+		for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+		{
+			if (Pair.Value == GRSCauser)
+			{
+				Pair.Value = nullptr;
+				GRSCauser->ActivateCharacter(PlayerCharacter);
+				DeadPlayerCharacters.Add(PlayerCharacter, GRSCauser);
+				return;
+			}
+		}
+	}
+
+	AGRSPlayerCharacter* ActivatedGhostCharacter = UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
+	if (ActivatedGhostCharacter)
+	{
+		ActivatedGhostCharacter->ActivateCharacter(PlayerCharacter);
+		DeadPlayerCharacters.Add(PlayerCharacter, ActivatedGhostCharacter);
+	}
 }
 
 // Add ghost character to the current active game (on level map)
@@ -179,18 +212,18 @@ void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocat
 }
 
 // Called when the ghost character should be removed from level to unpossess controller
-void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AController* CurrentController)
+void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AController* CurrentController, AGRSPlayerCharacter* GhostCharacter)
 {
-	if (!CurrentController)
+	if (!CurrentController || !GhostCharacter)
 	{
 		return;
 	}
 
-	RevivePlayerCharacter(CurrentController);
+	RevivePlayerCharacter(CurrentController, GhostCharacter);
 }
 
 // Spawn and possess a regular player character to the level at location
-void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* PlayerController)
+void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* PlayerController, AGRSPlayerCharacter* GhostCharacter)
 {
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__)
 	    || !PlayerController->HasAuthority())
@@ -198,7 +231,21 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 		return;
 	}
 
-	APlayerCharacter* PlayerCharacter = DeadPlayerCharacters[0];
+	if (!GhostCharacter)
+	{
+		return;
+	}
+	APlayerCharacter* PlayerCharacter = nullptr;
+
+	for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	{
+		if (Pair.Value == GhostCharacter)
+		{
+			PlayerCharacter = Pair.Key;
+			Pair.Value = nullptr;
+		}
+	}
+
 	if (!PlayerCharacter)
 	{
 		return;
@@ -211,15 +258,14 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 		PlayerController->UnPossess();
 	}
 
+	// --- Always possess to player character when ghost character is no longer in control
 	PlayerController->Possess(PlayerCharacter);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
 
-	// SetManagedContextEnabled
-	DeadPlayerCharacters.RemoveAt(0, 1, /*bAllowShrinking=*/EAllowShrinking::No);
+	// Activate revive ability if player was NOT revived previously
 
-	// Activate revive ability
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = UCellsUtilsLibrary::GetIndexByCellLevel(PlayerCharacter->GetActorLocation());

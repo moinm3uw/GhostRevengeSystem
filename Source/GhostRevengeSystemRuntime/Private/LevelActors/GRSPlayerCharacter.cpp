@@ -538,7 +538,7 @@ void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainChara
 // Remove ghost character from the level
 void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 {
-	OnGhostRemovedFromLevel.Broadcast(GetController());
+	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
 
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);

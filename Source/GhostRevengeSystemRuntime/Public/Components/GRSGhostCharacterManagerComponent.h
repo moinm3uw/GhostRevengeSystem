@@ -26,9 +26,10 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
 
-	/** List of dead player characters to restore when ghost is no longer possesses a controller */
+	/** Contains list of player characters that were eliminated at least once with reference to assigned ghost if still a ghost
+	 * If a GhostPlayerCharacter reference is empty it means PlayerCharacter was revived once and character can't be a ghost anymore */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Dead Player Characters"))
-	TArray<class APlayerCharacter*> DeadPlayerCharacters;
+	TMap<class APlayerCharacter*, class AGRSPlayerCharacter*> DeadPlayerCharacters;
 
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -65,11 +66,11 @@ protected:
 
 	/** Called when the ghost character should be removed from level to unpossess controller */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void OnGhostRemovedFromLevel(class AController* CurrentController);
+	void OnGhostRemovedFromLevel(class AController* CurrentController, class AGRSPlayerCharacter* GhostCharacter);
 
 	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RevivePlayerCharacter(class AController* PlayerController);
+	void RevivePlayerCharacter(class AController* PlayerController, AGRSPlayerCharacter* GhostCharacter);
 
 public:
 };
