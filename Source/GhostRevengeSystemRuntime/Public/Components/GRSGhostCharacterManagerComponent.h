@@ -33,6 +33,9 @@ protected:
 
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	
+	/** Clears all transient data created by this component. */
+	virtual void OnUnregister() override;
 
 	/** The component is considered as loaded only when the subsystem is loaded */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

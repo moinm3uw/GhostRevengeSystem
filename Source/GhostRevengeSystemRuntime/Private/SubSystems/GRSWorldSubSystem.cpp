@@ -36,6 +36,32 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 	return *ThisSubsystem;
 }
 
+// Clears all transient data created by this subsystem.
+void UGRSWorldSubSystem::Deinitialize()
+{
+	PerformCleanUp();
+	Super::Deinitialize();
+}
+
+// Cleanup used on unloading module to remove properties that should not be available by other objects.
+void UGRSWorldSubSystem::PerformCleanUp()
+{
+	if (OnInitialize.IsBound())
+	{
+		OnInitialize.Clear();
+	}
+
+	UMyPrimaryDataAsset::ResetDataAsset(DataAssetInternal);
+
+	CharacterMangerComponent = nullptr;
+
+	GhostCharacterLeftSide = nullptr;
+	GhostCharacterRightSide = nullptr;
+
+	LeftSideCollisionInternal = nullptr;
+	RightSideCollisionInternal = nullptr;
+}
+
 // Returns the data asset that contains all the assets of Ghost Revenge System game feature
 const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 {
@@ -122,7 +148,7 @@ AGRSPlayerCharacter* UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter
 void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
-
+	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s"), *this->GetName());
 	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
 }
 

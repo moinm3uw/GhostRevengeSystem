@@ -33,6 +33,9 @@ UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
 void UGRSGhostCharacterManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s"), *this->GetName());
+
 	UGRSWorldSubSystem::Get().RegisterCharacterManagerComponent(this);
 
 	if (!GetOwner()->HasAuthority())
@@ -41,6 +44,24 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 	}
 
 	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
+}
+
+// Clears all transient data created by this component.
+void UGRSGhostCharacterManagerComponent::OnUnregister()
+{
+	Super::OnUnregister();
+
+	if (PoolActorHandlersInternal.Num() > 0)
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
+		PoolActorHandlersInternal.Empty();
+		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
+	}
+
+	if (DeadPlayerCharacters.Num() > 0)
+	{
+		DeadPlayerCharacters.Empty();
+	}
 }
 
 // The component is considered as loaded only when the subsystem is loaded

@@ -385,6 +385,7 @@ void AGRSPlayerCharacter::RegisterForPlayerDeath()
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
@@ -538,6 +539,11 @@ void AGRSPlayerCharacter::InitializePlayerName(const APlayerCharacter* MainChara
 // Remove ghost character from the level
 void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 {
+	if (!GetController())
+	{
+		return;
+	}
+
 	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
 
@@ -549,6 +555,7 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	{
 		GetController()->UnPossess();
 	}
+
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetInstigator());
 	if (!ASC)
 	{

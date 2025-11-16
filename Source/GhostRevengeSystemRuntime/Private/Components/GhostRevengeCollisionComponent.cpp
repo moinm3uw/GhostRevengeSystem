@@ -36,6 +36,19 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 }
 
+// Clears all transient data created by this component.
+void UGhostRevengeCollisionComponent::OnUnregister()
+{
+	Super::OnUnregister();
+
+	if (CollisionPoolActorHandlersInternal.Num() > 0)
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
+		CollisionPoolActorHandlersInternal.Empty();
+		UPoolManagerSubsystem::Get().EmptyPool(UGRSDataAsset::Get().GetCollisionsAssetClass());
+	}
+}
+
 // The spawner is considered as loaded only when the subsystem is loaded
 void UGhostRevengeCollisionComponent::OnInitialize()
 {

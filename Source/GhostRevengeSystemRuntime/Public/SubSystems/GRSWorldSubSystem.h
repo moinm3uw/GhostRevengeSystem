@@ -23,6 +23,13 @@ public:
 	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject& WorldContextObject);
 
+	/** Clears all transient data created by this subsystem. */
+	virtual void Deinitialize() override;
+
+	/** Cleanup used on unloading module to remove properties that should not be available by other objects. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void PerformCleanUp();
+
 	/* Delegate to inform that module is loaded. To have better loading control of the MGF  */
 	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
 	FGRSOnInitialize OnInitialize;
