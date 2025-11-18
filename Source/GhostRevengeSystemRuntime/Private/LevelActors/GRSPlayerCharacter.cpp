@@ -245,7 +245,7 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	RegisterForPlayerDeath();
 
 	// --- enable inputs for ghost character
-	SetManagedInputContextEnabled(PlayerController, true);
+	// SetManagedInputContextEnabled(PlayerController, true);
 }
 
 // Called when a controller has been replicated to the client. Used to enable input context only
@@ -254,10 +254,11 @@ void AGRSPlayerCharacter::OnRep_Controller()
 	Super::OnRep_Controller();
 
 	OnGhostPossesController_Client.Broadcast();
+	SetManagedInputContextEnabled(GetController(), true);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostPossesController_Client.Broadcast"), __LINE__, __FUNCTION__);
 }
 
-// Called when a controller has been possessed by a new controller
+// Called when character has been possessed by a new controller
 void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -385,9 +386,7 @@ void AGRSPlayerCharacter::RegisterForPlayerDeath()
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogTemp, Warning, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
 
 	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
@@ -396,9 +395,50 @@ void AGRSPlayerCharacter::BeginPlay()
 	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
 	AimingSphereComponent->SetVisibility(true);
 
+	// --- handle initiation of ghosts player if MGF loaded during start of the game or in active game
+	const ECurrentGameState CurrentGameState = AMyGameStateBase::GetCurrentGameState();
+	if (CurrentGameState == ECurrentGameState::GameStarting || CurrentGameState == ECurrentGameState::InGame)
+	{
+		RefreshGhostPlayers();
+	}
+
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+
+	// --- ghost ready to go
 	OnGhostAddedToLevel.Broadcast();
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostAddedToLevel.Broadcast"), __LINE__, __FUNCTION__);
+}
+
+// Listen game states to remove ghost character from level
+void AGRSPlayerCharacter::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+{
+	switch (CurrentGameState)
+	{
+		case ECurrentGameState::GameStarting:
+		{
+			RefreshGhostPlayers();
+			break;
+		}
+
+		case ECurrentGameState::Menu:
+		{
+			RemoveGhostCharacterFromMap();
+			break;
+		}
+		default: break;
+	}
+}
+
+// Refresh ghost players to do initial load (on MGF load) or when game state changed
+void AGRSPlayerCharacter::RefreshGhostPlayers()
+{
+	// --- default params required for the fist start to have character prepared
+	SetDefaultPlayerMeshData();
+	// --- Init Player name
+	// InitializePlayerName(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
+	// --- Init character visuals (animations, skin)
+	InitializeCharacterVisual(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
+	// --- Clear splines
+	ClearTrajectorySplines();
 }
 
 // Perform ghost character activation (possessing controller)
@@ -419,34 +459,6 @@ UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
 {
 	const AMyPlayerState* InPlayerState = GetPlayerState<AMyPlayerState>();
 	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
-}
-
-// Listen game states to remove ghost character from level
-void AGRSPlayerCharacter::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
-{
-	switch (CurrentGameState)
-	{
-		case ECurrentGameState::GameStarting:
-		{
-			// --- default params required for the fist start to have character prepared
-			SetDefaultPlayerMeshData();
-			// --- Init Player name
-			// InitializePlayerName(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
-			// --- Init character visuals (animations, skin)
-			InitializeCharacterVisual(UMyBlueprintFunctionLibrary::GetLocalPlayerCharacter());
-			// --- Clear splines
-			ClearTrajectorySplines();
-			break;
-		}
-
-		case ECurrentGameState::Menu:
-		{
-			RemoveGhostCharacterFromMap();
-			break;
-		}
-
-		default: break;
-	}
 }
 
 // Set and apply default skeletal mesh for this player once game is starting therefore all players are connected

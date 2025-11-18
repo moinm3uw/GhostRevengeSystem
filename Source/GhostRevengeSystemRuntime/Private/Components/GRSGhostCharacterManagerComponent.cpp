@@ -34,151 +34,31 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s"), *this->GetName());
-
-	UGRSWorldSubSystem::Get().RegisterCharacterManagerComponent(this);
-
 	if (!GetOwner()->HasAuthority())
 	{
 		return;
 	}
 
-	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
-}
-
-// Clears all transient data created by this component.
-void UGRSGhostCharacterManagerComponent::OnUnregister()
-{
-	Super::OnUnregister();
-
-	if (PoolActorHandlersInternal.Num() > 0)
-	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
-		PoolActorHandlersInternal.Empty();
-		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
-	}
-
-	if (DeadPlayerCharacters.Num() > 0)
-	{
-		DeadPlayerCharacters.Empty();
-	}
+	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
+	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
+	WorldSubsystem.RegisterCharacterManagerComponent(this);
 }
 
 // The component is considered as loaded only when the subsystem is loaded
 void UGRSGhostCharacterManagerComponent::OnInitialize()
 {
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+	UE_LOG(LogTemp, Warning, TEXT("UGRSGhostCharacterManagerComponent OnInitialize  --- %s"), *this->GetName());
 
 	// spawn 2 characters right away
 	AddGhostCharacter();
-}
 
-// Listen game states to remove ghost character from level
-void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
-{
-	switch (CurrentGameState)
+	if (GetOwner()->HasAuthority())
 	{
-		case ECurrentGameState::GameStarting:
-		{
-			DeadPlayerCharacters.Empty();
-			if (GetOwner()->HasAuthority())
-			{
-				RegisterForPlayerDeath();
-			}
-			break;
-		}
-		default: break;
-	}
-}
-
-void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
-{
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
+		RegisterForPlayerDeath();
 	}
 
-	TArray<AActor*> PlayerCharactersInternal;
-
-	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
-
-	for (AActor* Actor : PlayerCharactersInternal)
-	{
-		APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
-		if (MyActor)
-		{
-			if (MyActor->IsBotControlled())
-			{
-				continue;
-			}
-
-			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
-			if (MapComponent)
-			{
-				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-
-				// Actor has ASC: apply effect through GAS
-				APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
-				if (PlayerCharacter)
-				{
-					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
-					TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
-					if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
-					{
-						ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
-					}
-				}
-			}
-		}
-	}
-}
-
-// Called right before owner actor going to remove from the Generated Map, on both server and clients
-void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
-{
-	APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
-	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
-	    || PlayerCharacter->IsBotControlled()
-	    || !DestroyCauser)
-	{
-		return;
-	}
-
-	// --- check if already dead character was present
-	for (const TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
-	{
-		if (Pair.Key == PlayerCharacter)
-		{
-			if (!Pair.Value)
-			{
-				return;
-			}
-		}
-	}
-
-	// --- handle 3rd player character death to perform swap
-	AGRSPlayerCharacter* GRSCauser = Cast<AGRSPlayerCharacter>(DestroyCauser);
-	if (GRSCauser && DeadPlayerCharacters.Num() > 1)
-	{
-		for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
-		{
-			if (Pair.Value == GRSCauser)
-			{
-				Pair.Value = nullptr;
-				GRSCauser->ActivateCharacter(PlayerCharacter);
-				DeadPlayerCharacters.Add(PlayerCharacter, GRSCauser);
-				return;
-			}
-		}
-	}
-
-	AGRSPlayerCharacter* ActivatedGhostCharacter = UGRSWorldSubSystem::Get().ActivateGhostCharacter(PlayerCharacter);
-	if (ActivatedGhostCharacter)
-	{
-		ActivatedGhostCharacter->ActivateCharacter(PlayerCharacter);
-		DeadPlayerCharacters.Add(PlayerCharacter, ActivatedGhostCharacter);
-	}
+	// --- bind to  clear ghost data
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 }
 
 // Add ghost character to the current active game (on level map)
@@ -223,6 +103,159 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
 		GhostCharacter.OnGhostRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnGhostRemovedFromLevel);
+	}
+}
+
+// Clears all transient data created by this component.
+void UGRSGhostCharacterManagerComponent::OnUnregister()
+{
+	Super::OnUnregister();
+
+	if (PoolActorHandlersInternal.Num() > 0)
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
+		PoolActorHandlersInternal.Empty();
+		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
+	}
+
+	if (DeadPlayerCharacters.Num() > 0)
+	{
+		DeadPlayerCharacters.Empty();
+	}
+
+	// --- clean delegates
+	if (BoundMapComponents.Num() > 0)
+	{
+		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+		{
+			BoundMapComponents[0]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+		}
+
+		BoundMapComponents.Empty();
+	}
+}
+
+// Listen game states to remove ghost character from level
+void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+{
+	if (CurrentGameState != ECurrentGameState::InGame)
+	{
+		// --- clean delegates
+		if (BoundMapComponents.Num() > 0)
+		{
+			for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+			{
+				BoundMapComponents[0]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+			}
+		}
+
+		DeadPlayerCharacters.Empty();
+	}
+
+	switch (CurrentGameState)
+	{
+		case ECurrentGameState::GameStarting:
+
+			if (GetOwner()->HasAuthority())
+			{
+				RegisterForPlayerDeath();
+			}
+			break;
+		default: break;
+	}
+}
+
+void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
+{
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	TArray<AActor*> PlayerCharactersInternal;
+
+	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
+
+	for (AActor* Actor : PlayerCharactersInternal)
+	{
+		const APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
+		if (MyActor)
+		{
+			if (MyActor->IsBotControlled())
+			{
+				continue;
+			}
+
+			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
+			if (MapComponent)
+			{
+				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+
+				BoundMapComponents.AddUnique(MapComponent);
+
+				// Actor has ASC: apply effect through GAS
+				const APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
+				if (PlayerCharacter)
+				{
+					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
+					TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
+					if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
+					{
+						ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
+					}
+				}
+			}
+		}
+	}
+}
+
+// Called right before owner actor going to remove from the Generated Map, on both server and clients
+void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+{
+	APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
+	    || PlayerCharacter->IsBotControlled()
+	    || !DestroyCauser)
+	{
+		return;
+	}
+
+	// --- check if already dead character was present
+	for (const TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	{
+		if (Pair.Key == PlayerCharacter)
+		{
+			if (!Pair.Value)
+			{
+				return;
+			}
+		}
+	}
+
+	// --- handle 3rd player character death to perform swap
+	AGRSPlayerCharacter* GhostCauser = Cast<AGRSPlayerCharacter>(DestroyCauser);
+	if (GhostCauser && DeadPlayerCharacters.Num() > 1)
+	{
+		for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+		{
+			if (Pair.Value == GhostCauser)
+			{
+				Pair.Value = nullptr;
+				GhostCauser->ActivateCharacter(PlayerCharacter);
+				UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(GhostCauser);
+				DeadPlayerCharacters.Add(PlayerCharacter, GhostCauser);
+				return;
+			}
+		}
+	}
+
+	AGRSPlayerCharacter* GhostToActive = UGRSWorldSubSystem::Get().GetAvailableGhostCharacter();
+	if (GhostToActive)
+	{
+		GhostToActive->ActivateCharacter(PlayerCharacter);
+		UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(GhostToActive);
+		DeadPlayerCharacters.Add(PlayerCharacter, GhostToActive);
 	}
 }
 

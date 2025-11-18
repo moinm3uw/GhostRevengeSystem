@@ -54,9 +54,12 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	UMyPrimaryDataAsset::ResetDataAsset(DataAssetInternal);
 
 	CharacterMangerComponent = nullptr;
+	CollisionMangerComponent = nullptr;
 
 	GhostCharacterLeftSide = nullptr;
 	GhostCharacterRightSide = nullptr;
+
+	LastActivatedGhostCharacter = nullptr;
 
 	LeftSideCollisionInternal = nullptr;
 	RightSideCollisionInternal = nullptr;
@@ -75,6 +78,19 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharac
 	{
 		CharacterMangerComponent = CharacterManagerComponent;
 	}
+
+	Initialize(); // try to initialize
+}
+
+// Register collision manager component used to track if all components loaded and MGF ready to initialize
+void UGRSWorldSubSystem::RegisterCollisionManagerComponent(class UGhostRevengeCollisionComponent* NewCollisionManagerComponent)
+{
+	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
+	{
+		CollisionMangerComponent = NewCollisionManagerComponent;
+	}
+
+	Initialize(); // try to initialize
 }
 
 // Register ghost character
@@ -107,6 +123,15 @@ void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* Ghost
 	GhostPlayerCharacter->SetActorLocation(ActorSpawnLocation);
 }
 
+void UGRSWorldSubSystem::SetLastActivatedGhostCharacter(AGRSPlayerCharacter* GhostCharacter)
+{
+	if (!GhostCharacter || GhostCharacter == LastActivatedGhostCharacter)
+	{
+		return;
+	}
+
+	LastActivatedGhostCharacter = GhostCharacter;
+}
 // Returns the side of the ghost character (left, or right)
 EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter)
 {
@@ -128,8 +153,8 @@ EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerChar
 	return EGRSCharacterSide::None;
 }
 
-// Broadcasts the activation of ghost character, can be called from outside
-AGRSPlayerCharacter* UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter* PlayerCharacter)
+// Returns currently available ghost character or nullptr if there is no available ghosts.
+AGRSPlayerCharacter* UGRSWorldSubSystem::GetAvailableGhostCharacter()
 {
 	if (!GhostCharacterLeftSide->GetController())
 	{
@@ -148,11 +173,35 @@ AGRSPlayerCharacter* UGRSWorldSubSystem::ActivateGhostCharacter(APlayerCharacter
 void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay Spawned ghost character  --- %s"), *this->GetName());
+}
+
+// Checks if all components present and invokes initialization
+void UGRSWorldSubSystem::Initialize()
+{
+	if (CharacterMangerComponent && CollisionMangerComponent)
+	{
+		OnInitialize.Broadcast();
+	}
+}
+
+// Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module
+void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("UGRSWorldSubSystem BeginPlay OnWorldSubSystemInitialize_Implementation --- %s"), *this->GetName());
 	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
 }
 
-// Return a ghost character.
+// Called when the local player character is spawned, possessed, and replicated
+void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerCharacter* PlayerCharacter, int32 CharacterID)
+{
+	UE_LOG(LogTemp, Warning, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
+
+	Initialize(); // try to initialize
+
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+}
+
+// Return a ghost character
 class AGRSPlayerCharacter* UGRSWorldSubSystem::GetGhostPlayerCharacter()
 {
 	return nullptr;
@@ -207,13 +256,6 @@ class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
 	}
 
 	return nullptr;
-}
-
-// Called when the local player character is spawned, possessed, and replicated
-void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerCharacter* PlayerCharacter, int32 CharacterID)
-{
-	OnInitialize.Broadcast();
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 }
 
 // Listen game states to switch character skin.

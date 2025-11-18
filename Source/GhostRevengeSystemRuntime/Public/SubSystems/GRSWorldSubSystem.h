@@ -23,6 +23,10 @@ public:
 	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject& WorldContextObject);
 
+	/** Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module */
+	UFUNCTION(BlueprintNativeEvent, Category = "C++", meta = (BlueprintProtected))
+	void OnWorldSubSystemInitialize();
+
 	/** Clears all transient data created by this subsystem. */
 	virtual void Deinitialize() override;
 
@@ -47,6 +51,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* CharacterManagerComponent);
 
+	/** Register collision manager component used to track if all components loaded and MGF ready to initialize */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RegisterCollisionManagerComponent(class UGhostRevengeCollisionComponent* NewCollisionManagerComponent);
+
 	/** Register ghost character */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void RegisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter);
@@ -63,13 +71,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	FORCEINLINE class AGRSPlayerCharacter* GetGRSPlayerCharacterRightSide() const { return GhostCharacterRightSide; }
 
+	/** Returns last activated ghost character to enable input context */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	FORCEINLINE class AGRSPlayerCharacter* GetLastActivatedGhostCharacter() const { return LastActivatedGhostCharacter; }
+
+	/** Set the last activated ghost character */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void SetLastActivatedGhostCharacter(AGRSPlayerCharacter* GhostCharacter);
+
 	/** Returns the side of the ghost character (left, or right)  */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	EGRSCharacterSide GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter);
 
-	/** Broadcasts the activation of ghost character, can be called from outside */
+	/** Returns currently available ghost character or nullptr if there is no available ghosts. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	class AGRSPlayerCharacter* ActivateGhostCharacter(APlayerCharacter* PlayerCharacter);
+	class AGRSPlayerCharacter* GetAvailableGhostCharacter();
 
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
@@ -83,6 +99,10 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "C++")
 	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterMangerComponent;
 
+	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "C++")
+	TObjectPtr<class UGhostRevengeCollisionComponent> CollisionMangerComponent;
+
 	/** Ghost character spawned on left side of the map */
 	UPROPERTY(VisibleDefaultsOnly, Category = "C++")
 	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterLeftSide;
@@ -91,8 +111,16 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = "C++")
 	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterRightSide;
 
+	/** Last activated ghost character */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
+	TObjectPtr<class AGRSPlayerCharacter> LastActivatedGhostCharacter;
+
 	/** Begin play of the subsystem */
 	void OnWorldBeginPlay(UWorld& InWorld) override;
+
+	/** Checks if all components present and invokes initialization */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void Initialize();
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

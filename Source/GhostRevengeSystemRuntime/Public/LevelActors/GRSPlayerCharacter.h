@@ -130,6 +130,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnGameStateChanged(ECurrentGameState CurrentGameState);
 
+	/** Refresh ghost players to do initial load (on MGF load) or when game state changed */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void RefreshGhostPlayers();
+
 	/** Perform init character once added to the level from a refence character (visuals, animations) */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void InitializeCharacterVisual(const APlayerCharacter* PlayerCharacter);
@@ -226,7 +230,7 @@ public:
 	/** Called when a controller has been replicated to the client. Used to enable input context only */
 	virtual void OnRep_Controller() override;
 
-	/** Called when a controller has been possessed by a new controller */
+	/** Called when a character has been possessed by a new controller */
 	virtual void PossessedBy(AController* NewController) override;
 
 	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */

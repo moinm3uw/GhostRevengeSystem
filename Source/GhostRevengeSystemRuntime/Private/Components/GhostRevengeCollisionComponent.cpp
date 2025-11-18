@@ -28,12 +28,23 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Binds to local character ready to guarantee that the player controller is initialized
+	// so we can safely use Widget's Subsystem
+	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
+}
+
+// Is called when local player character is ready to guarantee that they player controller is initialized
+void UGhostRevengeCollisionComponent::OnLocalCharacterReady_Implementation(class APlayerCharacter* Character, int32 CharacterID)
+{
 	if (!GetOwner()->HasAuthority())
 	{
 		return;
 	}
 
-	UGRSWorldSubSystem::Get().OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
+	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
+	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
+	WorldSubsystem.RegisterCollisionManagerComponent(this);
+	WorldSubsystem.OnWorldSubSystemInitialize();
 }
 
 // Clears all transient data created by this component.
@@ -52,32 +63,10 @@ void UGhostRevengeCollisionComponent::OnUnregister()
 // The spawner is considered as loaded only when the subsystem is loaded
 void UGhostRevengeCollisionComponent::OnInitialize()
 {
-	// Listen to handle input for each game state
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-}
-
-// Called when game state is changed.
-void UGhostRevengeCollisionComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
-{
-	// --- Only server can spawn character and posses it
-	if (!GetOwner()->HasAuthority())
+	// spawn collisions only once
+	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 	{
-		return;
-	}
-
-	switch (CurrentGameState)
-	{
-		case ECurrentGameState::GameStarting:
-		{
-			// spawn collisions only once
-			if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
-			{
-				SpawnMapCollisionOnSide();
-			}
-			break;
-		}
-		default:
-			break;
+		SpawnMapCollisionOnSide();
 	}
 }
 

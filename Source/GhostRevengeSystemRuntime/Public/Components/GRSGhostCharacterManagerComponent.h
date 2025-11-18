@@ -31,9 +31,13 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Dead Player Characters"))
 	TMap<class APlayerCharacter*, class AGRSPlayerCharacter*> DeadPlayerCharacters;
 
+	/** Contains list of all map components events bounded to. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Bound MapComponents"))
+	TArray<TWeakObjectPtr<class UMapComponent>> BoundMapComponents;
+
 	// Called when the game starts
 	virtual void BeginPlay() override;
-	
+
 	/** Clears all transient data created by this component. */
 	virtual void OnUnregister() override;
 
