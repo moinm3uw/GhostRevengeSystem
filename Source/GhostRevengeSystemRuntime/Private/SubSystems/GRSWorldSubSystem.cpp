@@ -2,17 +2,17 @@
 
 #include "SubSystems/GRSWorldSubSystem.h"
 
+#include "Actors/BmrPawn.h"
 #include "Data/GRSDataAsset.h"
 #include "Data/MyPrimaryDataAsset.h"
 #include "Engine/Engine.h"
-#include "GameFramework/MyGameStateBase.h"
+#include "GameFramework/BmrGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
-#include "LevelActors/PlayerCharacter.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
-#include "Subsystems/GlobalEventsSubsystem.h"
-#include "UtilityLibraries/CellsUtilsLibrary.h"
-#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
+#include "Subsystems/BmrGlobalEventsSubsystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -79,7 +79,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharac
 		CharacterMangerComponent = CharacterManagerComponent;
 	}
 
-	Initialize(); // try to initialize
+	Init(); // try to initialize
 }
 
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
@@ -90,7 +90,7 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(class UGhostRevengeCo
 		CollisionMangerComponent = NewCollisionManagerComponent;
 	}
 
-	Initialize(); // try to initialize
+	Init(); // try to initialize
 }
 
 // Register ghost character
@@ -98,14 +98,14 @@ void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* Ghost
 {
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
-	FCell ActorSpawnLocation;
-	float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+	FBmrCell ActorSpawnLocation;
+	float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
 
 	if (!GhostCharacterLeftSide)
 	{
 		GhostCharacterLeftSide = GhostPlayerCharacter;
 
-		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
 		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
 		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
 	}
@@ -113,7 +113,7 @@ void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* Ghost
 	{
 		GhostCharacterRightSide = GhostPlayerCharacter;
 
-		ActorSpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
 		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
 		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
 	}
@@ -176,7 +176,7 @@ void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 }
 
 // Checks if all components present and invokes initialization
-void UGRSWorldSubSystem::Initialize()
+void UGRSWorldSubSystem::Init()
 {
 	if (CharacterMangerComponent && CollisionMangerComponent)
 	{
@@ -187,16 +187,16 @@ void UGRSWorldSubSystem::Initialize()
 // Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module
 void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UGRSWorldSubSystem BeginPlay OnWorldSubSystemInitialize_Implementation --- %s"), *this->GetName());
-	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
+	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem BeginPlay OnWorldSubSystemInitialize_Implementation --- %s"), *this->GetName());
+	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalPawnReady);
 }
 
 // Called when the local player character is spawned, possessed, and replicated
-void UGRSWorldSubSystem::OnLocalCharacterReady_Implementation(class APlayerCharacter* PlayerCharacter, int32 CharacterID)
+void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerCharacter, int32 CharacterID)
 {
-	UE_LOG(LogTemp, Warning, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
+	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
 
-	Initialize(); // try to initialize
+	Init(); // try to initialize
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 }
@@ -259,7 +259,7 @@ class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
 {
 }
 
@@ -272,5 +272,5 @@ if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, _
 HUD->SetVisibility(ESlateVisibility::Collapsed);
 PlayerStateInternal->SetCharacterDead(false);
 PlayerStateInternal->SetOpponentKilledNum(0);
-PlayerStateInternal->SetEndGameState(EEndGameState::None);
+PlayerStateInternal->SetEndGameState(EBmrEndGameState::None);
 */

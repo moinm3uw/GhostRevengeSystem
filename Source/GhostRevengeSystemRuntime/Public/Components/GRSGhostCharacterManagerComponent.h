@@ -9,6 +9,8 @@
 
 #include "GRSGhostCharacterManagerComponent.generated.h"
 
+enum class EBmrCurrentGameState : uint8;
+
 /**
  * Actor component attached to game state to spawn ghost characters
  */
@@ -29,11 +31,11 @@ protected:
 	/** Contains list of player characters that were eliminated at least once with reference to assigned ghost if still a ghost
 	 * If a GhostPlayerCharacter reference is empty it means PlayerCharacter was revived once and character can't be a ghost anymore */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Dead Player Characters"))
-	TMap<class APlayerCharacter*, class AGRSPlayerCharacter*> DeadPlayerCharacters;
+	TMap<class ABmrPawn*, class AGRSPlayerCharacter*> DeadPlayerCharacters;
 
 	/** Contains list of all map components events bounded to. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Bound MapComponents"))
-	TArray<TWeakObjectPtr<class UMapComponent>> BoundMapComponents;
+	TArray<TWeakObjectPtr<class UBmrMapComponent>> BoundMapComponents;
 
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -47,7 +49,7 @@ protected:
 
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+	void OnGameStateChanged(EBmrCurrentGameState CurrentGameState);
 
 	/** Subscribes to PlayerCharacters death events in order to see if a player died */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -55,7 +57,7 @@ protected:
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void PlayerCharacterOnPreRemovedFromLevel(class UMapComponent* MapComponent, class UObject* DestroyCauser);
+	void PlayerCharacterOnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Add ghost character to the current active game (on level map) */
 	UFUNCTION(BlueprintCallable, Category = "C++")

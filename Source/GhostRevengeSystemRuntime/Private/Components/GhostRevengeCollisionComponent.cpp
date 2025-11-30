@@ -2,15 +2,15 @@
 
 #include "Components/GhostRevengeCollisionComponent.h"
 
-#include "Controllers/MyPlayerController.h"
+#include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
-#include "GameFramework/MyGameStateBase.h"
+#include "GameFramework/BmrGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/GlobalEventsSubsystem.h"
-#include "UtilityLibraries/CellsUtilsLibrary.h"
-#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
+#include "Subsystems/BmrGlobalEventsSubsystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeCollisionComponent)
 
@@ -30,11 +30,11 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 
 	// Binds to local character ready to guarantee that the player controller is initialized
 	// so we can safely use Widget's Subsystem
-	BIND_ON_LOCAL_CHARACTER_READY(this, ThisClass::OnLocalCharacterReady);
+	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalCharacterReady);
 }
 
 // Is called when local player character is ready to guarantee that they player controller is initialized
-void UGhostRevengeCollisionComponent::OnLocalCharacterReady_Implementation(class APlayerCharacter* Character, int32 CharacterID)
+void UGhostRevengeCollisionComponent::OnLocalCharacterReady_Implementation(class ABmrPawn* Character, int32 CharacterID)
 {
 	if (!GetOwner()->HasAuthority())
 	{
@@ -96,7 +96,7 @@ void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide_Implementation()
 // Grabs a side collision asset from the pool manager (Object pooling patter)
 void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
-	APlayerController* PlayerController = UMyBlueprintFunctionLibrary::GetLocalPlayerController(this);
+	APlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this);
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
@@ -107,22 +107,22 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 	{
 		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
 		SpawnedCollision.SetOwner(PlayerController);
-		UE_LOG(LogTemp, Warning, TEXT("Spawned collision --- %s - %s"), *SpawnedCollision.GetName(), SpawnedCollision.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+		UE_LOG(LogTemp, Log, TEXT("Spawned collision --- %s - %s"), *SpawnedCollision.GetName(), SpawnedCollision.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		// base cell for the calculation
-		FCell SpawnLocation;
+		FBmrCell SpawnLocation;
 
 		// calculate the distance from the center of current cell
-		float CellSize = FCell::CellSize + (FCell::CellSize / 2);
+		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
 
 		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
 		{
-			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopLeft);
+			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
 			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
 		}
 		else if (!UGRSWorldSubSystem::Get().GetRightCollisionActor())
 		{
-			SpawnLocation = UCellsUtilsLibrary::GetCellByCornerOnLevel(EGridCorner::TopRight);
+			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
 			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
 		}
 

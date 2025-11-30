@@ -4,21 +4,21 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "Actors/BmrGeneratedMap.h"
 #include "Bomber.h"
-#include "Components/MySkeletalMeshComponent.h"
-#include "Controllers/MyPlayerController.h"
+#include "Components/BmrSkeletalMeshComponent.h"
+#include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "Engine/World.h"
-#include "GameFramework/MyGameStateBase.h"
+#include "GameFramework/BmrGameState.h"
 #include "GameFramework/PlayerState.h"
-#include "GeneratedMap.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/GlobalEventsSubsystem.h"
-#include "UtilityLibraries/CellsUtilsLibrary.h"
-#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
+#include "Subsystems/BmrGlobalEventsSubsystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // Sets default values for this component's properties
 UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
@@ -47,7 +47,7 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 // The component is considered as loaded only when the subsystem is loaded
 void UGRSGhostCharacterManagerComponent::OnInitialize()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UGRSGhostCharacterManagerComponent OnInitialize  --- %s"), *this->GetName());
+	UE_LOG(LogTemp, Log, TEXT("UGRSGhostCharacterManagerComponent OnInitialize  --- %s"), *this->GetName());
 
 	// spawn 2 characters right away
 	AddGhostCharacter();
@@ -98,7 +98,7 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
 		AGRSPlayerCharacter& GhostCharacter = CreatedObject.GetChecked<AGRSPlayerCharacter>();
-		UE_LOG(LogTemp, Warning, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		// we can path a current local player since it needed only for the skin init
 		GhostCharacter.OnGhostEliminatesPlayer.AddUniqueDynamic(this, &ThisClass::OnGhostEliminatesPlayer);
@@ -136,9 +136,9 @@ void UGRSGhostCharacterManagerComponent::OnUnregister()
 }
 
 // Listen game states to remove ghost character from level
-void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(ECurrentGameState CurrentGameState)
+void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
 {
-	if (CurrentGameState != ECurrentGameState::InGame)
+	if (CurrentGameState != EBmrCurrentGameState::InGame)
 	{
 		// --- clean delegates
 		if (BoundMapComponents.Num() > 0)
@@ -154,7 +154,7 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(ECurr
 
 	switch (CurrentGameState)
 	{
-		case ECurrentGameState::GameStarting:
+		case EBmrCurrentGameState::GameStarting:
 
 			if (GetOwner()->HasAuthority())
 			{
@@ -175,11 +175,11 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 	TArray<AActor*> PlayerCharactersInternal;
 
 	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerCharactersInternal);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABmrPawn::StaticClass(), PlayerCharactersInternal);
 
 	for (AActor* Actor : PlayerCharactersInternal)
 	{
-		const APlayerCharacter* MyActor = Cast<APlayerCharacter>(Actor);
+		const ABmrPawn* MyActor = Cast<ABmrPawn>(Actor);
 		if (MyActor)
 		{
 			if (MyActor->IsBotControlled())
@@ -187,7 +187,7 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 				continue;
 			}
 
-			UMapComponent* MapComponent = UMapComponent::GetMapComponent(MyActor);
+			UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyActor);
 			if (MapComponent)
 			{
 				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
@@ -195,7 +195,7 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 				BoundMapComponents.AddUnique(MapComponent);
 
 				// Actor has ASC: apply effect through GAS
-				const APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
+				const ABmrPawn* PlayerCharacter = MapComponent->GetOwner<ABmrPawn>();
 				if (PlayerCharacter)
 				{
 					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
@@ -211,9 +211,9 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
-void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UMapComponent* MapComponent, class UObject* DestroyCauser)
+void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
 {
-	APlayerCharacter* PlayerCharacter = MapComponent->GetOwner<APlayerCharacter>();
+	ABmrPawn* PlayerCharacter = MapComponent->GetOwner<ABmrPawn>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
 	    || PlayerCharacter->IsBotControlled()
 	    || !DestroyCauser)
@@ -222,7 +222,7 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 	}
 
 	// --- check if already dead character was present
-	for (const TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	for (const TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
 	{
 		if (Pair.Key == PlayerCharacter)
 		{
@@ -237,7 +237,7 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 	AGRSPlayerCharacter* GhostCauser = Cast<AGRSPlayerCharacter>(DestroyCauser);
 	if (GhostCauser && DeadPlayerCharacters.Num() > 1)
 	{
-		for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+		for (TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
 		{
 			if (Pair.Value == GhostCauser)
 			{
@@ -289,9 +289,9 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 	{
 		return;
 	}
-	APlayerCharacter* PlayerCharacter = nullptr;
+	ABmrPawn* PlayerCharacter = nullptr;
 
-	for (TPair<APlayerCharacter*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	for (TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
 	{
 		if (Pair.Value == GhostCharacter)
 		{
@@ -316,12 +316,12 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 	PlayerController->Possess(PlayerCharacter);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
-	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
 
 	// Activate revive ability if player was NOT revived previously
 
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
 	FGameplayEventData EventData;
-	EventData.EventMagnitude = UCellsUtilsLibrary::GetIndexByCellLevel(PlayerCharacter->GetActorLocation());
+	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
 }
