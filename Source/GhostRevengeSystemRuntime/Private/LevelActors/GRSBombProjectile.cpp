@@ -63,7 +63,7 @@ void AGRSBombProjectile::BeginPlay()
 
 void AGRSBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	UE_LOG(LogTemp, Warning, TEXT("GRS Projectile HIT"));
+	UE_LOG(LogTemp, Log, TEXT("GRS Projectile HIT"));
 }
 
 // Called every frame

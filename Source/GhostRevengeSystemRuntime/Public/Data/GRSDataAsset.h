@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Data/MyPrimaryDataAsset.h"
-#include "DataAssets/MyInputMappingContext.h"
+#include "DataAssets/BmrInputMappingContext.h"
 #include "Kismet/GameplayStaticsTypes.h"
 
 #include "GRSDataAsset.generated.h"
@@ -40,7 +40,7 @@ public:
 	/** Returns input context.
 	 * @see UGRSDataAsset::InputContextsInternal.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
-	FORCEINLINE class UMyInputMappingContext* GetInputContext() const { return InputContextInternal; }
+	FORCEINLINE class UBmrInputMappingContext* GetInputContext() const { return InputContextInternal; }
 
 	/** Returns projectile class
 	 * @see UGRSDataAsset::BombClass.*/
@@ -107,7 +107,7 @@ public:
 protected:
 	/** Input mapping context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
-	TObjectPtr<class UMyInputMappingContext> InputContextInternal;
+	TObjectPtr<class UBmrInputMappingContext> InputContextInternal;
 
 	/** A collision used to define the area where ghost character can move around. Placed on the sides of the map */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "A box collision asset transofrm spawned on sides of map"))

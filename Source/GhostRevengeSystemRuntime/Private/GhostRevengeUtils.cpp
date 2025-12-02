@@ -2,14 +2,14 @@
 
 #include "GhostRevengeUtils.h"
 
-#include "Controllers/MyPlayerController.h"
+#include "Controllers/BmrPlayerController.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "UtilityLibraries/MyBlueprintFunctionLibrary.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 AGRSPlayerCharacter* UGhostRevengeUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext)
 {
-	class AMyPlayerController* PlayerController = UMyBlueprintFunctionLibrary::GetLocalPlayerController();
+	class ABmrPlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
 	AGRSPlayerCharacter* PlayerCharacter = nullptr;
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- Utils requested return of ghost character"), __LINE__, __FUNCTION__);
 

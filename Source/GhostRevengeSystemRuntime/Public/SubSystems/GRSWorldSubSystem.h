@@ -120,15 +120,15 @@ protected:
 
 	/** Checks if all components present and invokes initialization */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void Initialize();
+	void Init();
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnLocalCharacterReady(class APlayerCharacter* PlayerCharacter, int32 CharacterID);
+	void OnLocalPawnReady(class ABmrPawn* PlayerCharacter, int32 CharacterID);
 
 	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(ECurrentGameState CurrentGameState);
+	void OnGameStateChanged(EBmrCurrentGameState CurrentGameState);
 
 	/*********************************************************************************************
 	 * Side Collisions actors
