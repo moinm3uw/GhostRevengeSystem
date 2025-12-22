@@ -199,7 +199,7 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 				if (PlayerCharacter)
 				{
 					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
-					ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n'ASC' is not set!"), __LINE__, __FUNCTION__);
+					ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n 'ASC' is not set!"), __LINE__, __FUNCTION__);
 					TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
 					if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
 					{
