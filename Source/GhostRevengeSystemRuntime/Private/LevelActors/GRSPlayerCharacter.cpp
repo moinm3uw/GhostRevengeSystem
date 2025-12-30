@@ -577,14 +577,17 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComp
 	{
 		return;
 	}
+	const ABmrPlayerState* DestroyCauserPlayerState = Cast<ABmrPlayerState>(DestroyCauser);
+	if (!DestroyCauserPlayerState)
+	{
+		return;
+	}
 
-	const APawn* Causer = Cast<APawn>(DestroyCauser);
+	const APawn* Causer = DestroyCauserPlayerState->GetPawn();
 	if (Causer)
 	{
-		const AActor* CauserActor = Cast<AActor>(DestroyCauser);
-		Causer = CauserActor ? CauserActor->GetInstigator() : nullptr;
 		const AGRSPlayerCharacter* GRSCharacter = Cast<AGRSPlayerCharacter>(Causer);
-		if (GRSCharacter == this)
+		if (GRSCharacter && GRSCharacter == this)
 		{
 			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter->GetActorLocation(), this);
 			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostEliminatesPlayer.Broadcast"), __LINE__, __FUNCTION__);
