@@ -175,15 +175,6 @@ void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 	Super::OnWorldBeginPlay(InWorld);
 }
 
-// Checks if all components present and invokes initialization
-void UGRSWorldSubSystem::Init()
-{
-	if (CharacterMangerComponent && CollisionMangerComponent)
-	{
-		OnInitialize.Broadcast();
-	}
-}
-
 // Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module
 void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
 {
@@ -199,6 +190,16 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerC
 	Init(); // try to initialize
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+}
+
+// Checks if all components present and invokes initialization
+void UGRSWorldSubSystem::Init()
+{
+	if (CharacterMangerComponent && CollisionMangerComponent)
+	{
+		OnInitialize.Broadcast();
+		OnInitialize.Clear();
+	}
 }
 
 // Return a ghost character

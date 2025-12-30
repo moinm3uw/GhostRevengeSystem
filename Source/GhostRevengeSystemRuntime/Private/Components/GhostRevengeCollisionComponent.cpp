@@ -128,7 +128,8 @@ void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(con
 
 		UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 
-		SpawnedCollision.SetActorTransform(UGRSDataAsset::Get().GetCollisionTransform());
-		SpawnedCollision.SetActorLocation(FVector(SpawnLocation.Location.X, 0, 0));
+		FTransform CollisionTransfrom = UGRSDataAsset::Get().GetCollisionTransform();
+		CollisionTransfrom.SetLocation(FVector(SpawnLocation.Location.X, 0, 0));
+		SpawnedCollision.SetActorTransform(CollisionTransfrom);
 	}
 }

@@ -128,7 +128,10 @@ void UGRSGhostCharacterManagerComponent::OnUnregister()
 	{
 		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
 		{
-			BoundMapComponents[0]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+			if (BoundMapComponents[Index].IsValid())
+			{
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+			}
 		}
 
 		BoundMapComponents.Empty();
@@ -145,7 +148,7 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(EBmrC
 		{
 			for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
 			{
-				BoundMapComponents[0]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
 			}
 		}
 
@@ -199,7 +202,10 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 				if (PlayerCharacter)
 				{
 					UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
-					ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n 'ASC' is not set!"), __LINE__, __FUNCTION__);
+					if (!ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n 'ASC' is not set!"), __LINE__, __FUNCTION__))
+					{
+						return;
+					}
 					TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
 					if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
 					{
