@@ -29,5 +29,13 @@
 			"Name": "MyEditorUtils",
 			"Enabled": true
 		},
+		{
+			"Name": "PoolManager",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
 	]
 }
