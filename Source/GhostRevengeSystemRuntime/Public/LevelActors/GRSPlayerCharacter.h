@@ -38,14 +38,14 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
 	GENERATED_BODY()
 
 public:
+	/*********************************************************************************************
+	 * Delegates & GAS
+	 **********************************************************************************************/
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostAddedToLevel);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Client);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Server);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostRemovedFromLevel, AController*, CurrentPlayerController, AGRSPlayerCharacter*, GhostPlayerCharacter);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, FVector, AtLocation, AGRSPlayerCharacter*, GhostCharacter);
-
-	/** Sets default values for this character's properties */
-	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
 	/** Is called when a ghost character added to level without possession */
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
@@ -70,13 +70,36 @@ public:
 	/** Cached handle of current applied effect */
 	FActiveGameplayEffectHandle GASEffectHandle;
 
-	/** Get the character side  */
+	/*********************************************************************************************
+	 * Utils
+	 **********************************************************************************************/
+
+	/** Get the character side */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	EGRSCharacterSide GetCharacterSide() const;
 
+	/** Returns the Skeletal Mesh of ghost revenge character. */
+	UBmrSkeletalMeshComponent& GetMeshChecked() const;
+
+	/** Set visibility of the player character */
+	void SetVisibility(bool Visibility);
+
+	/** Returns own character ID, e.g: 0, 1, 2, 3 */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	int32 GetPlayerId() const;
+
+	/** Returns the Ability System Component from the Player State.
+	 * In blueprints, call 'Get Ability System Component' as interface function. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
 	/*********************************************************************************************
-	 * Mesh and Initialization
+	 * Initialization
 	 **********************************************************************************************/
+
+	/** Sets default values for this character's properties */
+	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+
 protected:
 	/** Mesh of component. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
@@ -99,61 +122,35 @@ protected:
 	void SetupCapsuleComponent();
 
 	/*********************************************************************************************
-	 * Nickname
-	 ********************************************************************************************* */
+	 * Nickname component
+	 **********************************************************************************************/
 public:
 	/** Returns the 3D widget component that displays the player name above the character. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponentInternal; }
+
+	/** Set/Update player name */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetPlayerName(const ABmrPawn* MainCharacter) const;
 
 protected:
 	/** 3D widget component that displays the player name above the character. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
 	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
 
+	/*********************************************************************************************
+	 * Lifecycle and Main functionality
+	 **********************************************************************************************/
+
 public:
 	friend class UBmrCheatManager;
 
-	// Called when the game starts or when spawned
+	/** Called when the game starts or when spawned (on spawned on the level) */
 	virtual void BeginPlay() override;
 
-	/** Perform ghost character activation (possessing controller) */
+	/** Set character visual once added to the level from a refence character (visuals, animations) */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void ActivateCharacter(const ABmrPawn* PlayerCharacter);
-
-	/** Returns the Ability System Component from the Player State.
-	 * In blueprints, call 'Get Ability System Component' as interface function. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-
-	/** Listen game states to remove ghost character from level */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(EBmrCurrentGameState CurrentGameState);
-
-	/** Refresh ghost players to do initial load (on MGF load) or when game state changed */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void RefreshGhostPlayers();
-
-	/** Perform init character once added to the level from a refence character (visuals, animations) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void InitializeCharacterVisual(const ABmrPawn* PlayerCharacter);
-
-	/** Initialize Player Name */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void InitializePlayerName(const ABmrPawn* MainCharacter) const;
-
-	/** Remove ghost character from the level */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RemoveGhostCharacterFromMap();
-
-	/** Clean up the character */
-	void PerformCleanUp();
-
-	/** Set visibility of the player character */
-	void SetVisibility(bool Visibility);
-
-	/** Returns the Skeletal Mesh of ghost revenge character. */
-	UBmrSkeletalMeshComponent& GetMeshChecked() const;
+	void SetCharacterVisual(const ABmrPawn* PlayerCharacter);
 
 	/** Set and apply default skeletal mesh for this player.
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
@@ -164,9 +161,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
 
-	/** Returns own character ID, e.g: 0, 1, 2, 3 */
-	UFUNCTION(BlueprintPure, Category = "C++")
-	int32 GetPlayerId() const;
+protected:
+	/** Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnRefreshGhostCharacters();
+
+	/** Server-only logic Perform ghost character activation (possessing controller) */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void ActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, const ABmrPawn* PlayerCharacter);
+
+	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
+
+	/** Remove ghost character from the level */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void OnRemoveGhostCharacterFromMap(AGRSPlayerCharacter* GhostCharacter);
 
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
@@ -250,15 +260,14 @@ public:
 	 * Bomb
 	 **********************************************************************************************/
 protected:
-	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
-
-	/** Subscribes to PlayerCharacters death events in order to see if a player died */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void RegisterForPlayerDeath();
-
 	/** Spawn bomb on aiming sphere position. */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SpawnBomb(FBmrCell TargetCell);
+
+	/*********************************************************************************************
+	 * End of ghost character
+	 **********************************************************************************************/
+public:
+	/** Clean up the character for the MGF unload */
+	void PerformCleanUp();
 };

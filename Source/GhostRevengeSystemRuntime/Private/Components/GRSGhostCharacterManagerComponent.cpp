@@ -11,6 +11,7 @@
 #include "Data/GRSDataAsset.h"
 #include "Engine/World.h"
 #include "GameFramework/BmrGameState.h"
+#include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
@@ -59,6 +60,13 @@ void UGRSGhostCharacterManagerComponent::OnInitialize()
 
 	// --- bind to  clear ghost data
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+
+	// --- handle initiation of ghosts player if MGF loaded during start of the game or in active game
+	const EBmrCurrentGameState CurrentGameState = ABmrGameState::GetCurrentGameState();
+	if (CurrentGameState == EBmrCurrentGameState::GameStarting || CurrentGameState == EBmrCurrentGameState::InGame)
+	{
+		RefreshGhostCharacters();
+	}
 }
 
 // Add ghost character to the current active game (on level map)
@@ -106,68 +114,7 @@ void UGRSGhostCharacterManagerComponent::OnTakeActorsFromPoolCompleted(const TAr
 	}
 }
 
-// Clears all transient data created by this component.
-void UGRSGhostCharacterManagerComponent::OnUnregister()
-{
-	Super::OnUnregister();
-
-	if (PoolActorHandlersInternal.Num() > 0)
-	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
-		PoolActorHandlersInternal.Empty();
-		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
-	}
-
-	if (DeadPlayerCharacters.Num() > 0)
-	{
-		DeadPlayerCharacters.Empty();
-	}
-
-	// --- clean delegates
-	if (BoundMapComponents.Num() > 0)
-	{
-		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
-		{
-			if (BoundMapComponents[Index].IsValid())
-			{
-				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-			}
-		}
-
-		BoundMapComponents.Empty();
-	}
-}
-
-// Listen game states to remove ghost character from level
-void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
-{
-	if (CurrentGameState != EBmrCurrentGameState::InGame)
-	{
-		// --- clean delegates
-		if (BoundMapComponents.Num() > 0)
-		{
-			for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
-			{
-				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-			}
-		}
-
-		DeadPlayerCharacters.Empty();
-	}
-
-	switch (CurrentGameState)
-	{
-		case EBmrCurrentGameState::GameStarting:
-
-			if (GetOwner()->HasAuthority())
-			{
-				RegisterForPlayerDeath();
-			}
-			break;
-		default: break;
-	}
-}
-
+// Subscribes to PlayerCharacters death events in order to see if a player died
 void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 {
 	if (!GetOwner()->HasAuthority())
@@ -217,6 +164,65 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 	}
 }
 
+// Listen game states to remove ghost character from level
+void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
+{
+	if (CurrentGameState != EBmrCurrentGameState::InGame)
+	{
+		// --- clean delegates
+		if (BoundMapComponents.Num() > 0)
+		{
+			for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+			{
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+			}
+		}
+
+		// -- release all ghosts
+		RemoveGhostCharacters();
+	}
+
+	switch (CurrentGameState)
+	{
+		case EBmrCurrentGameState::GameStarting:
+
+			if (GetOwner()->HasAuthority())
+			{
+				RegisterForPlayerDeath();
+			}
+
+			RefreshGhostCharacters();
+			break;
+		default: break;
+	}
+}
+
+// Refresh the ghost characters visuals
+void UGRSGhostCharacterManagerComponent::RefreshGhostCharacters() const
+{
+	if (OnRefreshGhostCharacters.IsBound())
+	{
+		OnRefreshGhostCharacters.Broadcast();
+	}
+}
+
+// Remove ghost characters from the map
+void UGRSGhostCharacterManagerComponent::RemoveGhostCharacters()
+{
+	for (const TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	{
+		if (Pair.Value)
+		{
+			if (OnRemoveGhostCharacterFromMap.IsBound())
+			{
+				OnRemoveGhostCharacterFromMap.Broadcast(Pair.Value);
+			}
+		}
+	}
+
+	DeadPlayerCharacters.Empty();
+}
+
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
 void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
 {
@@ -228,7 +234,14 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 		return;
 	}
 
-	// --- check if already dead character was present
+	// --- notify ghost characters
+	if (OnPlayerCharacterPreRemovedFromLevel.IsBound())
+	{
+		OnPlayerCharacterPreRemovedFromLevel.Broadcast(MapComponent, DestroyCauser);
+	}
+
+	// --- allow to players to be revived as ghost only once per match
+	// --- check if a reference for that player character was stored, if yes - was eliminated once
 	for (const TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
 	{
 		if (Pair.Key == PlayerCharacter)
@@ -241,17 +254,33 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 	}
 
 	// --- handle 3rd player character death to perform swap
-	AGRSPlayerCharacter* GhostCauser = Cast<AGRSPlayerCharacter>(DestroyCauser);
-	if (GhostCauser && DeadPlayerCharacters.Num() > 1)
+	const ABmrPlayerState* DestroyCauserPlayerState = Cast<ABmrPlayerState>(DestroyCauser);
+	if (!DestroyCauserPlayerState)
+	{
+		return;
+	}
+
+	APawn* DestroyCauserPawn = DestroyCauserPlayerState->GetPawn();
+	if (!DestroyCauserPawn)
+	{
+		return;
+	}
+
+	AGRSPlayerCharacter* DestroyCauserGhostCharacter = Cast<AGRSPlayerCharacter>(DestroyCauserPawn);
+	if (DestroyCauserGhostCharacter && DeadPlayerCharacters.Num() > 1)
 	{
 		for (TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
 		{
-			if (Pair.Value == GhostCauser)
+			if (Pair.Value == DestroyCauserGhostCharacter)
 			{
 				Pair.Value = nullptr;
-				GhostCauser->ActivateCharacter(PlayerCharacter);
-				UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(GhostCauser);
-				DeadPlayerCharacters.Add(PlayerCharacter, GhostCauser);
+				if (OnActivateGhostCharacter.IsBound())
+				{
+					OnActivateGhostCharacter.Broadcast(DestroyCauserGhostCharacter, PlayerCharacter);
+				}
+
+				UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(DestroyCauserGhostCharacter);
+				DeadPlayerCharacters.Add(PlayerCharacter, DestroyCauserGhostCharacter);
 				return;
 			}
 		}
@@ -260,7 +289,10 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 	AGRSPlayerCharacter* GhostToActive = UGRSWorldSubSystem::Get().GetAvailableGhostCharacter();
 	if (GhostToActive)
 	{
-		GhostToActive->ActivateCharacter(PlayerCharacter);
+		if (OnActivateGhostCharacter.IsBound())
+		{
+			OnActivateGhostCharacter.Broadcast(GhostToActive, PlayerCharacter);
+		}
 		UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(GhostToActive);
 		DeadPlayerCharacters.Add(PlayerCharacter, GhostToActive);
 	}
@@ -325,10 +357,46 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
 
-	// Activate revive ability if player was NOT revived previously
-
+	// --- Activate revive ability if player was NOT revived previously
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
+}
+
+// Clears all transient data created by this component.
+void UGRSGhostCharacterManagerComponent::OnUnregister()
+{
+	Super::OnUnregister();
+
+	if (PoolActorHandlersInternal.Num() > 0)
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
+		PoolActorHandlersInternal.Empty();
+		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
+	}
+
+	if (DeadPlayerCharacters.Num() > 0)
+	{
+		DeadPlayerCharacters.Empty();
+	}
+
+	// --- clean delegates
+	if (BoundMapComponents.Num() > 0)
+	{
+		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+		{
+			if (BoundMapComponents[Index].IsValid())
+			{
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+			}
+		}
+
+		BoundMapComponents.Empty();
+	}
+
+	OnPlayerCharacterPreRemovedFromLevel.Clear();
+	OnActivateGhostCharacter.Clear();
+	OnRemoveGhostCharacterFromMap.Clear();
+	OnRefreshGhostCharacters.Clear();
 }

@@ -42,7 +42,49 @@
 class UBmrPlayerRow;
 
 /*********************************************************************************************
- * Mesh and Initialization
+ * Utils
+ **********************************************************************************************/
+
+// Get the character side
+EGRSCharacterSide AGRSPlayerCharacter::GetCharacterSide() const
+{
+	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
+	const FVector ToArenaDirection = ArenaCenter.Location - GetActorLocation().GetSafeNormal();
+	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
+}
+
+// Returns the Skeletal Mesh of ghost revenge character
+UBmrSkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
+{
+	return *CastChecked<UBmrSkeletalMeshComponent>(GetMesh());
+}
+
+// Set visibility of the player character
+void AGRSPlayerCharacter::SetVisibility(bool Visibility)
+{
+	GetMesh()->SetVisibility(Visibility, true);
+}
+
+// Returns own character ID, e.g: 0, 1, 2, 3
+int32 AGRSPlayerCharacter::GetPlayerId() const
+{
+	if (const ABmrPlayerState* MyPlayerState = GetPlayerState<ABmrPlayerState>())
+	{
+		return MyPlayerState->GetPlayerId();
+	}
+
+	return 0;
+}
+
+// Returns the Ability System Component from the Player State
+UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
+{
+	const ABmrPlayerState* InPlayerState = GetPlayerState<ABmrPlayerState>();
+	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
+}
+
+/*********************************************************************************************
+ * Initialization
  **********************************************************************************************/
 
 // Sets default values for this character's properties
@@ -77,14 +119,6 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
 
 	ReceiveControllerChangedDelegate.AddDynamic(this, &ThisClass::OnControllerChanged);
-}
-
-// Get the character side
-EGRSCharacterSide AGRSPlayerCharacter::GetCharacterSide() const
-{
-	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
-	const FVector ToArenaDirection = ArenaCenter.Location - GetActorLocation().GetSafeNormal();
-	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
 }
 
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
@@ -152,75 +186,156 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 	}
 }
 
-// Returns the Skeletal Mesh of ghost revenge character
-UBmrSkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
+/*********************************************************************************************
+ * Nickname component
+ **********************************************************************************************/
+
+//  Set/Update player name
+void AGRSPlayerCharacter::SetPlayerName(const ABmrPawn* MainCharacter) const
 {
-	return *CastChecked<UBmrSkeletalMeshComponent>(GetMesh());
+	if (!MainCharacter)
+	{
+		return;
+	}
+	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(MainCharacter->GetPlayerState());
+	if (!MyPlayerState)
+	{
+		return;
+	}
+
+	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponent' is null!"), __LINE__, __FUNCTION__);
+	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
+
+	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
+	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(GetCharacterSide()));
+
+	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
+	UBmrPlayerNameWidget* NickName = Cast<UBmrPlayerNameWidget>(Widget);
+	if (!ensureMsgf(NickName, TEXT("ASSERT: [%i] %hs:\n'NickName' condition is FALSE"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	NickName->SetPlayerName(FText::FromString(SideName));
 }
 
-// Set visibility of the player character
-void AGRSPlayerCharacter::SetVisibility(bool Visibility)
+/*********************************************************************************************
+ * Main functionality
+ **********************************************************************************************/
+
+// Called when the game starts or when spawned (on spawned on the level)
+void AGRSPlayerCharacter::BeginPlay()
 {
-	GetMesh()->SetVisibility(Visibility, true);
+	Super::BeginPlay();
+	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
+
+	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+
+	// --- Activate aiming point
+	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	AimingSphereComponent->SetVisibility(true);
+
+	// --- ghost added to level
+	OnGhostAddedToLevel.Broadcast();
+
+	class UGRSGhostCharacterManagerComponent* CharacterManagerComponent = UGRSWorldSubSystem::Get().GetGRSCharacterManagerComponent();
+	if (!CharacterManagerComponent)
+	{
+		return;
+	}
+
+	CharacterManagerComponent->OnActivateGhostCharacter.AddUniqueDynamic(this, &ThisClass::ActivateGhostCharacter);
+	CharacterManagerComponent->OnRefreshGhostCharacters.AddUniqueDynamic(this, &ThisClass::OnRefreshGhostCharacters);
+	CharacterManagerComponent->OnPlayerCharacterPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+	CharacterManagerComponent->OnRemoveGhostCharacterFromMap.AddUniqueDynamic(this, &ThisClass::OnRemoveGhostCharacterFromMap);
 }
 
-// Clean up the character
-void AGRSPlayerCharacter::PerformCleanUp()
+// Server-only logic Perform ghost character activation (possessing controller)
+void AGRSPlayerCharacter::ActivateGhostCharacter_Implementation(AGRSPlayerCharacter* GhostCharacter, const ABmrPawn* PlayerCharacter)
 {
+	if (!GhostCharacter || GhostCharacter != this || !PlayerCharacter)
+	{
+		return;
+	}
+
+	AController* PlayerController = PlayerCharacter->GetController();
+	if (!PlayerController || !PlayerController->HasAuthority())
+	{
+		return;
+	}
+
+	TryPossessController(PlayerController);
+	SetPlayerName(PlayerCharacter);
+}
+
+// Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected
+void AGRSPlayerCharacter::OnRefreshGhostCharacters_Implementation()
+{
+	// --- default params required for the fist start to have character prepared
+	SetDefaultPlayerMeshData();
+	// --- Init Player name
+	// InitializePlayerName(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+	// --- Init character visuals (animations, skin)
+	SetCharacterVisual(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+	// --- Clear splines
 	ClearTrajectorySplines();
+}
 
-	if (Controller)
+// Called right before owner actor going to remove from the Generated Map, on both server and clients.
+void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
+{
+	ABmrPawn* PlayerCharacter = MapComponent->GetOwner<ABmrPawn>();
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
-		ABmrPlayerController& PC = *UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
-
-		// Remove all previous input contexts managed by Controller
-		TArray<const UBmrInputMappingContext*> InputContexts;
-		UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-		InputContexts.AddUnique(InputContext);
-		PC.RemoveInputContexts(InputContexts);
-
-		Controller->Possess(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+		return;
+	}
+	const ABmrPlayerState* DestroyCauserPlayerState = Cast<ABmrPlayerState>(DestroyCauser);
+	if (!DestroyCauserPlayerState)
+	{
+		return;
 	}
 
-	if (UMovementComponent* MovementComponent = GetMovementComponent())
+	const APawn* Causer = DestroyCauserPlayerState->GetPawn();
+	if (Causer)
 	{
-		MovementComponent->DestroyComponent();
-	}
-
-	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
-	{
-		RootCapsuleComponent->DestroyComponent();
-	}
-
-	if (MeshComponentInternal)
-	{
-		MeshComponentInternal->DestroyComponent();
-	}
-
-	if (ProjectileSplineComponentInternal)
-	{
-		ProjectileSplineComponentInternal->DestroyComponent();
-	}
-	if (BombProjectileInternal)
-	{
-		BombProjectileInternal->Destroy();
-	}
-
-	if (AimingSphereComponent)
-	{
-		AimingSphereComponent->DestroyComponent();
+		const AGRSPlayerCharacter* GRSCharacter = Cast<AGRSPlayerCharacter>(Causer);
+		if (GRSCharacter && GRSCharacter == this)
+		{
+			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter->GetActorLocation(), this);
+			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostEliminatesPlayer.Broadcast"), __LINE__, __FUNCTION__);
+			OnRemoveGhostCharacterFromMap(this);
+		}
 	}
 }
 
-// Returns own character ID, e.g: 0, 1, 2, 3
-int32 AGRSPlayerCharacter::GetPlayerId() const
+// Remove ghost character from the level
+void AGRSPlayerCharacter::OnRemoveGhostCharacterFromMap_Implementation(AGRSPlayerCharacter* GhostCharacter)
 {
-	if (const ABmrPlayerState* MyPlayerState = GetPlayerState<ABmrPlayerState>())
+	if (!GhostCharacter || GhostCharacter != this || !GetController())
 	{
-		return MyPlayerState->GetPlayerId();
+		return;
 	}
 
-	return 0;
+	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
+
+	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AimingSphereComponent->SetVisibility(false);
+
+	// --- not ghost character controlled, could be null
+	if (GetController() && GetController()->HasAuthority())
+	{
+		GetController()->UnPossess();
+	}
+
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetInstigator());
+	if (!ASC)
+	{
+		return;
+	}
+	ASC->RemoveActiveGameplayEffect(GASEffectHandle);
+	GASEffectHandle.Invalidate();
 }
 
 //  Possess a player controller
@@ -241,11 +356,6 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	}
 
 	PlayerController->Possess(this);
-
-	RegisterForPlayerDeath();
-
-	// --- enable inputs for ghost character
-	// SetManagedInputContextEnabled(PlayerController, true);
 }
 
 // Called when a controller has been replicated to the client. Used to enable input context only
@@ -351,116 +461,6 @@ void AGRSPlayerCharacter::SetManagedInputContextEnabled(AController* PlayerContr
 	}
 }
 
-// Subscribes to PlayerCharacters death events in order to see if a player died
-void AGRSPlayerCharacter::RegisterForPlayerDeath()
-{
-	TArray<AActor*> PlayerCharacters;
-
-	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABmrPawn::StaticClass(), PlayerCharacters);
-
-	for (AActor* Actor : PlayerCharacters)
-	{
-		ABmrPawn* MyActor = Cast<ABmrPawn>(Actor);
-		if (MyActor)
-		{
-			if (MyActor->IsBotControlled())
-			{
-				continue;
-			}
-
-			UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyActor);
-			if (MapComponent)
-			{
-				MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-			}
-		}
-	}
-}
-
-/*********************************************************************************************
- * Begin play (on spawned on the level)
- **********************************************************************************************/
-
-// Called when the game starts or when spawned
-void AGRSPlayerCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
-
-	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-
-	// --- Initialize aiming point
-	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	AimingSphereComponent->SetVisibility(true);
-
-	// --- handle initiation of ghosts player if MGF loaded during start of the game or in active game
-	const EBmrCurrentGameState CurrentGameState = ABmrGameState::GetCurrentGameState();
-	if (CurrentGameState == EBmrCurrentGameState::GameStarting || CurrentGameState == EBmrCurrentGameState::InGame)
-	{
-		RefreshGhostPlayers();
-	}
-
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-
-	// --- ghost ready to go
-	OnGhostAddedToLevel.Broadcast();
-}
-
-// Listen game states to remove ghost character from level
-void AGRSPlayerCharacter::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
-{
-	switch (CurrentGameState)
-	{
-		case EBmrCurrentGameState::GameStarting:
-		{
-			RefreshGhostPlayers();
-			break;
-		}
-
-		case EBmrCurrentGameState::Menu:
-		{
-			RemoveGhostCharacterFromMap();
-			break;
-		}
-		default: break;
-	}
-}
-
-// Refresh ghost players to do initial load (on MGF load) or when game state changed
-void AGRSPlayerCharacter::RefreshGhostPlayers()
-{
-	// --- default params required for the fist start to have character prepared
-	SetDefaultPlayerMeshData();
-	// --- Init Player name
-	// InitializePlayerName(UBmrBlueprintFunctionLibrary::GetLocalPawn());
-	// --- Init character visuals (animations, skin)
-	InitializeCharacterVisual(UBmrBlueprintFunctionLibrary::GetLocalPawn());
-	// --- Clear splines
-	ClearTrajectorySplines();
-}
-
-// Perform ghost character activation (possessing controller)
-void AGRSPlayerCharacter::ActivateCharacter(const ABmrPawn* PlayerCharacter)
-{
-	if (!PlayerCharacter)
-	{
-		return;
-	}
-
-	AController* PlayerController = PlayerCharacter->GetController();
-	TryPossessController(PlayerController);
-	InitializePlayerName(PlayerCharacter);
-}
-
-// Returns the Ability System Component from the Player State
-UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
-{
-	const ABmrPlayerState* InPlayerState = GetPlayerState<ABmrPlayerState>();
-	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
-}
-
 // Set and apply default skeletal mesh for this player once game is starting therefore all players are connected
 void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin /* = false*/)
 {
@@ -483,8 +483,8 @@ void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin /* = fa
 	GetMeshChecked().InitSkeletalMesh(MeshData);
 }
 
-//  Perform init character once  from a refence character (visuals, animations)
-void AGRSPlayerCharacter::InitializeCharacterVisual(const ABmrPawn* PlayerCharacter)
+//  Set character visual once added to the level from a refence character (visuals, animations)
+void AGRSPlayerCharacter::SetCharacterVisual(const ABmrPawn* PlayerCharacter)
 {
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
@@ -509,91 +509,6 @@ void AGRSPlayerCharacter::InitializeCharacterVisual(const ABmrPawn* PlayerCharac
 	}
 	CurrentMeshComponent->InitSkeletalMesh(MainCharacterMeshComponent->GetMeshData());
 	CurrentMeshComponent->ApplySkinByIndex(CurrentSkinIndex);
-}
-
-//  Initialize Player Name
-void AGRSPlayerCharacter::InitializePlayerName(const ABmrPawn* MainCharacter) const
-{
-	if (!MainCharacter)
-	{
-		return;
-	}
-	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(MainCharacter->GetPlayerState());
-	if (!MyPlayerState)
-	{
-		return;
-	}
-
-	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponent' is null!"), __LINE__, __FUNCTION__);
-	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
-
-	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
-	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(GetCharacterSide()));
-
-	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
-	UBmrPlayerNameWidget* NickName = Cast<UBmrPlayerNameWidget>(Widget);
-	if (!ensureMsgf(NickName, TEXT("ASSERT: [%i] %hs:\n'NickName' condition is FALSE"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	NickName->SetPlayerName(FText::FromString(SideName));
-}
-
-// Remove ghost character from the level
-void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
-{
-	if (!GetController())
-	{
-		return;
-	}
-
-	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
-
-	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	AimingSphereComponent->SetVisibility(false);
-
-	// --- not ghost character controlled, could be null
-	if (GetController() && GetController()->HasAuthority())
-	{
-		GetController()->UnPossess();
-	}
-
-	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetInstigator());
-	if (!ASC)
-	{
-		return;
-	}
-	ASC->RemoveActiveGameplayEffect(GASEffectHandle);
-	GASEffectHandle.Invalidate();
-}
-
-// Called right before owner actor going to remove from the Generated Map, on both server and clients.
-void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
-{
-	ABmrPawn* PlayerCharacter = MapComponent->GetOwner<ABmrPawn>();
-	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-	const ABmrPlayerState* DestroyCauserPlayerState = Cast<ABmrPlayerState>(DestroyCauser);
-	if (!DestroyCauserPlayerState)
-	{
-		return;
-	}
-
-	const APawn* Causer = DestroyCauserPlayerState->GetPawn();
-	if (Causer)
-	{
-		const AGRSPlayerCharacter* GRSCharacter = Cast<AGRSPlayerCharacter>(Causer);
-		if (GRSCharacter && GRSCharacter == this)
-		{
-			OnGhostEliminatesPlayer.Broadcast(PlayerCharacter->GetActorLocation(), this);
-			UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostEliminatesPlayer.Broadcast"), __LINE__, __FUNCTION__);
-			RemoveGhostCharacterFromMap();
-		}
-	}
 }
 
 /*********************************************************************************************
@@ -796,4 +711,56 @@ void AGRSPlayerCharacter::ClearTrajectorySplines()
 
 	SplineMeshArrayInternal.Empty();
 	ProjectileSplineComponentInternal->ClearSplinePoints();
+}
+
+/*********************************************************************************************
+ * End of ghost character
+ **********************************************************************************************/
+
+// Clean up the character for the MGF unload
+void AGRSPlayerCharacter::PerformCleanUp()
+{
+	ClearTrajectorySplines();
+
+	if (Controller)
+	{
+		ABmrPlayerController& PC = *UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
+
+		// Remove all previous input contexts managed by Controller
+		TArray<const UBmrInputMappingContext*> InputContexts;
+		UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+		InputContexts.AddUnique(InputContext);
+		PC.RemoveInputContexts(InputContexts);
+
+		Controller->Possess(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+	}
+
+	if (UMovementComponent* MovementComponent = GetMovementComponent())
+	{
+		MovementComponent->DestroyComponent();
+	}
+
+	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
+	{
+		RootCapsuleComponent->DestroyComponent();
+	}
+
+	if (MeshComponentInternal)
+	{
+		MeshComponentInternal->DestroyComponent();
+	}
+
+	if (ProjectileSplineComponentInternal)
+	{
+		ProjectileSplineComponentInternal->DestroyComponent();
+	}
+	if (BombProjectileInternal)
+	{
+		BombProjectileInternal->Destroy();
+	}
+
+	if (AimingSphereComponent)
+	{
+		AimingSphereComponent->DestroyComponent();
+	}
 }

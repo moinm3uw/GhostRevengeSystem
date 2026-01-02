@@ -20,6 +20,27 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public 
 	GENERATED_BODY()
 
 public:
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerCharacterPreRemovedFromLevel, UBmrMapComponent*, MapComponent, UObject*, DestroyCauser);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivateGhostCharacter, AGRSPlayerCharacter*, GhostCharacter, const ABmrPawn*, PlayerCharacter);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRemoveGhostCharacterFromMap, AGRSPlayerCharacter*, GhostCharacter);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRefreshGhostCharacters);
+
+	/** Called right before player character is going to be removed from the Map, on both server and clients */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnPlayerCharacterPreRemovedFromLevel OnPlayerCharacterPreRemovedFromLevel;
+
+	/** Called to activate a ghost character from a player character reference */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnActivateGhostCharacter OnActivateGhostCharacter;
+
+	/** Called to remove a ghost character from map */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnRemoveGhostCharacterFromMap OnRemoveGhostCharacterFromMap;
+
+	/** Called to refresh ghost characters  */
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	FOnRefreshGhostCharacters OnRefreshGhostCharacters;
+
 	// Sets default values for this component's properties
 	UGRSGhostCharacterManagerComponent();
 
@@ -37,7 +58,7 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Bound MapComponents"))
 	TArray<TWeakObjectPtr<class UBmrMapComponent>> BoundMapComponents;
 
-	// Called when the game starts
+	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
 	/** Clears all transient data created by this component. */
@@ -46,6 +67,14 @@ protected:
 	/** The component is considered as loaded only when the subsystem is loaded */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnInitialize();
+
+	/** Refresh the ghost characters visual */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RefreshGhostCharacters() const;
+
+	/** Remove ghost characters from the map */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveGhostCharacters();
 
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
