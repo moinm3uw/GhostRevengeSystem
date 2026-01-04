@@ -124,7 +124,8 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 
 	TArray<AActor*> PlayerCharactersInternal;
 
-	// -- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
+	// --- subscribe to PlayerCharacters death event in order to see if a ghost player killed somebody
+	// --- to be refactored for more efficient approach
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABmrPawn::StaticClass(), PlayerCharactersInternal);
 
 	for (AActor* Actor : PlayerCharactersInternal)
