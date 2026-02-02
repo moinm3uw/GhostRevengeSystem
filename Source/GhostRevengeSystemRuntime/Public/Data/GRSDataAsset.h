@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Data/MyPrimaryDataAsset.h"
+#include "DataAssets/BmrInputMappingContext.h"
+#include "Kismet/GameplayStaticsTypes.h"
+
 #include "GRSDataAsset.generated.h"
 
 /**
- * Contains all ghost revenge assets used in the module 
+ * Contains all ghost revenge assets used in the module
  */
 UCLASS(Blueprintable, BlueprintType)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UMyPrimaryDataAsset
@@ -17,4 +20,159 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UMyPrimaryDataAsset
 public:
 	/** Returns the progression data asset or crash when can not be obtained. */
 	static const UGRSDataAsset& Get();
+
+	/** Returns if the display of trajectory is enabled */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE bool ShouldDisplayTrajectory() const { return bEnableTrajectoryVisualInternal; }
+
+	/** Returns if the display of trajectory is enabled */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE bool ShouldSpawnBombOnMaxChargeTime() const { return bSpawnBombOnMaxChargingTimeInternal; }
+
+	/** Returns spawn location */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector GetSpawnLocation() const { return SpawnLocationInternal; }
+
+	/** Returns collision transform */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FTransform GetCollisionTransform() const { return CollisionTransformInternal; }
+
+	/** Returns input context.
+	 * @see UGRSDataAsset::InputContextsInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UBmrInputMappingContext* GetInputContext() const { return InputContextInternal; }
+
+	/** Returns projectile class
+	 * @see UGRSDataAsset::BombClass.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class TSubclassOf<class AGRSBombProjectile> GetProjectileClass() const { return BombClass; }
+
+	/** Returns projectile mesh
+	 * @see UGRSDataAsset::StaticMesh.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return AimingAreaStaticMesh; }
+
+	/** Returns projectile mesh
+	 * @see UGRSDataAsset::ChargeTrajectoryMeshInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UStaticMesh* GetChargeMesh() const { return AimingTrajectoryMeshInternal; }
+
+	/** Returns projectile predict parameters
+	 * @see UGRSDataAsset::PredictParams.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FPredictProjectilePathParams GetChargePredictParams() const { return PredictParamsInternal; }
+
+	/** Returns projectile predict velocity
+	 * @see UGRSDataAsset::VelocityInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector GetVelocityParams() const { return VelocityInternal; }
+
+	/** Returns projectile predict velocity
+	 * @see UGRSDataAsset::TrajectoryMaterialInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UMaterialInterface* GetTrajectoryMaterial() const { return TrajectoryMaterialInternal; }
+
+	/** Returns projectile predict velocity
+	 * @see UGRSDataAsset::AimingMaterialInternal.*/
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE class UMaterialInterface* GetAimingMaterial() const { return AimingMaterialInternal; }
+
+	/** Returns Trajectory Scale
+	 * @see UGRSDataAsset::TrajectoryMeshScaleInternal */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE FVector2D GetTrajectoryMeshScale() const { return TrajectoryMeshScaleInternal; }
+
+	/** Get collision asset class for the sides */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class AActor> GetCollisionsAssetClass() const { return CollisionsAssetInternal; }
+
+	/** Returns the explosion damage gameplay effect applied when the bomb detonates.
+	 * @see UGRSDataAsset::ExplosionDamageEffectInternal */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetExplosionDamageEffect() const { return ExplosionDamageEffectInternal; }
+
+	/** Returns the player character revive gameplay effect applied to a player character.
+	 * @see UGRSDataAsset::PlayerReviveEffectInternal */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetPlayerReviveEffect() const { return PlayerReviveEffectInternal; }
+
+	/** Returns the trigger bomb placement tag */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE FGameplayTag GetTriggerBombTag() const { return TriggerBombTag; }
+
+	/** Returns the revive player character trigger tag */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	FORCEINLINE FGameplayTag GetReviePlayerCharacterTriggerTag() const { return ReviveCharacterTriggerTag; }
+
+protected:
+	/** Input mapping context for the GRSPlayerCharacter */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
+	TObjectPtr<class UBmrInputMappingContext> InputContextInternal;
+
+	/** A collision used to define the area where ghost character can move around. Placed on the sides of the map */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++", meta = (BlueprintProtected, DisplayName = "A box collision asset transofrm spawned on sides of map"))
+	FTransform CollisionTransformInternal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
+	TSubclassOf<class AGRSBombProjectile> BombClass;
+
+	/** Parameter to control trajectory visual display */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Display trajectory"))
+	bool bEnableTrajectoryVisualInternal;
+
+	/** Parameter to control if bomb should be spawned once reached a max charging time */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Spawn Bomb once Maximum Charge Time Reached"))
+	bool bSpawnBombOnMaxChargingTimeInternal;
+
+	/** Projectile path params */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))
+	FPredictProjectilePathParams PredictParamsInternal;
+
+	/** Velocity of the prediction calculation */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Trajectory Velocity multiplier in each of the directions"))
+	FVector VelocityInternal;
+
+	/** A visual mesh that represents trajectory of aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
+	TObjectPtr<UStaticMesh> AimingTrajectoryMeshInternal;
+
+	/** A visual mesh that represents trajectory of aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
+	TObjectPtr<class UMaterialInterface> TrajectoryMaterialInternal;
+
+	/** A visual mesh that represents aiming area */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual")
+	TObjectPtr<class UMaterialInterface> AimingMaterialInternal;
+
+	/** Trajectory mesh scale for aiming */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Aim Trajectory Transofrm"))
+	FVector2D TrajectoryMeshScaleInternal;
+
+	/** Spawn location of Ghost Character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Temporarry", meta = (BlueprintProtected, DisplayName = "Ghost Character Spawn Location"))
+	FVector SpawnLocationInternal;
+
+	/** Aiming area mesh element */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Temporarry")
+	TObjectPtr<UStaticMesh> AimingAreaStaticMesh;
+
+	/** Asset that contains scalable collision. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Collisions Asset", ShowOnlyInnerProperties))
+	TSubclassOf<class AActor> CollisionsAssetInternal = nullptr;
+
+	/** Explosion damage gameplay effect applied when the bomb detonates. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Explosion Damage Effect", ShowOnlyInnerProperties))
+	TSubclassOf<class UGameplayEffect> ExplosionDamageEffectInternal = nullptr;
+
+	/** Player revive gameplay effect player character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Player Death Effect", ShowOnlyInnerProperties))
+	TSubclassOf<class UGameplayEffect> PlayerReviveEffectInternal = nullptr;
+
+	/** A tag used for GAS to trigger bomb placement */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Trigger Bomb Tag", ShowOnlyInnerProperties))
+	FGameplayTag TriggerBombTag = FGameplayTag::EmptyTag;
+
+	/** A tag used for GAS to trigger bomb placement */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, DisplayName = "Revive Player Character Tag", ShowOnlyInnerProperties))
+	FGameplayTag ReviveCharacterTriggerTag = FGameplayTag::EmptyTag;
 };
