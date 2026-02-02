@@ -132,6 +132,7 @@ void UGRSWorldSubSystem::SetLastActivatedGhostCharacter(AGRSPlayerCharacter* Gho
 
 	LastActivatedGhostCharacter = GhostCharacter;
 }
+
 // Returns the side of the ghost character (left, or right)
 EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter)
 {
@@ -184,7 +185,7 @@ void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
 
 // Called when the local player character is spawned, possessed, and replicated
 void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerCharacter, int32 CharacterID)
-{
+{ :D 
 	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
 
 	Init(); // try to initialize
@@ -197,8 +198,11 @@ void UGRSWorldSubSystem::Init()
 {
 	if (CharacterMangerComponent && CollisionMangerComponent)
 	{
-		OnInitialize.Broadcast();
-		OnInitialize.Clear();
+		if (OnInitialize.IsBound())
+		{
+			OnInitialize.Broadcast();
+			OnInitialize.Clear();
+		}
 	}
 }
 
@@ -260,9 +264,7 @@ class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
-{
-}
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState) {}
 
 /** EngGameState:
 //HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
