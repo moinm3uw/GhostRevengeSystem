@@ -120,7 +120,7 @@ protected:
 
 	/** Checks if all components present and invokes initialization */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void Init();
+	void TryInit();
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

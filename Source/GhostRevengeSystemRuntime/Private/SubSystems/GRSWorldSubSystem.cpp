@@ -79,7 +79,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharac
 		CharacterMangerComponent = CharacterManagerComponent;
 	}
 
-	Init(); // try to initialize
+	TryInit(); // try to initialize
 }
 
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
@@ -90,7 +90,7 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(class UGhostRevengeCo
 		CollisionMangerComponent = NewCollisionManagerComponent;
 	}
 
-	Init(); // try to initialize
+	TryInit(); // try to initialize
 }
 
 // Register ghost character
@@ -188,13 +188,13 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerC
 {
 	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
 
-	Init(); // try to initialize
+	TryInit(); // try to initialize
 
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 }
 
 // Checks if all components present and invokes initialization
-void UGRSWorldSubSystem::Init()
+void UGRSWorldSubSystem::TryInit()
 {
 	if (CharacterMangerComponent && CollisionMangerComponent)
 	{
