@@ -5,7 +5,6 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "Actors/BmrBombAbilityActor.h"
-#include "Actors/BmrGeneratedMap.h"
 #include "Actors/BmrPawn.h"
 #include "Animation/AnimInstance.h"
 #include "Components/BmrMapComponent.h"
@@ -15,25 +14,18 @@
 #include "Components/GRSGhostCharacterManagerComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
-#include "DataAssets/BmrBombDataAsset.h"
 #include "DataAssets/BmrPlayerDataAsset.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameplayAbilitySpec.h"
-#include "InputActionValue.h"
 #include "Kismet/GameplayStatics.h"
-#include "Kismet/GameplayStaticsTypes.h"
 #include "LevelActors/GRSBombProjectile.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/BmrGlobalEventsSubsystem.h"
-#include "TimerManager.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
 #include "UObject/ConstructorHelpers.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
@@ -42,45 +34,36 @@
 class UBmrPlayerRow;
 
 /*********************************************************************************************
- * Utils
+ * Nickname component
  **********************************************************************************************/
 
-// Get the character side
-EGRSCharacterSide AGRSPlayerCharacter::GetCharacterSide() const
+//  Set/Update player name
+void AGRSPlayerCharacter::SetPlayerName(const ABmrPawn* MainCharacter)
 {
-	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
-	const FVector ToArenaDirection = ArenaCenter.Location - GetActorLocation().GetSafeNormal();
-	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
-}
-
-// Returns the Skeletal Mesh of ghost revenge character
-UBmrSkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
-{
-	return *CastChecked<UBmrSkeletalMeshComponent>(GetMesh());
-}
-
-// Set visibility of the player character
-void AGRSPlayerCharacter::SetVisibility(bool Visibility)
-{
-	GetMesh()->SetVisibility(Visibility, true);
-}
-
-// Returns own character ID, e.g: 0, 1, 2, 3
-int32 AGRSPlayerCharacter::GetPlayerId() const
-{
-	if (const ABmrPlayerState* MyPlayerState = GetPlayerState<ABmrPlayerState>())
+	if (!MainCharacter)
 	{
-		return MyPlayerState->GetPlayerId();
+		return;
+	}
+	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(MainCharacter->GetPlayerState());
+	if (!MyPlayerState)
+	{
+		return;
 	}
 
-	return 0;
-}
+	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponent' is null!"), __LINE__, __FUNCTION__);
+	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
 
-// Returns the Ability System Component from the Player State
-UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
-{
-	const ABmrPlayerState* InPlayerState = GetPlayerState<ABmrPlayerState>();
-	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
+	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
+	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(UGRSWorldSubSystem::Get().GetCharacterSideFromActor(Cast<ACharacter>(this))));
+
+	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
+	UBmrPlayerNameWidget* NickName = Cast<UBmrPlayerNameWidget>(Widget);
+	if (!ensureMsgf(NickName, TEXT("ASSERT: [%i] %hs:\n'NickName' condition is FALSE"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	NickName->SetPlayerName(FText::FromString(SideName));
 }
 
 /*********************************************************************************************
@@ -103,6 +86,10 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	// Setup capsule component
 	SetupCapsuleComponent();
 
+	// Initialize 3D widget component for the player name
+	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
+	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
+
 	// setup spline component
 	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
 	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
@@ -113,12 +100,6 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	{
 		AimingSphereComponent->SetStaticMesh(SphereMesh.Object);
 	}
-
-	// Initialize 3D widget component for the player name
-	PlayerName3DWidgetComponentInternal = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
-	PlayerName3DWidgetComponentInternal->SetupAttachment(RootComponent);
-
-	ReceiveControllerChangedDelegate.AddDynamic(this, &ThisClass::OnControllerChanged);
 }
 
 // Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
@@ -187,40 +168,7 @@ void AGRSPlayerCharacter::SetupCapsuleComponent()
 }
 
 /*********************************************************************************************
- * Nickname component
- **********************************************************************************************/
-
-//  Set/Update player name
-void AGRSPlayerCharacter::SetPlayerName(const ABmrPawn* MainCharacter) const
-{
-	if (!MainCharacter)
-	{
-		return;
-	}
-	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(MainCharacter->GetPlayerState());
-	if (!MyPlayerState)
-	{
-		return;
-	}
-
-	checkf(PlayerName3DWidgetComponentInternal, TEXT("ERROR: [%i] %hs:\n'PlayerName3DWidgetComponent' is null!"), __LINE__, __FUNCTION__);
-	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
-
-	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
-	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(GetCharacterSide()));
-
-	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
-	UBmrPlayerNameWidget* NickName = Cast<UBmrPlayerNameWidget>(Widget);
-	if (!ensureMsgf(NickName, TEXT("ASSERT: [%i] %hs:\n'NickName' condition is FALSE"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	NickName->SetPlayerName(FText::FromString(SideName));
-}
-
-/*********************************************************************************************
- * Main functionality
+ * Main functionality (core loop)
  **********************************************************************************************/
 
 // Called when the game starts or when spawned (on spawned on the level)
@@ -245,10 +193,21 @@ void AGRSPlayerCharacter::BeginPlay()
 		return;
 	}
 
-	CharacterManagerComponent->OnActivateGhostCharacter.AddUniqueDynamic(this, &ThisClass::ActivateGhostCharacter);
 	CharacterManagerComponent->OnRefreshGhostCharacters.AddUniqueDynamic(this, &ThisClass::OnRefreshGhostCharacters);
+	CharacterManagerComponent->OnActivateGhostCharacter.AddUniqueDynamic(this, &ThisClass::ActivateGhostCharacter);
 	CharacterManagerComponent->OnPlayerCharacterPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
 	CharacterManagerComponent->OnRemoveGhostCharacterFromMap.AddUniqueDynamic(this, &ThisClass::OnRemoveGhostCharacterFromMap);
+}
+
+// Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected
+void AGRSPlayerCharacter::OnRefreshGhostCharacters_Implementation()
+{
+	// --- default params required for the fist start to have character prepared
+	SetPlayerMeshData();
+	// --- Init Player name
+	// InitializePlayerName(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+	// --- Init character visuals (animations, skin)
+	SetCharacterVisual(UBmrBlueprintFunctionLibrary::GetLocalPawn());
 }
 
 // Server-only logic Perform ghost character activation (possessing controller)
@@ -267,19 +226,6 @@ void AGRSPlayerCharacter::ActivateGhostCharacter_Implementation(AGRSPlayerCharac
 
 	TryPossessController(PlayerController);
 	SetPlayerName(PlayerCharacter);
-}
-
-// Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected
-void AGRSPlayerCharacter::OnRefreshGhostCharacters_Implementation()
-{
-	// --- default params required for the fist start to have character prepared
-	SetDefaultPlayerMeshData();
-	// --- Init Player name
-	// InitializePlayerName(UBmrBlueprintFunctionLibrary::GetLocalPawn());
-	// --- Init character visuals (animations, skin)
-	SetCharacterVisual(UBmrBlueprintFunctionLibrary::GetLocalPawn());
-	// --- Clear splines
-	ClearTrajectorySplines();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -317,16 +263,36 @@ void AGRSPlayerCharacter::OnRemoveGhostCharacterFromMap_Implementation(AGRSPlaye
 		return;
 	}
 
-	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
-
+	// --- Disable aiming point
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AimingSphereComponent->SetVisibility(false);
+
+	OnGhostRemovedFromLevel.Broadcast(GetController(), this);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostRemovedFromLevel.Broadcast"), __LINE__, __FUNCTION__);
 
 	// --- not ghost character controlled, could be null
 	if (GetController() && GetController()->HasAuthority())
 	{
 		GetController()->UnPossess();
+	}
+}
+
+/*********************************************************************************************
+ * GAS
+ **********************************************************************************************/
+// Returns the Ability System Component from the Player State
+UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
+{
+	const ABmrPlayerState* InPlayerState = GetPlayerState<ABmrPlayerState>();
+	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
+}
+
+// To Remove current active applied gameplay effect
+void AGRSPlayerCharacter::RemoveActiveGameplayEffect()
+{
+	if (!HasAuthority())
+	{
+		return;
 	}
 
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetInstigator());
@@ -334,153 +300,61 @@ void AGRSPlayerCharacter::OnRemoveGhostCharacterFromMap_Implementation(AGRSPlaye
 	{
 		return;
 	}
+
 	ASC->RemoveActiveGameplayEffect(GASEffectHandle);
 	GASEffectHandle.Invalidate();
 }
 
-//  Possess a player controller
-void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
+// To apply explosion gameplay effect
+void AGRSPlayerCharacter::ApplyExplosionGameplayEffect()
 {
-	if (!PlayerController || !PlayerController->HasAuthority())
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	if (PlayerController)
-	{
-		// Unpossess current pawn first
-		if (PlayerController->GetPawn())
-		{
-			PlayerController->UnPossess();
-		}
-	}
-
-	PlayerController->Possess(this);
-}
-
-// Called when a controller has been replicated to the client. Used to enable input context only
-void AGRSPlayerCharacter::OnRep_Controller()
-{
-	Super::OnRep_Controller();
-
-	OnGhostPossesController_Client.Broadcast();
-	SetManagedInputContextEnabled(GetController(), true);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostPossesController_Client.Broadcast"), __LINE__, __FUNCTION__);
-}
-
-// Called when character has been possessed by a new controller
-void AGRSPlayerCharacter::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
-
-	// Actor has ASC: apply damage through GAS
+	// Actor has ASC: apply damage effect through GAS
 	if (GASEffectHandle.IsValid())
 	{
 		return;
 	}
-	APlayerState* InPlayerState = GetPlayerState();
+	const ABmrPlayerState* InPlayerState = GetPlayerState<ABmrPlayerState>();
+	if (!ensureMsgf(InPlayerState, TEXT("ASSERT: [%i] %hs:\n'InPlayerState' is not null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(InPlayerState);
 	TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffect();
 	if (ensureMsgf(ExplosionDamageEffect, TEXT("ASSERT: [%i] %hs:\n'ExplosionDamageEffect' is not set!"), __LINE__, __FUNCTION__))
 	{
 		GASEffectHandle = ASC->ApplyGameplayEffectToSelf(ExplosionDamageEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
 	}
-
-	OnGhostPossesController_Server.Broadcast();
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnGhostPossesController_Server.Broadcast"), __LINE__, __FUNCTION__);
 }
 
-// Called when our Controller no longer possesses us. Only called on the server (or in standalone).
-void AGRSPlayerCharacter::UnPossessed()
+/*********************************************************************************************
+ * Utils
+ **********************************************************************************************/
+// Returns the Skeletal Mesh of ghost revenge character
+UBmrSkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
 {
-	Super::UnPossessed();
-
-	UE_LOG(LogTemp, Log, TEXT("GRSPlayerCharacter::UnPossessed happened"));
+	return *CastChecked<UBmrSkeletalMeshComponent>(GetMesh());
 }
 
-// Event called after a pawn's controller has changed. Used to disable input context on the clients only
-void AGRSPlayerCharacter::OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController)
+// Set visibility of the player character
+void AGRSPlayerCharacter::SetVisibility(bool Visibility)
 {
-	// --- ignore server calls as need to disable only on the client
-	if (OldController && !OldController->IsLocalController() || NewController && !NewController->IsLocalController())
-	{
-		return;
-	}
-
-	if (!ensureMsgf(Pawn, TEXT("ASSERT: [%i] %hs:\n'Pawn' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	// --- case 1: unpossess. Old controller exist and new controller is not.
-	if (OldController && !NewController)
-	{
-		SetManagedInputContextEnabled(OldController, false);
-	}
-
-	// --- case 2: possess. Old controller does not exist and a new controller is set.
-	if (!OldController && NewController)
-	{
-		SetManagedInputContextEnabled(NewController, true);
-	}
+	GetMesh()->SetVisibility(Visibility, true);
 }
 
-// Enables or disables the input context
-void AGRSPlayerCharacter::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
+// Returns own character ID, e.g: 0, 1, 2, 3
+int32 AGRSPlayerCharacter::GetPlayerId() const
 {
-	if (!PlayerController)
+	if (const ABmrPlayerState* MyPlayerState = GetPlayerState<ABmrPlayerState>())
 	{
-		return;
+		return MyPlayerState->GetPlayerId();
 	}
 
-	ABmrPlayerController* MyPlayerController = Cast<ABmrPlayerController>(PlayerController);
-	if (!MyPlayerController)
-	{
-		return;
-	}
-
-	TArray<const UBmrInputMappingContext*> InputContexts;
-	UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-	InputContexts.AddUnique(InputContext);
-
-	if (!bEnable)
-	{
-		// --- Remove related input contexts
-		MyPlayerController->RemoveInputContexts(InputContexts);
-		return;
-	}
-
-	// --- Remove all previous input contexts managed by Controller
-	MyPlayerController->RemoveInputContexts(InputContexts);
-
-	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
-	if (InputContext
-	    && InputContext->GetChosenGameStatesBitmask() > 0)
-	{
-		MyPlayerController->SetupInputContexts(InputContexts);
-	}
-}
-
-// Set and apply default skeletal mesh for this player once game is starting therefore all players are connected
-void AGRSPlayerCharacter::SetDefaultPlayerMeshData(bool bForcePlayerSkin /* = false*/)
-{
-	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetLocalPawn();
-	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
-
-	const EBmrLevelType PlayerFlag = UBmrBlueprintFunctionLibrary::GetLevelType();
-	EBmrLevelType LevelType = PlayerFlag;
-
-	const UBmrPlayerRow* Row = UBmrPlayerDataAsset::Get().GetRowByLevelType<UBmrPlayerRow>(TO_ENUM(EBmrLevelType, LevelType));
-	if (!ensureMsgf(Row, TEXT("ASSERT: [%i] %hs:\n'Row' is not found!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	const int32 SkinsNum = Row->GetSkinTexturesNum();
-	FBmrMeshData MeshData;
-	MeshData.Row = Row;
-	MeshData.SkinIndex = PlayerCharacter->GetPlayerId() % SkinsNum;
-	GetMeshChecked().InitSkeletalMesh(MeshData);
+	return 0;
 }
 
 //  Set character visual once added to the level from a refence character (visuals, animations)
@@ -511,114 +385,60 @@ void AGRSPlayerCharacter::SetCharacterVisual(const ABmrPawn* PlayerCharacter)
 	CurrentMeshComponent->ApplySkinByIndex(CurrentSkinIndex);
 }
 
-/*********************************************************************************************
- * Hold To Charge aim, spawn bomb (enhanced input)
- **********************************************************************************************/
-
-// Move the player character
-void AGRSPlayerCharacter::MovePlayer(const FInputActionValue& ActionValue)
+// Set and apply skeletal mesh for ghost player. Copy mesh from current player
+void AGRSPlayerCharacter::SetPlayerMeshData(bool bForcePlayerSkin /* = false*/)
 {
-	const AController* OwnedController = GetController();
-	if (!OwnedController
-	    || OwnedController->IsMoveInputIgnored())
+	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetLocalPawn();
+	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
+
+	const EBmrLevelType PlayerFlag = UBmrBlueprintFunctionLibrary::GetLevelType();
+	EBmrLevelType LevelType = PlayerFlag;
+
+	const UBmrPlayerRow* Row = UBmrPlayerDataAsset::Get().GetRowByLevelType<UBmrPlayerRow>(TO_ENUM(EBmrLevelType, LevelType));
+	if (!ensureMsgf(Row, TEXT("ASSERT: [%i] %hs:\n'Row' is not found!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
-	// input is a Vector2D
-	const FVector2D MovementVector = ActionValue.Get<FVector2D>();
-
-	// Find out which way is forward
-	const FRotator ForwardRotation = UBmrCellUtilsLibrary::GetLevelGridRotation();
-
-	// Get forward vector
-	const FVector ForwardDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
-	// const FVector ForwardDirection = FVector().ZeroVector;
-
-	// Get right vector
-	const FVector RightDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
-	// const FVector RightDirection = FVector().ZeroVector;;
-
-	AddMovementInput(ForwardDirection, MovementVector.Y);
-	AddMovementInput(RightDirection, MovementVector.X);
+	const int32 SkinsNum = Row->GetSkinTexturesNum();
+	FBmrMeshData MeshData;
+	MeshData.Row = Row;
+	MeshData.SkinIndex = PlayerCharacter->GetPlayerId() % SkinsNum;
+	GetMeshChecked().InitSkeletalMesh(MeshData);
 }
 
-// Hold button to increase trajectory on button release trow bomb
-void AGRSPlayerCharacter::ChargeBomb(const FInputActionValue& ActionValue)
+//  Possess a player controller
+void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 {
-	ShowVisualTrajectory();
-
-	if (CurrentHoldTimeInternal < 1.0f)
+	if (!PlayerController || !PlayerController->HasAuthority())
 	{
-		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
+		return;
 	}
-	else
+
+	if (PlayerController)
 	{
-		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
+		// Unpossess current pawn first
+		if (PlayerController->GetPawn())
 		{
-			ThrowProjectile();
+			PlayerController->UnPossess();
 		}
-		CurrentHoldTimeInternal = 0;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
-}
-
-//  Add and update visual representation of charging (aiming) progress as trajectory
-void AGRSPlayerCharacter::ShowVisualTrajectory()
-{
-	FPredictProjectilePathResult Result;
-
-	// Configure PredictProjectilePath settings and get result
-	PredictProjectilePath(Result);
-
-	// Aiming area - show visual element in the of predicted end
-	AddMeshToEndProjectilePath(Result);
-
-	// show trajectory visual
-	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && Result.PathData.Num() > 0)
-	{
-		AddSplinePoints(Result);
-		AddSplineMesh(Result);
-	}
-}
-
-// Configure PredictProjectilePath settings and get result
-void AGRSPlayerCharacter::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
-{
-	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
-	// 45-degree vector between up and right
-	FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
-
-	// Predict and draw the trajectory
-	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
-	Params.StartLocation = GetActorLocation();
-
-	// --- pick a direction based on the side of the map (left or right)
-	const float SideSign = GetCharacterSide() == EGRSCharacterSide::Left ? 1.0f : -1.0f;
-
-	Params.LaunchVelocity = FVector(
-	    UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal),
-	    LaunchVelocity.Y,
-	    UpRight45.Z + LaunchVelocity.Z);
-
-	Params.ActorsToIgnore.Add(this);
-
-	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
+	PlayerController->Possess(this);
 }
 
 // Add a mesh to the last element of the predict Projectile path results
-void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result)
+void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FVector Location)
 {
 	AimingSphereComponent->SetVisibility(true);
-	AimingSphereComponent->SetWorldLocation(Result.LastTraceDestination.Location);
+	AimingSphereComponent->SetWorldLocation(Location);
 }
 
 // Add spline points to the spline component
 void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
 {
 	ClearTrajectorySplines();
+
 	for (int32 i = 0; i < Result.PathData.Num(); i++)
 	{
 		FVector SplinePoint = Result.PathData[i].Location;
@@ -630,7 +450,19 @@ void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
 	ProjectileSplineComponentInternal->UpdateSpline();
 }
 
-// Add spline mesh to spline points
+// Hide spline elements (trajectory)
+void AGRSPlayerCharacter::ClearTrajectorySplines()
+{
+	for (USplineMeshComponent* SplineMeshComponent : SplineMeshArrayInternal)
+	{
+		SplineMeshComponent->DestroyComponent();
+	}
+
+	SplineMeshArrayInternal.Empty();
+	ProjectileSplineComponentInternal->ClearSplinePoints();
+}
+
+//  Add spline mesh to spline points
 void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 {
 	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
@@ -658,7 +490,7 @@ void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 	}
 }
 
-// Spawn and send projectile
+// Throw projectile event, bound to onetime button press
 void AGRSPlayerCharacter::ThrowProjectile()
 {
 	//--- Calculate Cell to spawn bomb
@@ -668,7 +500,6 @@ void AGRSPlayerCharacter::ThrowProjectile()
 	//--- hide aiming sphere from ui
 	AimingSphereComponent->SetVisibility(false);
 
-	//--- spawn bomb on the server
 	SpawnBomb(CurrentCell);
 
 	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f);
@@ -689,50 +520,22 @@ void AGRSPlayerCharacter::ThrowProjectile()
 	}
 }
 
-// Spawn bomb on aiming sphere position
+// Spawn bomb on aiming sphere position.
 void AGRSPlayerCharacter::SpawnBomb(FBmrCell TargetCell)
 {
 	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
-
-	// Activate bomb ability
 	FGameplayEventData EventData;
-	EventData.Instigator = this;
+	EventData.Instigator = GetInstigator();
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
 	GetAbilitySystemComponent()->HandleGameplayEvent(UGRSDataAsset::Get().GetTriggerBombTag(), &EventData);
 }
 
-// Hide spline elements (trajectory)
-void AGRSPlayerCharacter::ClearTrajectorySplines()
-{
-	for (USplineMeshComponent* SplineMeshComponent : SplineMeshArrayInternal)
-	{
-		SplineMeshComponent->DestroyComponent();
-	}
-
-	SplineMeshArrayInternal.Empty();
-	ProjectileSplineComponentInternal->ClearSplinePoints();
-}
-
-/*********************************************************************************************
- * End of ghost character
- **********************************************************************************************/
-
-// Clean up the character for the MGF unload
+//  Clean up the character for the MGF unload
 void AGRSPlayerCharacter::PerformCleanUp()
 {
-	ClearTrajectorySplines();
-
-	if (Controller)
+	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
 	{
-		ABmrPlayerController& PC = *UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
-
-		// Remove all previous input contexts managed by Controller
-		TArray<const UBmrInputMappingContext*> InputContexts;
-		UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-		InputContexts.AddUnique(InputContext);
-		PC.RemoveInputContexts(InputContexts);
-
-		Controller->Possess(UBmrBlueprintFunctionLibrary::GetLocalPawn());
+		RootCapsuleComponent->DestroyComponent();
 	}
 
 	if (UMovementComponent* MovementComponent = GetMovementComponent())
@@ -740,9 +543,9 @@ void AGRSPlayerCharacter::PerformCleanUp()
 		MovementComponent->DestroyComponent();
 	}
 
-	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
+	if (ProjectileSplineComponentInternal)
 	{
-		RootCapsuleComponent->DestroyComponent();
+		ProjectileSplineComponentInternal->DestroyComponent();
 	}
 
 	if (MeshComponentInternal)
@@ -750,10 +553,6 @@ void AGRSPlayerCharacter::PerformCleanUp()
 		MeshComponentInternal->DestroyComponent();
 	}
 
-	if (ProjectileSplineComponentInternal)
-	{
-		ProjectileSplineComponentInternal->DestroyComponent();
-	}
 	if (BombProjectileInternal)
 	{
 		BombProjectileInternal->Destroy();

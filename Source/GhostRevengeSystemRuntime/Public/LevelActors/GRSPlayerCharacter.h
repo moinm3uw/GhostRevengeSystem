@@ -39,7 +39,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter,
 
 public:
 	/*********************************************************************************************
-	 * Delegates & GAS
+	 * Delegates
 	 **********************************************************************************************/
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostAddedToLevel);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Client);
@@ -67,32 +67,6 @@ public:
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
 	FOnGhostEliminatesPlayer OnGhostEliminatesPlayer;
 
-	/** Cached handle of current applied effect */
-	FActiveGameplayEffectHandle GASEffectHandle;
-
-	/*********************************************************************************************
-	 * Utils
-	 **********************************************************************************************/
-
-	/** Get the character side */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	EGRSCharacterSide GetCharacterSide() const;
-
-	/** Returns the Skeletal Mesh of ghost revenge character. */
-	UBmrSkeletalMeshComponent& GetMeshChecked() const;
-
-	/** Set visibility of the player character */
-	void SetVisibility(bool Visibility);
-
-	/** Returns own character ID, e.g: 0, 1, 2, 3 */
-	UFUNCTION(BlueprintPure, Category = "C++")
-	int32 GetPlayerId() const;
-
-	/** Returns the Ability System Component from the Player State.
-	 * In blueprints, call 'Get Ability System Component' as interface function. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-
 	/*********************************************************************************************
 	 * Initialization
 	 **********************************************************************************************/
@@ -101,10 +75,6 @@ public:
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
 protected:
-	/** Mesh of component. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
-	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
-
 	/** Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc. */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetDefaultParams();
@@ -131,7 +101,7 @@ public:
 
 	/** Set/Update player name */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetPlayerName(const ABmrPawn* MainCharacter) const;
+	void SetPlayerName(const ABmrPawn* MainCharacter);
 
 protected:
 	/** 3D widget component that displays the player name above the character. */
@@ -139,7 +109,7 @@ protected:
 	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
 
 	/*********************************************************************************************
-	 * Lifecycle and Main functionality
+	 * Main functionality (core loop)
 	 **********************************************************************************************/
 
 public:
@@ -147,19 +117,6 @@ public:
 
 	/** Called when the game starts or when spawned (on spawned on the level) */
 	virtual void BeginPlay() override;
-
-	/** Set character visual once added to the level from a refence character (visuals, animations) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetCharacterVisual(const ABmrPawn* PlayerCharacter);
-
-	/** Set and apply default skeletal mesh for this player.
-	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
-	void SetDefaultPlayerMeshData(bool bForcePlayerSkin = false);
-
-	/** Move the player character. */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void MovePlayer(const FInputActionValue& ActionValue);
 
 protected:
 	/** Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected */
@@ -178,23 +135,71 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnRemoveGhostCharacterFromMap(AGRSPlayerCharacter* GhostCharacter);
 
+	/*********************************************************************************************
+	 * GAS
+	 **********************************************************************************************/
+
+protected:
+	/** Cached handle of current applied effect */
+	FActiveGameplayEffectHandle GASEffectHandle;
+
+public:
+	/** Returns the Ability System Component from the Player State.
+	 * In blueprints, call 'Get Ability System Component' as interface function. */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	/** Returns handle of current applied ability effect  */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	FORCEINLINE FActiveGameplayEffectHandle GetGASEffectHandle() const { return GASEffectHandle; }
+
+	/** To Remove current active applied gameplay effect */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveActiveGameplayEffect();
+
+	/** To apply explosion gameplay effect */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ApplyExplosionGameplayEffect();
+
+	/*********************************************************************************************
+	 * Utils
+	 **********************************************************************************************/
+
+	/** Returns the Skeletal Mesh of ghost revenge character. */
+	UBmrSkeletalMeshComponent& GetMeshChecked() const;
+
+	/** Set visibility of the player character */
+	void SetVisibility(bool Visibility);
+
+	/** Returns own character ID, e.g: 0, 1, 2, 3 */
+	UFUNCTION(BlueprintPure, Category = "C++")
+	int32 GetPlayerId() const;
+
+	/** Set character visual once added to the level from a refence character (visuals, animations) */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void SetCharacterVisual(const ABmrPawn* PlayerCharacter);
+
+	/** Set and apply skeletal mesh for ghost player. Copy mesh from current player
+	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	void SetPlayerMeshData(bool bForcePlayerSkin = false);
+
+protected:
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
 	void TryPossessController(AController* PlayerController);
 
 	/*********************************************************************************************
-	 * Hold To Charge and aim
+	 * Aiming
 	 **********************************************************************************************/
 protected:
+	/** Mesh of component. */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
+	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
+
 	/** Spline component used for show the projectile trajectory path */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	class USplineComponent* ProjectileSplineComponentInternal;
-
-	UPROPERTY()
-	TObjectPtr<class AGRSBombProjectile> BombProjectileInternal = nullptr;
-
-	UPROPERTY()
-	float CurrentHoldTimeInternal = 0.0f;
 
 	/** Spline component used for show the projectile trajectory path */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
@@ -204,69 +209,39 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* AimingSphereComponent;
 
+	/** Projectile to be spawned once bomb is ready to be thrown */
+	UPROPERTY()
+	TObjectPtr<class AGRSBombProjectile> BombProjectileInternal = nullptr;
+
 public:
-	/** Hold button to increase trajectory on max level achieved throw projectile */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void ChargeBomb(const FInputActionValue& ActionValue);
-
-	/** Add and update visual representation of charging (aiming) progress as trajectory */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void ShowVisualTrajectory();
-
-	/** Throw projectile event, binded to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void ThrowProjectile();
-
-	/** Hide spline elements (trajectory) */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
-	void ClearTrajectorySplines();
-
-	/** Configure PredictProjectilePath settings and get result */
+	/** Add a mesh to the last element of the predict Projectile path results */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
-
-	/** Add a mesh to the last element of the predicцt Projectile path results */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void AddMeshToEndProjectilePath(FPredictProjectilePathResult& Result);
+	void AddMeshToEndProjectilePath(FVector Location);
 
 	/** Add spline points to the spline component */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplinePoints(FPredictProjectilePathResult& Result);
 
+	/** Hide spline elements (trajectory) */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void ClearTrajectorySplines();
+
 	/** Add spline mesh to spline points */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
 
-	/** Called when a controller has been replicated to the client. Used to enable input context only */
-	virtual void OnRep_Controller() override;
-
-	/** Called when a character has been possessed by a new controller */
-	virtual void PossessedBy(AController* NewController) override;
-
-	/** Called when our Controller no longer possesses us. Only called on the server (or in standalone). */
-	virtual void UnPossessed() override;
-
-	/** Event called after a pawn's controller has changed, on the server and owning client. This will happen at the same time as the delegate on GameInstance.
-	 * Used to disable input context on the clients only */
-	UFUNCTION()
-	void OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController);
-
-	/** Enables or disables the input context.
-	 * * @param bEnable - true to enable, false to disable */
-	UFUNCTION(BlueprintCallable, Category = "C++")
-	void SetManagedInputContextEnabled(AController* PlayerController, bool bEnable);
-
 	/*********************************************************************************************
 	 * Bomb
 	 **********************************************************************************************/
-protected:
+public:
+	/** Throw projectile event, bound to onetime button press */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ThrowProjectile();
+
 	/** Spawn bomb on aiming sphere position. */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SpawnBomb(FBmrCell TargetCell);
 
-	/*********************************************************************************************
-	 * End of ghost character
-	 **********************************************************************************************/
 public:
 	/** Clean up the character for the MGF unload */
 	void PerformCleanUp();

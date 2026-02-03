@@ -3,10 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "LevelActors/GRSPlayerCharacter.h"
 #include "Subsystems/WorldSubsystem.h"
 
 #include "GRSWorldSubSystem.generated.h"
+
+enum class EGRSCharacterSide : uint8;
 
 /**
  * Implements the world subsystem to access different components in the module
@@ -22,6 +23,10 @@ public:
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
 	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject& WorldContextObject);
+
+	/** Calculates the character side from an actor reference */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	EGRSCharacterSide GetCharacterSideFromActor(AActor* Actor) const;
 
 	/** Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module */
 	UFUNCTION(BlueprintNativeEvent, Category = "C++", meta = (BlueprintProtected))

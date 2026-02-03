@@ -19,4 +19,8 @@ public:
 	/** Returns the ghost character */
 	UFUNCTION(BlueprintPure, Category = "C++", DisplayName = "Get Ghost Player Character", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class AGRSPlayerCharacter* GetGhostPlayerCharacter(const UObject* OptionalWorldContext = nullptr);
+
+	/** Returns the ghost controller component, nullptr otherwise. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[Bomber]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
+	static class UGRSPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
 };

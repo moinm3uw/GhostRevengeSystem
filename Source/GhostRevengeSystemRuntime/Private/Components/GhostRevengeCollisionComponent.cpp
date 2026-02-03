@@ -2,6 +2,7 @@
 
 #include "Components/GhostRevengeCollisionComponent.h"
 
+#include "Actors/BmrPawn.h"
 #include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/BmrGameState.h"
@@ -36,11 +37,6 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 // Is called when local player character is ready to guarantee that they player controller is initialized
 void UGhostRevengeCollisionComponent::OnLocalCharacterReady_Implementation(class ABmrPawn* Character, int32 CharacterID)
 {
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
-	}
-
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
 	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 	WorldSubsystem.RegisterCollisionManagerComponent(this);
@@ -63,8 +59,13 @@ void UGhostRevengeCollisionComponent::OnUnregister()
 // The spawner is considered as loaded only when the subsystem is loaded
 void UGhostRevengeCollisionComponent::OnInitialize()
 {
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
 	// spawn collisions only once
- 	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
+	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 	{
 		SpawnMapCollisionOnSide();
 	}

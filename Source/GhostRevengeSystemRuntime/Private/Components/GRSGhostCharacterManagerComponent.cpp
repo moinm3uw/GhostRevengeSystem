@@ -35,11 +35,6 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
-	}
-
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
 	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 	WorldSubsystem.RegisterCharacterManagerComponent(this);
@@ -50,13 +45,13 @@ void UGRSGhostCharacterManagerComponent::OnInitialize()
 {
 	UE_LOG(LogTemp, Log, TEXT("UGRSGhostCharacterManagerComponent OnInitialize  --- %s"), *this->GetName());
 
-	// spawn 2 characters right away
-	AddGhostCharacter();
-
 	if (GetOwner()->HasAuthority())
 	{
-		RegisterForPlayerDeath();
+		// spawn 2 characters right away
+		AddGhostCharacter();
 	}
+
+	RegisterForPlayerDeath();
 
 	// --- bind to  clear ghost data
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
@@ -345,6 +340,7 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 		return;
 	}
 
+	// --- move all functional part such as posses to ability
 	PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	if (PlayerController->GetPawn())
 	{

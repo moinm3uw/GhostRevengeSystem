@@ -36,6 +36,19 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 	return *ThisSubsystem;
 }
 
+//  Calculates the character side from an actor reference
+EGRSCharacterSide UGRSWorldSubSystem::GetCharacterSideFromActor(AActor* Actor) const
+{
+	if (!Actor)
+	{
+		return EGRSCharacterSide::None;
+	}
+
+	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
+	const FVector ToArenaDirection = ArenaCenter.Location - Actor->GetActorLocation().GetSafeNormal();
+	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
+}
+
 // Clears all transient data created by this subsystem.
 void UGRSWorldSubSystem::Deinitialize()
 {
@@ -132,7 +145,6 @@ void UGRSWorldSubSystem::SetLastActivatedGhostCharacter(AGRSPlayerCharacter* Gho
 
 	LastActivatedGhostCharacter = GhostCharacter;
 }
-
 // Returns the side of the ghost character (left, or right)
 EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter)
 {
@@ -196,6 +208,7 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerC
 // Checks if all components present and invokes initialization
 void UGRSWorldSubSystem::TryInit()
 {
+	// --- check if managers have characters and collisions spawned if not - broadcast, yes -> return
 	if (CharacterMangerComponent && CollisionMangerComponent)
 	{
 		if (OnInitialize.IsBound())
@@ -264,7 +277,9 @@ class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState) {}
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
+{
+}
 
 /** EngGameState:
 //HUD = UWidgetsSubsystem::Get().GetWidgetByTag();

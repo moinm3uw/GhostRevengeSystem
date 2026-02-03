@@ -2,9 +2,9 @@
 
 #include "GhostRevengeUtils.h"
 
+#include "Components/GRSPlayerControllerComponent.h"
 #include "Controllers/BmrPlayerController.h"
 #include "LevelActors/GRSPlayerCharacter.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 AGRSPlayerCharacter* UGhostRevengeUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext)
@@ -20,4 +20,16 @@ AGRSPlayerCharacter* UGhostRevengeUtils::GetGhostPlayerCharacter(const UObject* 
 	}
 
 	return PlayerCharacter ? PlayerCharacter : nullptr;
+}
+
+// Returns the ghost controller component, nullptr otherwise.
+class UGRSPlayerControllerComponent* UGhostRevengeUtils::GetControllerComponent(const UObject* OptionalWorldContext)
+{
+	const class ABmrPlayerController* LocalController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
+	if (!LocalController)
+	{
+		return nullptr;
+	}
+
+	return LocalController->FindComponentByClass<UGRSPlayerControllerComponent>();
 }
