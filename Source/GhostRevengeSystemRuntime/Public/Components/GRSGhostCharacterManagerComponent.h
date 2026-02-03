@@ -5,7 +5,7 @@
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 #include "Net/UnrealNetwork.h"
-#include "PoolManagerTypes.h"
+#include "Data/PoolObjectHandle.h"
 
 #include "GRSGhostCharacterManagerComponent.generated.h"
 

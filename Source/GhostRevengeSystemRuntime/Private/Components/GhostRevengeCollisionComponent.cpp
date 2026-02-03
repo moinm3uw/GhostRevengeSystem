@@ -64,7 +64,7 @@ void UGhostRevengeCollisionComponent::OnUnregister()
 void UGhostRevengeCollisionComponent::OnInitialize()
 {
 	// spawn collisions only once
-	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
+ 	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 	{
 		SpawnMapCollisionOnSide();
 	}
