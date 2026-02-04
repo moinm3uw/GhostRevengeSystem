@@ -2,24 +2,31 @@
 
 #include "Components/GRSGhostCharacterManagerComponent.h"
 
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
+// GRS
+#include "Data/GRSDataAsset.h"
+#include "LevelActors/GRSPlayerCharacter.h"
+#include "PoolManagerSubsystem.h"
+#include "SubSystems/GRSWorldSubSystem.h"
+
+// Bmr
 #include "Actors/BmrGeneratedMap.h"
 #include "Bomber.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
-#include "Data/GRSDataAsset.h"
-#include "Engine/World.h"
 #include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
-#include "GameFramework/PlayerState.h"
-#include "Kismet/GameplayStatics.h"
-#include "LevelActors/GRSPlayerCharacter.h"
-#include "PoolManagerSubsystem.h"
-#include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/BmrGlobalEventsSubsystem.h"
+#include "Structures/BmrGameplayTags.h"
+#include "Subsystems/BmrGameplayMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// UE
+#include "Abilities/GameplayAbilityTypes.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values for this component's properties
 UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
@@ -161,8 +168,10 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 }
 
 // Listen game states to remove ghost character from level
-void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
+void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
+	const EBmrCurrentGameState CurrentGameState = ABmrGameState::GetCurrentGameState();
+
 	if (CurrentGameState != EBmrCurrentGameState::InGame)
 	{
 		// --- clean delegates

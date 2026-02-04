@@ -2,17 +2,24 @@
 
 #include "SubSystems/GRSWorldSubSystem.h"
 
-#include "Actors/BmrPawn.h"
+// GRS
 #include "Data/GRSDataAsset.h"
-#include "Data/MyPrimaryDataAsset.h"
-#include "Engine/Engine.h"
-#include "GameFramework/BmrGameState.h"
-#include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
+
+// Bmr
+#include "Actors/BmrPawn.h"
+#include "Data/MyPrimaryDataAsset.h"
+#include "GameFramework/BmrGameState.h"
 #include "MyUtilsLibraries/UtilsLibrary.h"
-#include "Subsystems/BmrGlobalEventsSubsystem.h"
+#include "Structures/BmrGameplayTags.h"
+#include "Subsystems/BmrGameplayMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// UE
+#include "Abilities/GameplayAbilityTypes.h"
+#include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -196,7 +203,7 @@ void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
 }
 
 // Called when the local player character is spawned, possessed, and replicated
-void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(class ABmrPawn* PlayerCharacter, int32 CharacterID)
+void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const struct FGameplayEventData& Payload)
 {
 	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
 
@@ -277,7 +284,7 @@ class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
 }
 
 // Listen game states to switch character skin.
-void UGRSWorldSubSystem::OnGameStateChanged_Implementation(EBmrCurrentGameState CurrentGameState)
+void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 }
 

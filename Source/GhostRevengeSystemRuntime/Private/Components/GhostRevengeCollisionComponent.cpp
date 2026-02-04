@@ -2,16 +2,23 @@
 
 #include "Components/GhostRevengeCollisionComponent.h"
 
-#include "Actors/BmrPawn.h"
-#include "Controllers/BmrPlayerController.h"
+// GRS
 #include "Data/GRSDataAsset.h"
-#include "GameFramework/BmrGameState.h"
-#include "Net/UnrealNetwork.h"
 #include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/BmrGlobalEventsSubsystem.h"
+
+// Bmr
+#include "Actors/BmrPawn.h"
+#include "Controllers/BmrPlayerController.h"
+#include "GameFramework/BmrGameState.h"
+#include "Structures/BmrGameplayTags.h"
+#include "Subsystems/BmrGameplayMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// UE
+#include "Abilities/GameplayAbilityTypes.h"
+#include "Net/UnrealNetwork.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeCollisionComponent)
 
@@ -31,11 +38,11 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 
 	// Binds to local character ready to guarantee that the player controller is initialized
 	// so we can safely use Widget's Subsystem
-	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalCharacterReady);
+	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalPawnReady);
 }
 
 // Is called when local player character is ready to guarantee that they player controller is initialized
-void UGhostRevengeCollisionComponent::OnLocalCharacterReady_Implementation(class ABmrPawn* Character, int32 CharacterID)
+void UGhostRevengeCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
 	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);

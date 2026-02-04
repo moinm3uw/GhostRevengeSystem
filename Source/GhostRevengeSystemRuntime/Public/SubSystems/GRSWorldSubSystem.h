@@ -129,11 +129,11 @@ protected:
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnLocalPawnReady(class ABmrPawn* PlayerCharacter, int32 CharacterID);
+	void OnLocalPawnReady(const struct FGameplayEventData& Payload);
 
 	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(EBmrCurrentGameState CurrentGameState);
+	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
 	/*********************************************************************************************
 	 * Side Collisions actors

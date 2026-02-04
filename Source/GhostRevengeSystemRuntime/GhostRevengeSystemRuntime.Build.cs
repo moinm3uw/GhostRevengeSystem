@@ -25,10 +25,14 @@ public class GhostRevengeSystemRuntime : ModuleRules
 			{
 				"CoreUObject", "Engine", "Slate", "SlateCore" // core
 				,
-				"GameplayTags", // UE_DEFINE_GAMEPLAY_STATIC
+				"GameplayTags" // UE_DEFINE_GAMEPLAY_STATIC
+				,
+				"GameplayAbilities" // Tags
 				// Bomber
-				"MyUtils"
-				, "PoolManager" // spawn ghost character
+				,
+				"MyUtils", "PoolManager" // spawn ghost character
+				,
+				"GameplayMessageRuntime" // BmrGameplayMessageSubsystem
 			}
 		);
 	}

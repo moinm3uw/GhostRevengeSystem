@@ -78,7 +78,7 @@ protected:
 
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnGameStateChanged(EBmrCurrentGameState CurrentGameState);
+	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
 	/** Subscribes to PlayerCharacters death events in order to see if a player died */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))

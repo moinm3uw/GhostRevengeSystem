@@ -28,7 +28,7 @@ protected:
 
 	/** Is called when local player character is ready to guarantee that they player controller is initialized */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void OnLocalCharacterReady(class ABmrPawn* Character, int32 CharacterID);
+	void OnLocalPawnReady(const struct FGameplayEventData& Payload);
 
 	/** Clears all transient data created by this component. */
 	virtual void OnUnregister() override;
