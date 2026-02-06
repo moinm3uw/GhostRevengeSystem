@@ -114,7 +114,7 @@ void UGRSPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 
 	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
 	if (InputContext
-	    && InputContext->GetChosenGameStatesBitmask() > 0)
+	    && !InputContext->GetActiveForStates().IsEmpty())
 	{
 		MyPlayerController->SetupInputContexts(InputContexts);
 	}

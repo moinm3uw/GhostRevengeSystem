@@ -20,6 +20,7 @@
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include "Structures/BmrGameStateTag.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 

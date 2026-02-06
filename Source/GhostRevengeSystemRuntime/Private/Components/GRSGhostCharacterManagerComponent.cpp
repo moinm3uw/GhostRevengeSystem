@@ -27,6 +27,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "Structures/BmrGameStateTag.h"
 
 // Sets default values for this component's properties
 UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
@@ -64,8 +65,9 @@ void UGRSGhostCharacterManagerComponent::OnInitialize()
 	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
 
 	// --- handle initiation of ghosts player if MGF loaded during start of the game or in active game
-	const EBmrCurrentGameState CurrentGameState = ABmrGameState::GetCurrentGameState();
-	if (CurrentGameState == EBmrCurrentGameState::GameStarting || CurrentGameState == EBmrCurrentGameState::InGame)
+	const ABmrGameState& GameState = ABmrGameState::Get();
+
+	if (GameState.HasMatchingGameplayTag(FBmrGameStateTag::GameStarting) || GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
 	{
 		RefreshGhostCharacters();
 	}
@@ -170,9 +172,7 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 // Listen game states to remove ghost character from level
 void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
-	const EBmrCurrentGameState CurrentGameState = ABmrGameState::GetCurrentGameState();
-
-	if (CurrentGameState != EBmrCurrentGameState::InGame)
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		// --- clean delegates
 		if (BoundMapComponents.Num() > 0)
@@ -187,18 +187,14 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const
 		RemoveGhostCharacters();
 	}
 
-	switch (CurrentGameState)
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
-		case EBmrCurrentGameState::GameStarting:
+		if (GetOwner()->HasAuthority())
+		{
+			RegisterForPlayerDeath();
+		}
 
-			if (GetOwner()->HasAuthority())
-			{
-				RegisterForPlayerDeath();
-			}
-
-			RefreshGhostCharacters();
-			break;
-		default: break;
+		RefreshGhostCharacters();
 	}
 }
 
