@@ -172,7 +172,7 @@ void UGRSGhostCharacterManagerComponent::RegisterForPlayerDeath()
 // Listen game states to remove ghost character from level
 void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
-	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		// --- clean delegates
 		if (BoundMapComponents.Num() > 0)
@@ -183,7 +183,7 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const
 			}
 		}
 
-		// -- release all ghosts
+		// -- release (unpossess) all ghosts
 		RemoveGhostCharacters();
 	}
 

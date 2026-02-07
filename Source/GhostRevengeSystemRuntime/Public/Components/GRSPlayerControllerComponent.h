@@ -10,6 +10,9 @@
 
 #include "GRSPlayerControllerComponent.generated.h"
 
+/**
+ *  Attached to the BmrPlayerController to handle player input when a ghost character is possessed
+ */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSPlayerControllerComponent : public UActorComponent
 {
@@ -53,7 +56,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
 
-	/** Called when possessed pawn changed */
+	/** Enables or disable input context (enhanced input) depends on possession state. Called when possessed pawn changed */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
 

@@ -52,12 +52,10 @@ void UGRSPlayerControllerComponent::BeginPlay()
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
 }
 
-// Called when possessed pawn changed
+// Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
 void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
 {
-	// --- ignore server calls as need to disable only on the client
-
-	// --- case 1: possessed to ghost character (NewPawn is a ghost character)
+	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character)
 	if (NewPawn)
 	{
 		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(NewPawn);
@@ -78,7 +76,6 @@ void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn*
 		if (GhostCharacter)
 		{
 			SetManagedInputContextEnabled(GetPlayerController(), false);
-
 			GhostCharacter->RemoveActiveGameplayEffect();
 		}
 	}
