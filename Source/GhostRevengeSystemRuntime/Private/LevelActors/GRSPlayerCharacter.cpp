@@ -24,6 +24,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSBombProjectile.h"
+#include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
@@ -187,16 +188,28 @@ void AGRSPlayerCharacter::BeginPlay()
 	// --- ghost added to level
 	OnGhostAddedToLevel.Broadcast();
 
-	class UGRSGhostCharacterManagerComponent* CharacterManagerComponent = UGRSWorldSubSystem::Get().GetGRSCharacterManagerComponent();
-	if (!CharacterManagerComponent)
+	UGRSGhostCharacterManagerComponent* CharacterManagerComponent = UGRSWorldSubSystem::Get().GetGRSCharacterManagerComponent();
+	if (CharacterManagerComponent)
 	{
-		return;
+		CharacterManagerComponent->OnRefreshGhostCharacters.AddUniqueDynamic(this, &ThisClass::OnRefreshGhostCharacters);
+		CharacterManagerComponent->OnActivateGhostCharacter.AddUniqueDynamic(this, &ThisClass::ActivateGhostCharacter);
+		CharacterManagerComponent->OnPlayerCharacterPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+		CharacterManagerComponent->OnRemoveGhostCharacterFromMap.AddUniqueDynamic(this, &ThisClass::OnRemoveGhostCharacterFromMap);
 	}
 
-	CharacterManagerComponent->OnRefreshGhostCharacters.AddUniqueDynamic(this, &ThisClass::OnRefreshGhostCharacters);
-	CharacterManagerComponent->OnActivateGhostCharacter.AddUniqueDynamic(this, &ThisClass::ActivateGhostCharacter);
-	CharacterManagerComponent->OnPlayerCharacterPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-	CharacterManagerComponent->OnRemoveGhostCharacterFromMap.AddUniqueDynamic(this, &ThisClass::OnRemoveGhostCharacterFromMap);
+	// --- handle initiation of ghosts player if MGF loaded during start of the game or in active game
+	const ABmrGameState& GameState = ABmrGameState::Get();
+	if (GameState.HasMatchingGameplayTag(FBmrGameStateTag::GameStarting) || GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
+	{
+		OnRefreshGhostCharacters();
+	}
+}
+
+void AGRSPlayerCharacter::Destroyed()
+{
+	Super::Destroyed();
+	RemoveActiveGameplayEffect();
+	PerformCleanUp();
 }
 
 // Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected
@@ -546,20 +559,27 @@ void AGRSPlayerCharacter::PerformCleanUp()
 	if (ProjectileSplineComponentInternal)
 	{
 		ProjectileSplineComponentInternal->DestroyComponent();
+		ProjectileSplineComponentInternal = nullptr;
 	}
 
 	if (MeshComponentInternal)
 	{
 		MeshComponentInternal->DestroyComponent();
+		MeshComponentInternal = nullptr;
 	}
 
 	if (BombProjectileInternal)
 	{
 		BombProjectileInternal->Destroy();
+		BombProjectileInternal = nullptr;
 	}
 
 	if (AimingSphereComponent)
 	{
 		AimingSphereComponent->DestroyComponent();
+		AimingSphereComponent = nullptr;
 	}
+
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 }

@@ -74,13 +74,81 @@ void UGRSWorldSubSystem::PerformCleanUp()
 
 	UMyPrimaryDataAsset::ResetDataAsset(DataAssetInternal);
 
-	CharacterMangerComponent = nullptr;
-	CollisionMangerComponent = nullptr;
+	UnregisterCharacterManagerComponent();
+	UnregisterCollisionManagerComponent();
+	ClearGhostCharacters();
+	ClearCollisions();
+}
 
-	GhostCharacterLeftSide = nullptr;
-	GhostCharacterRightSide = nullptr;
+// Clears cached character manager component
+void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
+{
+	CharacterManagerComponent = nullptr;
+}
+
+// Clears cached collision manager component
+void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
+{
+	CollisionMangerComponent = nullptr;
+}
+
+// Clear cached ghost character references
+void UGRSWorldSubSystem::ClearGhostCharacters()
+{
+	if (GhostCharacterLeftSide)
+	{
+		GhostCharacterLeftSide->Destroy();
+		GhostCharacterLeftSide = nullptr;
+	}
+
+	if (GhostCharacterRightSide)
+	{
+		GhostCharacterRightSide->Destroy();
+		GhostCharacterRightSide = nullptr;
+	}
 
 	LastActivatedGhostCharacter = nullptr;
+}
+
+// Clear cached ghost character by reference
+void UGRSWorldSubSystem::UnregisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
+{
+	if (!GhostPlayerCharacter)
+	{
+		return;
+	}
+
+	if (LastActivatedGhostCharacter == GhostPlayerCharacter)
+	{
+		LastActivatedGhostCharacter = nullptr;
+	}
+
+	if (GhostCharacterLeftSide == GhostPlayerCharacter)
+	{
+		GhostCharacterLeftSide = nullptr;
+
+		return;
+	}
+
+	if (GhostCharacterRightSide == GhostPlayerCharacter)
+	{
+		GhostCharacterRightSide->Destroy();
+		GhostCharacterRightSide = nullptr;
+	}
+}
+
+// Clear cached collisions
+void UGRSWorldSubSystem::ClearCollisions()
+{
+	if (LeftSideCollisionInternal)
+	{
+		LeftSideCollisionInternal->Destroy();
+	}
+
+	if (RightSideCollisionInternal)
+	{
+		RightSideCollisionInternal->Destroy();
+	}
 
 	LeftSideCollisionInternal = nullptr;
 	RightSideCollisionInternal = nullptr;
@@ -93,14 +161,14 @@ const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 }
 
 // Register character manager component
-void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* CharacterManagerComponent)
+void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent)
 {
-	if (CharacterManagerComponent && CharacterManagerComponent != CharacterMangerComponent)
+	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
 	{
-		CharacterMangerComponent = CharacterManagerComponent;
+		CharacterManagerComponent = NewCharacterManagerComponent;
 	}
 
-	TryInit(); // try to initialize
+	TryInit();
 }
 
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
@@ -217,7 +285,7 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const struct FGameplayE
 void UGRSWorldSubSystem::TryInit()
 {
 	// --- check if managers have characters and collisions spawned if not - broadcast, yes -> return
-	if (CharacterMangerComponent && CollisionMangerComponent)
+	if (CharacterManagerComponent && CollisionMangerComponent)
 	{
 		if (OnInitialize.IsBound())
 		{

@@ -100,12 +100,12 @@ public:
 	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponentInternal; }
 
 	/** Set/Update player name */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetPlayerName(const ABmrPawn* MainCharacter);
 
 protected:
 	/** 3D widget component that displays the player name above the character. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
 	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
 
 	/*********************************************************************************************
@@ -117,6 +117,9 @@ public:
 
 	/** Called when the game starts or when spawned (on spawned on the level) */
 	virtual void BeginPlay() override;
+
+	/** Called when actor is destroyed */
+	virtual void Destroyed() override;
 
 protected:
 	/** Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected */

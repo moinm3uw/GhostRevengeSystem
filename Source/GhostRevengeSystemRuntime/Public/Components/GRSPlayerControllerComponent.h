@@ -36,6 +36,9 @@ protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
+	/** Clears all transient data created by this component */
+	virtual void OnUnregister() override;
+
 public:
 	UPROPERTY()
 	float CurrentHoldTimeInternal = 0.0f;

@@ -39,6 +39,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void PerformCleanUp();
 
+	/** Clears cached character manager component. */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void UnregisterCharacterManagerComponent();
+
+	/** Clears cached collision manager component */
+	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	void UnregisterCollisionManagerComponent();
+
+	/** Clear cached ghost character references */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ClearGhostCharacters();
+
+	/** Clear cached ghost character by reference */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void UnregisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter);
+
+	/** Clear cached collisions */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void ClearCollisions();
+
 	/* Delegate to inform that module is loaded. To have better loading control of the MGF  */
 	UPROPERTY(BlueprintAssignable, Transient, Category = "C++")
 	FGRSOnInitialize OnInitialize;
@@ -54,7 +74,7 @@ public:
 
 	/** Register character manager component. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	void RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* CharacterManagerComponent);
+	void RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent);
 
 	/** Register collision manager component used to track if all components loaded and MGF ready to initialize */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -66,7 +86,7 @@ public:
 
 	/** Register character manager component. */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
-	FORCEINLINE class UGRSGhostCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterMangerComponent; }
+	FORCEINLINE class UGRSGhostCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterManagerComponent; }
 
 	/** Returns the left side ghost player character */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
@@ -102,7 +122,7 @@ protected:
 
 	/** Current Character Manager Component */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "C++")
-	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterMangerComponent;
+	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterManagerComponent;
 
 	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "C++")

@@ -61,6 +61,10 @@ void UGhostRevengeCollisionComponent::OnUnregister()
 		CollisionPoolActorHandlersInternal.Empty();
 		UPoolManagerSubsystem::Get().EmptyPool(UGRSDataAsset::Get().GetCollisionsAssetClass());
 	}
+
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().ClearCollisions();
+	UGRSWorldSubSystem::Get().UnregisterCollisionManagerComponent();
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded

@@ -175,13 +175,7 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const
 	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		// --- clean delegates
-		if (BoundMapComponents.Num() > 0)
-		{
-			for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
-			{
-				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-			}
-		}
+		UnregisterFromPlayerDeath();
 
 		// -- release (unpossess) all ghosts
 		RemoveGhostCharacters();
@@ -196,6 +190,28 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const
 
 		RefreshGhostCharacters();
 	}
+}
+
+// To unsubscribed from player death events (delegates) and clean ability component
+void UGRSGhostCharacterManagerComponent::UnregisterFromPlayerDeath()
+{
+	if (BoundMapComponents.Num() > 0)
+	{
+		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+		{
+			if (BoundMapComponents[Index].IsValid())
+			{
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+				const ABmrPawn* PlayerCharacter = BoundMapComponents[Index]->GetOwner<ABmrPawn>();
+				RemoveAppliedReviveGameplayEffect(PlayerCharacter);
+			}
+		}
+
+		BoundMapComponents.Empty();
+	}
+
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
 }
 
 // Refresh the ghost characters visuals
@@ -384,21 +400,38 @@ void UGRSGhostCharacterManagerComponent::OnUnregister()
 	}
 
 	// --- clean delegates
-	if (BoundMapComponents.Num() > 0)
-	{
-		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
-		{
-			if (BoundMapComponents[Index].IsValid())
-			{
-				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-			}
-		}
-
-		BoundMapComponents.Empty();
-	}
+	UnregisterFromPlayerDeath();
 
 	OnPlayerCharacterPreRemovedFromLevel.Clear();
 	OnActivateGhostCharacter.Clear();
 	OnRemoveGhostCharacterFromMap.Clear();
 	OnRefreshGhostCharacters.Clear();
+}
+
+// To Remove current active applied gameplay effect
+void UGRSGhostCharacterManagerComponent::RemoveAppliedReviveGameplayEffect(const ABmrPawn* PlayerCharacter)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	// Actor has ASC: apply effect through GAS
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
+	if (!ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n 'ASC' is not set!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
+	if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
+	{
+		FGameplayEffectQuery Query;
+		Query.EffectDefinition = PlayerReviveEffect;
+		TArray<FActiveGameplayEffectHandle> Handles = ASC->GetActiveEffects(Query);
+		for (FActiveGameplayEffectHandle Handle : Handles)
+		{
+			ASC->RemoveActiveGameplayEffect(Handle);
+			Handle.Invalidate();
+		}
+	}
 }

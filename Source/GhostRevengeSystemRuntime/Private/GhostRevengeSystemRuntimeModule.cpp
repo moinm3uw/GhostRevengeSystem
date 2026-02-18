@@ -2,6 +2,8 @@
 
 #include "GhostRevengeSystemRuntimeModule.h"
 
+#include "SubSystems/GRSWorldSubSystem.h"
+
 #define LOCTEXT_NAMESPACE "FGhostRevengeSystemRuntimeModule"
 
 void FGhostRevengeSystemRuntimeModule::StartupModule()

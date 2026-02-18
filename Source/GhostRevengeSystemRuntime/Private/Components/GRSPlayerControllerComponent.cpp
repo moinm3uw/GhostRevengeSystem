@@ -52,6 +52,13 @@ void UGRSPlayerControllerComponent::BeginPlay()
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
 }
 
+// Clears all transient data created by this component
+void UGRSPlayerControllerComponent::OnUnregister()
+{
+	Super::OnUnregister();
+	PerformCleanUp();
+}
+
 // Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
 void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
 {

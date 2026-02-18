@@ -4,8 +4,8 @@
 
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Net/UnrealNetwork.h"
 #include "Data/PoolObjectHandle.h"
+#include "Net/UnrealNetwork.h"
 
 #include "GRSGhostCharacterManagerComponent.generated.h"
 
@@ -80,6 +80,10 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
+	/** To unsubscribed from player death events (delegates) and clean ability component */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void UnregisterFromPlayerDeath();
+
 	/** Subscribes to PlayerCharacters death events in order to see if a player died */
 	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
 	void RegisterForPlayerDeath();
@@ -109,6 +113,10 @@ protected:
 	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void RevivePlayerCharacter(class AController* PlayerController, AGRSPlayerCharacter* GhostCharacter);
+
+	/** To Remove current active applied gameplay effect */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void RemoveAppliedReviveGameplayEffect(const ABmrPawn* PlayerCharacter);
 
 public:
 };
