@@ -31,6 +31,8 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	APawn* GetCurrentGhostCharacter() const;
 	APawn& GetCurrentPawnChecked() const;
+	
+	
 
 protected:
 	/** Called when the game starts */
@@ -67,6 +69,10 @@ public:
 	 * * @param bEnable - true to enable, false to disable */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void SetManagedInputContextEnabled(AController* PlayerController, bool bEnable);
+	
+	/** Set up input bindings in given contexts. */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void BindInputActionsInContext(const UBmrInputMappingContext* InInputContext);
 
 	/*********************************************************************************************
 	 * Bomb

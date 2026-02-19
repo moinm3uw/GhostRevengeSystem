@@ -67,6 +67,7 @@ void AGRSPlayerCharacter::SetPlayerName(const ABmrPawn* MainCharacter)
 	NickName->SetPlayerName(FText::FromString(SideName));
 }
 
+
 /*********************************************************************************************
  * Initialization
  **********************************************************************************************/

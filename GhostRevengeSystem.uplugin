@@ -38,6 +38,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "FunctionPicker",
+			"Enabled": true
+		},
+		{
 			"Name": "GameplayMessageRouter",
 			"Enabled": true
 		}

@@ -109,10 +109,14 @@ protected:
 	/** Called when the ghost character should be removed from level to unpossess controller */
 	UFUNCTION(BlueprintCallable, Category = "C++")
 	void OnGhostRemovedFromLevel(class AController* CurrentController, class AGRSPlayerCharacter* GhostCharacter);
-
+	
+	/** Unpossess ghost character and posses it to possess assigned(linked) regular player character */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	void PossessPlayerCharacter(AController* CurrentController, class ABmrPawn* PlayerCharacter);
+	
 	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
 	UFUNCTION(BlueprintCallable, Category = "C++")
-	void RevivePlayerCharacter(class AController* PlayerController, AGRSPlayerCharacter* GhostCharacter);
+	void RevivePlayerCharacter(class ABmrPawn* PlayerCharacter);
 
 	/** To Remove current active applied gameplay effect */
 	UFUNCTION(BlueprintCallable, Category = "C++")

@@ -30,7 +30,7 @@ public class GhostRevengeSystemRuntime : ModuleRules
 				"GameplayAbilities" // Tags
 				// Bomber
 				,
-				"MyUtils", "PoolManager" // spawn ghost character
+				"MyUtils", "PoolManager", "FunctionPicker" // spawn ghost character
 				,
 				"GameplayMessageRuntime" // BmrGameplayMessageSubsystem
 			}

@@ -209,9 +209,6 @@ void UGRSGhostCharacterManagerComponent::UnregisterFromPlayerDeath()
 
 		BoundMapComponents.Empty();
 	}
-
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
 }
 
 // Refresh the ghost characters visuals
@@ -324,27 +321,13 @@ void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocat
 // Called when the ghost character should be removed from level to unpossess controller
 void UGRSGhostCharacterManagerComponent::OnGhostRemovedFromLevel(AController* CurrentController, AGRSPlayerCharacter* GhostCharacter)
 {
-	if (!CurrentController || !GhostCharacter)
+	if (!ensureMsgf(CurrentController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__)
+	    || !CurrentController->HasAuthority()
+	    || !GhostCharacter)
 	{
 		return;
 	}
 
-	RevivePlayerCharacter(CurrentController, GhostCharacter);
-}
-
-// Spawn and possess a regular player character to the level at location
-void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* PlayerController, AGRSPlayerCharacter* GhostCharacter)
-{
-	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__)
-	    || !PlayerController->HasAuthority())
-	{
-		return;
-	}
-
-	if (!GhostCharacter)
-	{
-		return;
-	}
 	ABmrPawn* PlayerCharacter = nullptr;
 
 	for (TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
@@ -356,24 +339,42 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(AController* Play
 		}
 	}
 
-	if (!PlayerCharacter)
+	// --- move all functional part such as posses to ability
+	// --- possess back to player character for any cases
+	PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	PossessPlayerCharacter(CurrentController, PlayerCharacter);
+	RevivePlayerCharacter(PlayerCharacter);
+}
+
+// Unpossess ghost character and posses it to possess assigned(linked) regular player character
+void UGRSGhostCharacterManagerComponent::PossessPlayerCharacter(AController* CurrentController, ABmrPawn* PlayerCharacter)
+{
+	if (!PlayerCharacter || !PlayerCharacter->HasAuthority() || !CurrentController)
 	{
 		return;
 	}
 
-	// --- move all functional part such as posses to ability
-	PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	if (PlayerController->GetPawn())
+	if (CurrentController->GetPawn())
 	{
 		// At first, unpossess previous controller
-		PlayerController->UnPossess();
+		CurrentController->UnPossess();
 	}
 
 	// --- Always possess to player character when ghost character is no longer in control
-	PlayerController->Possess(PlayerCharacter);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
+	CurrentController->Possess(PlayerCharacter);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, CurrentController ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(PlayerCharacter));
+}
+
+// Spawn and possess a regular player character to the level at location
+void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(class ABmrPawn* PlayerCharacter)
+{
+	const ABmrGameState& GameState = ABmrGameState::Get();
+	if (!PlayerCharacter || !GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
+	{
+		return;
+	}
 
 	// --- Activate revive ability if player was NOT revived previously
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerCharacter);
@@ -406,6 +407,9 @@ void UGRSGhostCharacterManagerComponent::OnUnregister()
 	OnActivateGhostCharacter.Clear();
 	OnRemoveGhostCharacterFromMap.Clear();
 	OnRefreshGhostCharacters.Clear();
+	
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
 }
 
 // To Remove current active applied gameplay effect
