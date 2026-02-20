@@ -23,13 +23,13 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
 	class USphereComponent* CollisionSphere;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
 	class UStaticMeshComponent* BombMesh;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
 	class UProjectileMovementComponent* ProjectileMovement;
 
 	UFUNCTION()

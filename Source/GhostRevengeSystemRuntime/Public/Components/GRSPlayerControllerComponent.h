@@ -46,19 +46,19 @@ public:
 	float CurrentHoldTimeInternal = 0.0f;
 
 	/** Move the player character. */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void MovePlayer(const FInputActionValue& ActionValue);
 
 	/** Hold button to increase trajectory on max level achieved throw projectile */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ChargeBomb(const FInputActionValue& ActionValue);
 
 	/** Add and update visual representation of charging (aiming) progress as trajectory */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ShowVisualTrajectory();
 
 	/** Configure PredictProjectilePath settings and get result */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
 
 	/** Enables or disable input context (enhanced input) depends on possession state. Called when possessed pawn changed */
@@ -67,7 +67,7 @@ public:
 
 	/** Enables or disables the input context.
 	 * * @param bEnable - true to enable, false to disable */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetManagedInputContextEnabled(AController* PlayerController, bool bEnable);
 	
 	/** Set up input bindings in given contexts. */
@@ -79,7 +79,7 @@ public:
 	 **********************************************************************************************/
 public:
 	/** Throw projectile event, bound to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ThrowProjectile();
 
 	/*********************************************************************************************

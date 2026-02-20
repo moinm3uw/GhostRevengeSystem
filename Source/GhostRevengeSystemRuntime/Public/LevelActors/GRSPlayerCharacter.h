@@ -48,23 +48,23 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGhostEliminatesPlayer, FVector, AtLocation, AGRSPlayerCharacter*, GhostCharacter);
 
 	/** Is called when a ghost character added to level without possession */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
 	FOnGhostAddedToLevel OnGhostAddedToLevel;
 
 	/** Is called when a ghost character is added to level and possessed a controller on client */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
 	FOnGhostPossesController_Client OnGhostPossesController_Client;
 
 	/** Is called when a ghost character is added to level and possessed a controller on server*/
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
 	FOnGhostPossesController_Server OnGhostPossesController_Server;
 
 	/** Is called when a ghost character removed from level */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
 	FOnGhostRemovedFromLevel OnGhostRemovedFromLevel;
 
 	/** Is called when a ghost characters kills another player */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "C++")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
 	FOnGhostEliminatesPlayer OnGhostEliminatesPlayer;
 
 	/*********************************************************************************************
@@ -76,19 +76,19 @@ public:
 
 protected:
 	/** Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetDefaultParams();
 
 	/** Initialize skeletal mesh of the character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void InitializeSkeletalMesh();
 
 	/** Configure the movement component of the character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void MovementComponentConfiguration();
 
 	/** Set up the capsule component of the character */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetupCapsuleComponent();
 
 	/*********************************************************************************************
@@ -96,7 +96,7 @@ protected:
 	 **********************************************************************************************/
 public:
 	/** Returns the 3D widget component that displays the player name above the character. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponentInternal; }
 
 	/** Set/Update player name */
@@ -123,19 +123,19 @@ public:
 
 protected:
 	/** Refresh ghost players required elements. Happens only when game is starting or active because requires to have all players (humans) to be connected */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnRefreshGhostCharacters();
 
 	/** Server-only logic Perform ghost character activation (possessing controller) */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void ActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, const ABmrPawn* PlayerCharacter);
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Remove ghost character from the level */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnRemoveGhostCharacterFromMap(AGRSPlayerCharacter* GhostCharacter);
 
 	/*********************************************************************************************
@@ -149,19 +149,19 @@ protected:
 public:
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	/** Returns handle of current applied ability effect  */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	FORCEINLINE FActiveGameplayEffectHandle GetGASEffectHandle() const { return GASEffectHandle; }
 
 	/** To Remove current active applied gameplay effect */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void RemoveActiveGameplayEffect();
 
 	/** To apply explosion gameplay effect */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ApplyExplosionGameplayEffect();
 
 	/*********************************************************************************************
@@ -175,21 +175,21 @@ public:
 	void SetVisibility(bool Visibility);
 
 	/** Returns own character ID, e.g: 0, 1, 2, 3 */
-	UFUNCTION(BlueprintPure, Category = "C++")
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	int32 GetPlayerId() const;
 
 	/** Set character visual once added to the level from a refence character (visuals, animations) */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetCharacterVisual(const ABmrPawn* PlayerCharacter);
 
 	/** Set and apply skeletal mesh for ghost player. Copy mesh from current player
 	 * @param bForcePlayerSkin If true, will force the bot to change own skin to look like a player. */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void SetPlayerMeshData(bool bForcePlayerSkin = false);
 
 protected:
 	/** Possess a player controller */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "C++")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void TryPossessController(AController* PlayerController);
 
 	/*********************************************************************************************
@@ -197,15 +197,15 @@ protected:
 	 **********************************************************************************************/
 protected:
 	/** Mesh of component. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
 	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
 
 	/** Spline component used for show the projectile trajectory path */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
 	class USplineComponent* ProjectileSplineComponentInternal;
 
 	/** Spline component used for show the projectile trajectory path */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
 	TArray<class USplineMeshComponent*> SplineMeshArrayInternal;
 
 	/** Aiming sphere used when a player aiming*/
@@ -218,19 +218,19 @@ protected:
 
 public:
 	/** Add a mesh to the last element of the predict Projectile path results */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddMeshToEndProjectilePath(FVector Location);
 
 	/** Add spline points to the spline component */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddSplinePoints(FPredictProjectilePathResult& Result);
 
 	/** Hide spline elements (trajectory) */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ClearTrajectorySplines();
 
 	/** Add spline mesh to spline points */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
 
 	/*********************************************************************************************
@@ -238,11 +238,11 @@ public:
 	 **********************************************************************************************/
 public:
 	/** Throw projectile event, bound to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ThrowProjectile();
 
 	/** Spawn bomb on aiming sphere position. */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SpawnBomb(FBmrCell TargetCell);
 
 public:

@@ -18,14 +18,14 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeUtils : public UBlueprintFuncti
 
 public:
 	/** Returns the ghost character */
-	UFUNCTION(BlueprintPure, Category = "C++", DisplayName = "Get Ghost Player Character", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get Ghost Player Character", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class AGRSPlayerCharacter* GetGhostPlayerCharacter(const UObject* OptionalWorldContext = nullptr);
 
 	/** Returns the ghost controller component, nullptr otherwise. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[Bomber]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class UGRSPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
 	
 	/** Calculates the character side from an actor reference */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static EGRSCharacterSide GetCharacterSideFromActor(AActor* Actor);
 };

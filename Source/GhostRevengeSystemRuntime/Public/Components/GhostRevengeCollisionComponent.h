@@ -20,30 +20,30 @@ public:
 
 protected:
 	/** Array of pool actors handlers of collisions that should be released */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "C++", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
 	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
 
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
 	/** Is called when local player character is ready to guarantee that they player controller is initialized */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnLocalPawnReady(const struct FGameplayEventData& Payload);
 
 	/** Clears all transient data created by this component. */
 	virtual void OnUnregister() override;
 
 	/** The spawner is considered as loaded only when the subsystem is loaded */
-	UFUNCTION(BlueprintCallable, Category = "C++", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize();
 
 	/** Spawn a collision box the side of the map */
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "C++")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SpawnMapCollisionOnSide();
 
 	/** Grabs a side collision asset from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
-	UFUNCTION(BlueprintCallable, Category = "C++")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
 };
