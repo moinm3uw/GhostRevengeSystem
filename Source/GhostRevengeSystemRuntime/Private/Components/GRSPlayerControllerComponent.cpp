@@ -2,19 +2,22 @@
 
 #include "Components/GRSPlayerControllerComponent.h"
 
-#include "EnhancedInputComponent.h"
-#include "GhostRevengeUtils.h"
 #include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "DataAssets/BmrInputAction.h"
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "Engine/World.h"
+#include "EnhancedInputComponent.h"
 #include "FunctionPickerData/FunctionPickerTemplate.h"
+#include "GhostRevengeUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+/*********************************************************************************************
+ * Lifecycle
+ **********************************************************************************************/
 
 // Sets default values for this component's properties
 UGRSPlayerControllerComponent::UGRSPlayerControllerComponent()
@@ -65,147 +68,26 @@ void UGRSPlayerControllerComponent::OnUnregister()
 	PerformCleanUp();
 }
 
-// Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
-void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
+// Clean up the character for the MGF unload
+void UGRSPlayerControllerComponent::PerformCleanUp()
 {
-	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character)
-	if (NewPawn)
+	ABmrPlayerController* PlayerController = Cast<ABmrPlayerController>(GetOwner());
+	if (!PlayerController)
 	{
-		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(NewPawn);
-		if (GhostCharacter)
-		{
-			SetManagedInputContextEnabled(GetPlayerController(), true);
-
-			// --- Clear splines
-			GhostCharacter->ClearTrajectorySplines();
-			GhostCharacter->ApplyExplosionGameplayEffect();
-		}
+		return;
 	}
 
-	// --- case 2: unpossess ghost character (OldPawn is a ghost character)
-	if (OldPawn)
-	{
-		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(OldPawn);
-		if (GhostCharacter)
-		{
-			SetManagedInputContextEnabled(GetPlayerController(), false);
-			GhostCharacter->RemoveActiveGameplayEffect();
-		}
-	}
+	// Remove all previous input contexts managed by Controller
+	TArray<const UBmrInputMappingContext*> InputContexts;
+	const UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+	InputContexts.AddUnique(InputContext);
+	PlayerController->RemoveInputContexts(InputContexts);
 }
 
-// Enables or disables the input context
-void UGRSPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
-{
-	if (!PlayerController || !PlayerController->IsLocalController())
-	{
-		return;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s"), __LINE__, __FUNCTION__,  PlayerController->IsLocalController() ? TEXT("TRUE") : TEXT("FALSE"));
-	ABmrPlayerController* MyPlayerController = Cast<ABmrPlayerController>(PlayerController);
-	if (!MyPlayerController)
-	{
-		return;
-	}
+/*********************************************************************************************
+ * Main functionality
+ **********************************************************************************************/
 
-	UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-
-	// --- due to strange stacking behavior in UE when 2nd time enable input context it is not the latest enabled we have to specify exactly contextPriority.
-	// --- to do so we have not the best solution - override only conflicting InputMappingContext in our case BmrInputContext
-	// --- maybe somewhere in future we will have context priority manager as better solution
-	TArray<const UBmrInputMappingContext*> BmrInputContexts;
-	UBmrPlayerInputDataAsset::Get().GetAllGameplayInputContexts(/*out*/ BmrInputContexts);
-
-	int32 HighestContextPriority = -1;
-	for (const UBmrInputMappingContext* BmrInputContext : BmrInputContexts)
-	{
-		if (HighestContextPriority < BmrInputContext->GetContextPriority())
-		{
-			HighestContextPriority = BmrInputContext->GetContextPriority();
-		}
-	}
-	HighestContextPriority++;
-
-	if (!bEnable)
-	{
-		// --- Remove related input contexts
-		UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
-		return;
-	}
-
-	// --- Remove all previous input context
-	UInputUtilsLibrary::SetInputContextEnabled(this, false, InputContext, HighestContextPriority);
-
-	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
-	if (InputContext
-	    && !InputContext->GetActiveForStates().IsEmpty())
-	{
-		if (InputContext)
-		{
-			BindInputActionsInContext(InputContext);
-			UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
-		}
-	}
-}
-
-// Set up input bindings in given contexts
-void UGRSPlayerControllerComponent::BindInputActionsInContext(const UBmrInputMappingContext* InInputContext)
-{
-	
-	if (!GetPlayerController()->CanBindInputActions())
-	{
-		// It could fail on starting the game, but since contexts are managed, it will be bound later anyway
-		return;
-	}
-
-	UEnhancedInputComponent* EnhancedInputComponent = UInputUtilsLibrary::GetEnhancedInputComponent(this);
-	if (!ensureMsgf(EnhancedInputComponent, TEXT("ASSERT: 'EnhancedInputComponent' is not valid")))
-	{
-		return;
-	}
-
-	// Obtains all input actions in given context that are not currently bound to the input component
-	TArray<UInputAction*> InputActions;
-	UInputUtilsLibrary::GetAllActionsInContext(this, InInputContext, EInputActionInContextState::NotBound, /*out*/ InputActions);
-
-	// --- Bind input actions
-	for (const UInputAction* InputActionIt : InputActions)
-	{
-		const UBmrInputAction* ActionIt = Cast<UBmrInputAction>(InputActionIt);
-		if (!ActionIt)
-		{
-			continue;
-		}
-
-		for (int32 Index = 0; Index < ActionIt->GetInputActionBindingsNum(); ++Index)
-		{
-			const FBmrInputActionBinding CurrentBinding = ActionIt->GetInputActionBinding(Index);
-			const FName FunctionName = CurrentBinding.FunctionToBind.FunctionName;
-			if (!ensureAlwaysMsgf(!FunctionName.IsNone(), TEXT("ASSERT: %s: 'FunctionName' is none, can not bind the action '%s'!"), *FString(__FUNCTION__), *GetNameSafe(ActionIt)))
-			{
-				continue;
-			}
-
-			const FFunctionPicker& StaticContext = CurrentBinding.StaticContext;
-			if (!ensureAlwaysMsgf(StaticContext.IsValid(), TEXT("ASSERT: [%i] %s:\n'StaticContext' is not valid: %s, can not bind the action '%s'!"), __LINE__, *FString(__FUNCTION__), *StaticContext.ToDisplayString(), *GetNameSafe(ActionIt)))
-			{
-				continue;
-			}
-
-			UFunctionPickerTemplate::FOnGetterObject GetOwnerFunc;
-			GetOwnerFunc.BindUFunction(StaticContext.FunctionClass->GetDefaultObject(), StaticContext.FunctionName);
-			UObject* FoundContextObj = GetOwnerFunc.Execute(GetWorld());
-			if (!ensureAlwaysMsgf(FoundContextObj, TEXT("ASSERT: [%i] %s:\n'FoundContextObj' is not found, next function returns nullptr: %s, can not bind the action '%s'!"), __LINE__, *FString(__FUNCTION__), *StaticContext.ToDisplayString(), *GetNameSafe(ActionIt)))
-			{
-				continue;
-			}
-
-			const ETriggerEvent TriggerEvent = CurrentBinding.TriggerEvent;
-			EnhancedInputComponent->BindAction(ActionIt, TriggerEvent, FoundContextObj, FunctionName);
-			UE_LOG(LogTemp, Log, TEXT("GhostRevengeSystem Input bound: [%s][%s] %s()->%s()"), *GetNameSafe(InInputContext), *GetNameSafe(InputActionIt), *StaticContext.ToDisplayString(), *FunctionName.ToString());
-		}
-	}
-}
 // Move the player character
 void UGRSPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionValue)
 {
@@ -321,18 +203,143 @@ void UGRSPlayerControllerComponent::ThrowProjectile()
 	GhostCharacter->ThrowProjectile();
 }
 
-// Clean up the character for the MGF unload
-void UGRSPlayerControllerComponent::PerformCleanUp()
+// Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
+void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
 {
-	ABmrPlayerController* PlayerController = Cast<ABmrPlayerController>(GetOwner());
-	if (!PlayerController)
+	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character)
+	if (NewPawn)
+	{
+		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(NewPawn);
+		if (GhostCharacter)
+		{
+			SetManagedInputContextEnabled(GetPlayerController(), true);
+
+			// --- Clear splines
+			GhostCharacter->ClearTrajectorySplines();
+			GhostCharacter->ApplyExplosionGameplayEffect();
+		}
+	}
+
+	// --- case 2: unpossess ghost character (OldPawn is a ghost character)
+	if (OldPawn)
+	{
+		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(OldPawn);
+		if (GhostCharacter)
+		{
+			SetManagedInputContextEnabled(GetPlayerController(), false);
+			GhostCharacter->RemoveActiveGameplayEffect();
+		}
+	}
+}
+
+// Enables or disables the input context
+void UGRSPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
+{
+	if (!PlayerController || !PlayerController->IsLocalController())
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s"), __LINE__, __FUNCTION__, PlayerController->IsLocalController() ? TEXT("TRUE") : TEXT("FALSE"));
+	ABmrPlayerController* MyPlayerController = Cast<ABmrPlayerController>(PlayerController);
+	if (!MyPlayerController)
 	{
 		return;
 	}
 
-	// Remove all previous input contexts managed by Controller
-	TArray<const UBmrInputMappingContext*> InputContexts;
-	const UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
-	InputContexts.AddUnique(InputContext);
-	PlayerController->RemoveInputContexts(InputContexts);
+	UBmrInputMappingContext* InputContext = UGRSDataAsset::Get().GetInputContext();
+
+	// --- due to strange stacking behavior in UE when 2nd time enable input context it is not the latest enabled we have to specify exactly contextPriority.
+	// --- to do so we have not the best solution - override only conflicting InputMappingContext in our case BmrInputContext
+	// --- maybe somewhere in future we will have context priority manager as better solution
+	TArray<const UBmrInputMappingContext*> BmrInputContexts;
+	UBmrPlayerInputDataAsset::Get().GetAllGameplayInputContexts(/*out*/ BmrInputContexts);
+
+	int32 HighestContextPriority = -1;
+	for (const UBmrInputMappingContext* BmrInputContext : BmrInputContexts)
+	{
+		if (HighestContextPriority < BmrInputContext->GetContextPriority())
+		{
+			HighestContextPriority = BmrInputContext->GetContextPriority();
+		}
+	}
+	HighestContextPriority++;
+
+	if (!bEnable)
+	{
+		// --- Remove related input contexts
+		UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
+		return;
+	}
+
+	// --- Remove all previous input context
+	UInputUtilsLibrary::SetInputContextEnabled(this, false, InputContext, HighestContextPriority);
+
+	// --- Add gameplay context as auto managed by Game State, so it will be enabled everytime the game is in the in-game state
+	if (InputContext
+	    && !InputContext->GetActiveForStates().IsEmpty())
+	{
+		if (InputContext)
+		{
+			BindInputActionsInContext(InputContext);
+			UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
+		}
+	}
+}
+
+// Set up input bindings in given contexts
+void UGRSPlayerControllerComponent::BindInputActionsInContext(const UBmrInputMappingContext* InInputContext)
+{
+	if (!GetPlayerController()->CanBindInputActions())
+	{
+		// It could fail on starting the game, but since contexts are managed, it will be bound later anyway
+		return;
+	}
+
+	UEnhancedInputComponent* EnhancedInputComponent = UInputUtilsLibrary::GetEnhancedInputComponent(this);
+	if (!ensureMsgf(EnhancedInputComponent, TEXT("ASSERT: 'EnhancedInputComponent' is not valid")))
+	{
+		return;
+	}
+
+	// Obtains all input actions in given context that are not currently bound to the input component
+	TArray<UInputAction*> InputActions;
+	UInputUtilsLibrary::GetAllActionsInContext(this, InInputContext, EInputActionInContextState::NotBound, /*out*/ InputActions);
+
+	// --- Bind input actions
+	for (const UInputAction* InputActionIt : InputActions)
+	{
+		const UBmrInputAction* ActionIt = Cast<UBmrInputAction>(InputActionIt);
+		if (!ActionIt)
+		{
+			continue;
+		}
+
+		for (int32 Index = 0; Index < ActionIt->GetInputActionBindingsNum(); ++Index)
+		{
+			const FBmrInputActionBinding CurrentBinding = ActionIt->GetInputActionBinding(Index);
+			const FName FunctionName = CurrentBinding.FunctionToBind.FunctionName;
+			if (!ensureAlwaysMsgf(!FunctionName.IsNone(), TEXT("ASSERT: %s: 'FunctionName' is none, can not bind the action '%s'!"), *FString(__FUNCTION__), *GetNameSafe(ActionIt)))
+			{
+				continue;
+			}
+
+			const FFunctionPicker& StaticContext = CurrentBinding.StaticContext;
+			if (!ensureAlwaysMsgf(StaticContext.IsValid(), TEXT("ASSERT: [%i] %s:\n'StaticContext' is not valid: %s, can not bind the action '%s'!"), __LINE__, *FString(__FUNCTION__), *StaticContext.ToDisplayString(), *GetNameSafe(ActionIt)))
+			{
+				continue;
+			}
+
+			UFunctionPickerTemplate::FOnGetterObject GetOwnerFunc;
+			GetOwnerFunc.BindUFunction(StaticContext.FunctionClass->GetDefaultObject(), StaticContext.FunctionName);
+			UObject* FoundContextObj = GetOwnerFunc.Execute(GetWorld());
+			if (!ensureAlwaysMsgf(FoundContextObj, TEXT("ASSERT: [%i] %s:\n'FoundContextObj' is not found, next function returns nullptr: %s, can not bind the action '%s'!"), __LINE__, *FString(__FUNCTION__), *StaticContext.ToDisplayString(), *GetNameSafe(ActionIt)))
+			{
+				continue;
+			}
+
+			const ETriggerEvent TriggerEvent = CurrentBinding.TriggerEvent;
+			EnhancedInputComponent->BindAction(ActionIt, TriggerEvent, FoundContextObj, FunctionName);
+			UE_LOG(LogTemp, Log, TEXT("GhostRevengeSystem Input bound: [%s][%s] %s()->%s()"), *GetNameSafe(InInputContext), *GetNameSafe(InputActionIt), *StaticContext.ToDisplayString(), *FunctionName.ToString());
+		}
+	}
 }

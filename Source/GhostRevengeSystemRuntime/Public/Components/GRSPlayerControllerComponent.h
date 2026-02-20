@@ -18,6 +18,10 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSPlayerControllerComponent : public UActo
 {
 	GENERATED_BODY()
 
+	/*********************************************************************************************
+	 * Lifecycle
+	 **********************************************************************************************/
+
 public:
 	/** Sets default values for this component's properties */
 	UGRSPlayerControllerComponent();
@@ -31,8 +35,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	APawn* GetCurrentGhostCharacter() const;
 	APawn& GetCurrentPawnChecked() const;
-	
-	
 
 protected:
 	/** Called when the game starts */
@@ -42,7 +44,14 @@ protected:
 	virtual void OnUnregister() override;
 
 public:
-	UPROPERTY()
+	/** Clean up the character for the MGF unload */
+	void PerformCleanUp();
+
+	/*********************************************************************************************
+	 * Main functionality
+	 **********************************************************************************************/
+public:
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "[GhostRevengeSystem]")
 	float CurrentHoldTimeInternal = 0.0f;
 
 	/** Move the player character. */
@@ -61,6 +70,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
 
+	/** Throw projectile event, bound to onetime button press */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void ThrowProjectile();
+
 	/** Enables or disable input context (enhanced input) depends on possession state. Called when possessed pawn changed */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
@@ -69,23 +82,8 @@ public:
 	 * * @param bEnable - true to enable, false to disable */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void SetManagedInputContextEnabled(AController* PlayerController, bool bEnable);
-	
+
 	/** Set up input bindings in given contexts. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void BindInputActionsInContext(const UBmrInputMappingContext* InInputContext);
-
-	/*********************************************************************************************
-	 * Bomb
-	 **********************************************************************************************/
-public:
-	/** Throw projectile event, bound to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void ThrowProjectile();
-
-	/*********************************************************************************************
-	 * End of ghost character
-	 **********************************************************************************************/
-public:
-	/** Clean up the character for the MGF unload */
-	void PerformCleanUp();
 };
