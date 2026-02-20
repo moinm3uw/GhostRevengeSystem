@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "LevelActors/GRSPlayerCharacter.h"
 
 #include "GhostRevengeUtils.generated.h"
 
@@ -23,4 +24,8 @@ public:
 	/** Returns the ghost controller component, nullptr otherwise. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[Bomber]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class UGRSPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
+	
+	/** Calculates the character side from an actor reference */
+	UFUNCTION(BlueprintCallable, Category = "C++")
+	static EGRSCharacterSide GetCharacterSideFromActor(AActor* Actor);
 };

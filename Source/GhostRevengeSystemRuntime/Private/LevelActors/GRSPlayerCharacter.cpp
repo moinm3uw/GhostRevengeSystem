@@ -4,6 +4,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "GhostRevengeUtils.h"
 #include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
 #include "Animation/AnimInstance.h"
@@ -55,7 +56,7 @@ void AGRSPlayerCharacter::SetPlayerName(const ABmrPawn* MainCharacter)
 	PlayerName3DWidgetComponentInternal->Init(MyPlayerState);
 
 	UEnum* EnumPtr = StaticEnum<EGRSCharacterSide>();
-	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(UGRSWorldSubSystem::Get().GetCharacterSideFromActor(Cast<ACharacter>(this))));
+	const FString SideName = EnumPtr->GetNameStringByValue(TO_FLAG(UGhostRevengeUtils::GetCharacterSideFromActor(Cast<ACharacter>(this))));
 
 	UUserWidget* Widget = PlayerName3DWidgetComponentInternal->GetWidget();
 	UBmrPlayerNameWidget* NickName = Cast<UBmrPlayerNameWidget>(Widget);

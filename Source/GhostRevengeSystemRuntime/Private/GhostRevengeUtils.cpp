@@ -6,6 +6,7 @@
 #include "Controllers/BmrPlayerController.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 AGRSPlayerCharacter* UGhostRevengeUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext)
 {
@@ -32,4 +33,17 @@ class UGRSPlayerControllerComponent* UGhostRevengeUtils::GetControllerComponent(
 	}
 
 	return LocalController->FindComponentByClass<UGRSPlayerControllerComponent>();
+}
+
+//  Calculates the character side from an actor reference
+EGRSCharacterSide UGhostRevengeUtils::GetCharacterSideFromActor(AActor* Actor)
+{
+	if (!Actor)
+	{
+		return EGRSCharacterSide::None;
+	}
+
+	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
+	const FVector ToArenaDirection = ArenaCenter.Location - Actor->GetActorLocation().GetSafeNormal();
+	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
 }

@@ -24,6 +24,10 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
+/*********************************************************************************************
+ * Subsystem's Lifecycle
+ **********************************************************************************************/
+
 // Returns this Subsystem, is checked and will crash if it can't be obtained
 UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 {
@@ -44,17 +48,41 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject& WorldContextObject)
 	return *ThisSubsystem;
 }
 
-//  Calculates the character side from an actor reference
-EGRSCharacterSide UGRSWorldSubSystem::GetCharacterSideFromActor(AActor* Actor) const
+// Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors
+void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
 {
-	if (!Actor)
-	{
-		return EGRSCharacterSide::None;
-	}
+	Super::OnWorldBeginPlay(InWorld);
+}
 
-	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
-	const FVector ToArenaDirection = ArenaCenter.Location - Actor->GetActorLocation().GetSafeNormal();
-	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
+// Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module
+void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
+{
+	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem BeginPlay OnWorldSubSystemInitialize_Implementation --- %s"), *this->GetName());
+	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalPawnReady);
+}
+
+// Called when the local player character is spawned, possessed, and replicated
+void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
+{
+	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
+
+	TryInit(); // try to initialize
+
+	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
+}
+
+// Checks if all components present and invokes initialization
+void UGRSWorldSubSystem::TryInit()
+{
+	// --- check if managers have characters and collisions spawned if not - broadcast, yes -> return
+	if (CharacterManagerComponent && CollisionMangerComponent)
+	{
+		if (OnInitialize.IsBound())
+		{
+			OnInitialize.Broadcast();
+			OnInitialize.Clear();
+		}
+	}
 }
 
 // Clears all transient data created by this subsystem.
@@ -80,99 +108,21 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	ClearCollisions();
 }
 
-// Clears cached character manager component
-void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
-{
-	CharacterManagerComponent = nullptr;
-}
-
-// Clears cached collision manager component
-void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
-{
-	CollisionMangerComponent = nullptr;
-}
-
-// Clear cached ghost character references
-void UGRSWorldSubSystem::ClearGhostCharacters()
-{
-	if (GhostCharacterLeftSide)
-	{
-		GhostCharacterLeftSide->Destroy();
-		GhostCharacterLeftSide = nullptr;
-	}
-
-	if (GhostCharacterRightSide)
-	{
-		GhostCharacterRightSide->Destroy();
-		GhostCharacterRightSide = nullptr;
-	}
-
-	LastActivatedGhostCharacter = nullptr;
-}
-
-// Clear cached ghost character by reference
-void UGRSWorldSubSystem::UnregisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
-{
-	if (!GhostPlayerCharacter)
-	{
-		return;
-	}
-
-	if (LastActivatedGhostCharacter == GhostPlayerCharacter)
-	{
-		LastActivatedGhostCharacter = nullptr;
-	}
-
-	if (GhostCharacterLeftSide == GhostPlayerCharacter)
-	{
-		GhostCharacterLeftSide = nullptr;
-
-		return;
-	}
-
-	if (GhostCharacterRightSide == GhostPlayerCharacter)
-	{
-		GhostCharacterRightSide->Destroy();
-		GhostCharacterRightSide = nullptr;
-	}
-}
-
-// Clear cached collisions
-void UGRSWorldSubSystem::ClearCollisions()
-{
-	if (LeftSideCollisionInternal)
-	{
-		LeftSideCollisionInternal->Destroy();
-	}
-
-	if (RightSideCollisionInternal)
-	{
-		RightSideCollisionInternal->Destroy();
-	}
-
-	LeftSideCollisionInternal = nullptr;
-	RightSideCollisionInternal = nullptr;
-}
-
+/*********************************************************************************************
+ * Data asset
+ **********************************************************************************************/
 // Returns the data asset that contains all the assets of Ghost Revenge System game feature
 const UGRSDataAsset* UGRSWorldSubSystem::GetGRSDataAsset() const
 {
 	return UMyPrimaryDataAsset::GetOrLoadOnce(DataAssetInternal);
 }
 
-// Register character manager component
-void UGRSWorldSubSystem::RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent)
-{
-	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
-	{
-		CharacterManagerComponent = NewCharacterManagerComponent;
-	}
-
-	TryInit();
-}
+/*********************************************************************************************
+ * Side Collisions actors
+ **********************************************************************************************/
 
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
-void UGRSWorldSubSystem::RegisterCollisionManagerComponent(class UGhostRevengeCollisionComponent* NewCollisionManagerComponent)
+void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGhostRevengeCollisionComponent* NewCollisionManagerComponent)
 {
 	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
 	{
@@ -182,8 +132,75 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(class UGhostRevengeCo
 	TryInit(); // try to initialize
 }
 
+// Add spawned collision actors to be cached
+void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	if (!LeftSideCollision)
+	{
+		LeftSideCollision = Actor;
+	}
+	else if (!RightSideCollision)
+	{
+		RightSideCollision = Actor;
+	}
+}
+
+// Returns TRUE if collision are spawned
+bool UGRSWorldSubSystem::IsCollisionsSpawned()
+{
+	if (LeftSideCollision && RightSideCollision)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+// Clears cached collision manager component
+void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
+{
+	CollisionMangerComponent = nullptr;
+}
+
+// Clear cached collisions
+void UGRSWorldSubSystem::ClearCollisions()
+{
+	if (LeftSideCollision)
+	{
+		LeftSideCollision->Destroy();
+	}
+
+	if (RightSideCollision)
+	{
+		RightSideCollision->Destroy();
+	}
+
+	LeftSideCollision = nullptr;
+	RightSideCollision = nullptr;
+}
+
+/*********************************************************************************************
+ * Ghost Characters
+ **********************************************************************************************/
+
+// Register character manager component
+void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent)
+{
+	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
+	{
+		CharacterManagerComponent = NewCharacterManagerComponent;
+	}
+
+	TryInit();
+}
+
 // Register ghost character
-void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter)
+void UGRSWorldSubSystem::RegisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
 {
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
@@ -212,36 +229,6 @@ void UGRSWorldSubSystem::RegisterGhostCharacter(class AGRSPlayerCharacter* Ghost
 	GhostPlayerCharacter->SetActorLocation(ActorSpawnLocation);
 }
 
-void UGRSWorldSubSystem::SetLastActivatedGhostCharacter(AGRSPlayerCharacter* GhostCharacter)
-{
-	if (!GhostCharacter || GhostCharacter == LastActivatedGhostCharacter)
-	{
-		return;
-	}
-
-	LastActivatedGhostCharacter = GhostCharacter;
-}
-// Returns the side of the ghost character (left, or right)
-EGRSCharacterSide UGRSWorldSubSystem::GetGhostPlayerCharacterSide(AGRSPlayerCharacter* PlayerCharacter)
-{
-	if (PlayerCharacter == nullptr)
-	{
-		return EGRSCharacterSide::None;
-	}
-
-	if (GhostCharacterLeftSide == PlayerCharacter)
-	{
-		return EGRSCharacterSide::Left;
-	}
-
-	if (GhostCharacterRightSide == PlayerCharacter)
-	{
-		return EGRSCharacterSide::Right;
-	}
-
-	return EGRSCharacterSide::None;
-}
-
 // Returns currently available ghost character or nullptr if there is no available ghosts.
 AGRSPlayerCharacter* UGRSWorldSubSystem::GetAvailableGhostCharacter()
 {
@@ -258,113 +245,66 @@ AGRSPlayerCharacter* UGRSWorldSubSystem::GetAvailableGhostCharacter()
 	return nullptr;
 }
 
-// Called when world is ready to start gameplay before the game mode transitions to the correct state and call BeginPlay on all actors
-void UGRSWorldSubSystem::OnWorldBeginPlay(UWorld& InWorld)
+// Clears cached character manager component
+void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
 {
-	Super::OnWorldBeginPlay(InWorld);
+	CharacterManagerComponent = nullptr;
 }
 
-// Is called to initialize the world subsystem. It's a BeginPlay logic for the GRS module
-void UGRSWorldSubSystem::OnWorldSubSystemInitialize_Implementation()
+// Clear cached ghost character by reference
+void UGRSWorldSubSystem::UnregisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
 {
-	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem BeginPlay OnWorldSubSystemInitialize_Implementation --- %s"), *this->GetName());
-	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalPawnReady);
-}
-
-// Called when the local player character is spawned, possessed, and replicated
-void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const struct FGameplayEventData& Payload)
-{
-	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
-
-	TryInit(); // try to initialize
-
-	BIND_ON_GAME_STATE_CHANGED(this, ThisClass::OnGameStateChanged);
-}
-
-// Checks if all components present and invokes initialization
-void UGRSWorldSubSystem::TryInit()
-{
-	// --- check if managers have characters and collisions spawned if not - broadcast, yes -> return
-	if (CharacterManagerComponent && CollisionMangerComponent)
-	{
-		if (OnInitialize.IsBound())
-		{
-			OnInitialize.Broadcast();
-			OnInitialize.Clear();
-		}
-	}
-}
-
-// Return a ghost character
-class AGRSPlayerCharacter* UGRSWorldSubSystem::GetGhostPlayerCharacter()
-{
-	return nullptr;
-}
-
-// Add spawned collision actors to be cached
-void UGRSWorldSubSystem::AddCollisionActor(class AActor* Actor)
-{
-	if (!Actor)
+	if (!GhostPlayerCharacter)
 	{
 		return;
 	}
 
-	if (!LeftSideCollisionInternal)
+	if (GhostCharacterLeftSide == GhostPlayerCharacter)
 	{
-		LeftSideCollisionInternal = Actor;
+		GhostCharacterLeftSide = nullptr;
+
+		return;
 	}
-	else if (!RightSideCollisionInternal)
+
+	if (GhostCharacterRightSide == GhostPlayerCharacter)
 	{
-		RightSideCollisionInternal = Actor;
+		GhostCharacterRightSide->Destroy();
+		GhostCharacterRightSide = nullptr;
 	}
 }
 
-// Returns TRUE if collision are spawned
-bool UGRSWorldSubSystem::IsCollisionsSpawned()
+// Clear cached ghost character references
+void UGRSWorldSubSystem::ClearGhostCharacters()
 {
-	if (LeftSideCollisionInternal && RightSideCollisionInternal)
+	if (GhostCharacterLeftSide)
 	{
-		return true;
+		GhostCharacterLeftSide->Destroy();
+		GhostCharacterLeftSide = nullptr;
 	}
 
-	return false;
-}
-
-// Returns left side spawned collision or nullptr
-AActor* UGRSWorldSubSystem::GetLeftCollisionActor()
-{
-	if (LeftSideCollisionInternal)
+	if (GhostCharacterRightSide)
 	{
-		return LeftSideCollisionInternal;
+		GhostCharacterRightSide->Destroy();
+		GhostCharacterRightSide = nullptr;
 	}
-
-	return nullptr;
 }
 
-// Returns right side spawned collision or nullptr
-class AActor* UGRSWorldSubSystem::GetRightCollisionActor()
-{
-	if (RightSideCollisionInternal)
-	{
-		return RightSideCollisionInternal;
-	}
-
-	return nullptr;
-}
+/*********************************************************************************************
+ * Treasury (temp)
+ **********************************************************************************************/
 
 // Listen game states to switch character skin.
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
-}
-
-/** EngGameState:
+	/** EngGameState:
 //HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
 if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
 {
-    break;
+	break;
 }
 HUD->SetVisibility(ESlateVisibility::Collapsed);
 PlayerStateInternal->SetCharacterDead(false);
 PlayerStateInternal->SetOpponentKilledNum(0);
 PlayerStateInternal->SetEndGameState(EBmrEndGameState::None);
 */
+}

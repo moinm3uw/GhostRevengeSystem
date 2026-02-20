@@ -3,6 +3,7 @@
 #include "Components/GRSPlayerControllerComponent.h"
 
 #include "EnhancedInputComponent.h"
+#include "GhostRevengeUtils.h"
 #include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "DataAssets/BmrInputAction.h"
@@ -301,7 +302,7 @@ void UGRSPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 	Params.StartLocation = GetCurrentPawnChecked().GetActorLocation();
 
 	// --- pick a direction based on the side of the map (left or right)
-	const float SideSign = UGRSWorldSubSystem::Get().GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+	const float SideSign = UGhostRevengeUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
 	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
 	Params.ActorsToIgnore.Add(GetCurrentGhostCharacter());

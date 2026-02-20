@@ -292,8 +292,6 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 				{
 					OnActivateGhostCharacter.Broadcast(DestroyCauserGhostCharacter, PlayerCharacter);
 				}
-
-				UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(DestroyCauserGhostCharacter);
 				DeadPlayerCharacters.Add(PlayerCharacter, DestroyCauserGhostCharacter);
 				return;
 			}
@@ -307,7 +305,6 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 		{
 			OnActivateGhostCharacter.Broadcast(GhostToActive, PlayerCharacter);
 		}
-		UGRSWorldSubSystem::Get().SetLastActivatedGhostCharacter(GhostToActive);
 		DeadPlayerCharacters.Add(PlayerCharacter, GhostToActive);
 	}
 }
@@ -407,7 +404,7 @@ void UGRSGhostCharacterManagerComponent::OnUnregister()
 	OnActivateGhostCharacter.Clear();
 	OnRemoveGhostCharacterFromMap.Clear();
 	OnRefreshGhostCharacters.Clear();
-	
+
 	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
 	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
 }
