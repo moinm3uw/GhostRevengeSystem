@@ -19,6 +19,9 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public 
 {
 	GENERATED_BODY()
 
+	/*********************************************************************************************
+	 * Lifecycle
+	 **********************************************************************************************/
 public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerCharacterPreRemovedFromLevel, UBmrMapComponent*, MapComponent, UObject*, DestroyCauser);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivateGhostCharacter, AGRSPlayerCharacter*, GhostCharacter, const ABmrPawn*, PlayerCharacter);
@@ -45,6 +48,17 @@ public:
 	UGRSGhostCharacterManagerComponent();
 
 protected:
+	/** Called when the game starts */
+	virtual void BeginPlay() override;
+
+	/** Clears all transient data created by this component. */
+	virtual void OnUnregister() override;
+
+	/*********************************************************************************************
+	 * Main functionality
+	 **********************************************************************************************/
+
+protected:
 	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Pool Actors Handlers"))
 	TArray<FPoolObjectHandle> PoolActorHandlersInternal;
@@ -58,49 +72,35 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Bound MapComponents"))
 	TArray<TWeakObjectPtr<class UBmrMapComponent>> BoundMapComponents;
 
-	/** Called when the game starts */
-	virtual void BeginPlay() override;
-
-	/** Clears all transient data created by this component. */
-	virtual void OnUnregister() override;
-
 	/** The component is considered as loaded only when the subsystem is loaded */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize();
-
-	/** Refresh the ghost characters visual */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void RefreshGhostCharacters() const;
-
-	/** Remove ghost characters from the map */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void RemoveGhostCharacters();
-
-	/** Listen game states to remove ghost character from level */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnGameStateChanged(const struct FGameplayEventData& Payload);
-
-	/** To unsubscribed from player death events (delegates) and clean ability component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void UnregisterFromPlayerDeath();
-
-	/** Subscribes to PlayerCharacters death events in order to see if a player died */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterForPlayerDeath();
-
-	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void PlayerCharacterOnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
-
+	
 	/** Add ghost character to the current active game (on level map) */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void AddGhostCharacter();
-
+	
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
+	
+	/** Subscribes to PlayerCharacters death events in order to see if a player died */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void RegisterForPlayerDeath();
+	
+	/** Listen game states to remove ghost character from level */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnGameStateChanged(const struct FGameplayEventData& Payload);
+	
+	/** Refresh the ghost characters visual */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void RefreshGhostCharacters() const;
+	
+	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void PlayerCharacterOnPreRemovedFromLevel(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser);
 
 	/** Called when the ghost player kills another player and will be swaped with him */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
@@ -117,7 +117,15 @@ protected:
 	/** Unpossess ghost and spawn&possess a regular player character to the level at location */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void RevivePlayerCharacter(class ABmrPawn* PlayerCharacter);
+	
+	/** Remove ghost characters from the map */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void RemoveGhostCharacters();
 
+	/** To unsubscribed from player death events (delegates) and clean ability component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void UnregisterFromPlayerDeath();
+	
 	/** To Remove current active applied gameplay effect */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void RemoveAppliedReviveGameplayEffect(const ABmrPawn* PlayerCharacter);

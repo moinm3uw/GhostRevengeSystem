@@ -29,6 +29,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Structures/BmrGameStateTag.h"
 
+/*********************************************************************************************
+ * Lifecycle
+ **********************************************************************************************/
+
 // Sets default values for this component's properties
 UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
 {
@@ -47,6 +51,39 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
 	WorldSubsystem.RegisterCharacterManagerComponent(this);
 }
+
+// Clears all transient data created by this component.
+void UGRSGhostCharacterManagerComponent::OnUnregister()
+{
+	Super::OnUnregister();
+
+	if (PoolActorHandlersInternal.Num() > 0)
+	{
+		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
+		PoolActorHandlersInternal.Empty();
+		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
+	}
+
+	if (DeadPlayerCharacters.Num() > 0)
+	{
+		DeadPlayerCharacters.Empty();
+	}
+
+	// --- clean delegates
+	UnregisterFromPlayerDeath();
+
+	OnPlayerCharacterPreRemovedFromLevel.Clear();
+	OnActivateGhostCharacter.Clear();
+	OnRemoveGhostCharacterFromMap.Clear();
+	OnRefreshGhostCharacters.Clear();
+
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
+}
+
+/*********************************************************************************************
+ * Main functionality
+ **********************************************************************************************/
 
 // The component is considered as loaded only when the subsystem is loaded
 void UGRSGhostCharacterManagerComponent::OnInitialize()
@@ -192,25 +229,6 @@ void UGRSGhostCharacterManagerComponent::OnGameStateChanged_Implementation(const
 	}
 }
 
-// To unsubscribed from player death events (delegates) and clean ability component
-void UGRSGhostCharacterManagerComponent::UnregisterFromPlayerDeath()
-{
-	if (BoundMapComponents.Num() > 0)
-	{
-		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
-		{
-			if (BoundMapComponents[Index].IsValid())
-			{
-				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
-				const ABmrPawn* PlayerCharacter = BoundMapComponents[Index]->GetOwner<ABmrPawn>();
-				RemoveAppliedReviveGameplayEffect(PlayerCharacter);
-			}
-		}
-
-		BoundMapComponents.Empty();
-	}
-}
-
 // Refresh the ghost characters visuals
 void UGRSGhostCharacterManagerComponent::RefreshGhostCharacters() const
 {
@@ -218,23 +236,6 @@ void UGRSGhostCharacterManagerComponent::RefreshGhostCharacters() const
 	{
 		OnRefreshGhostCharacters.Broadcast();
 	}
-}
-
-// Remove ghost characters from the map
-void UGRSGhostCharacterManagerComponent::RemoveGhostCharacters()
-{
-	for (const TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
-	{
-		if (Pair.Value)
-		{
-			if (OnRemoveGhostCharacterFromMap.IsBound())
-			{
-				OnRemoveGhostCharacterFromMap.Broadcast(Pair.Value);
-			}
-		}
-	}
-
-	DeadPlayerCharacters.Empty();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
@@ -380,33 +381,40 @@ void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(class ABmrPawn* P
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
 }
 
-// Clears all transient data created by this component.
-void UGRSGhostCharacterManagerComponent::OnUnregister()
+// To unsubscribed from player death events (delegates) and clean ability component
+void UGRSGhostCharacterManagerComponent::UnregisterFromPlayerDeath()
 {
-	Super::OnUnregister();
-
-	if (PoolActorHandlersInternal.Num() > 0)
+	if (BoundMapComponents.Num() > 0)
 	{
-		UPoolManagerSubsystem::Get().ReturnToPoolArray(PoolActorHandlersInternal);
-		PoolActorHandlersInternal.Empty();
-		UPoolManagerSubsystem::Get().EmptyPool(AGRSPlayerCharacter::StaticClass());
+		for (int32 Index = 0; Index < BoundMapComponents.Num(); Index++)
+		{
+			if (BoundMapComponents[Index].IsValid())
+			{
+				BoundMapComponents[Index]->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::PlayerCharacterOnPreRemovedFromLevel);
+				const ABmrPawn* PlayerCharacter = BoundMapComponents[Index]->GetOwner<ABmrPawn>();
+				RemoveAppliedReviveGameplayEffect(PlayerCharacter);
+			}
+		}
+
+		BoundMapComponents.Empty();
+	}
+}
+
+// Remove ghost characters from the map
+void UGRSGhostCharacterManagerComponent::RemoveGhostCharacters()
+{
+	for (const TPair<ABmrPawn*, AGRSPlayerCharacter*>& Pair : DeadPlayerCharacters)
+	{
+		if (Pair.Value)
+		{
+			if (OnRemoveGhostCharacterFromMap.IsBound())
+			{
+				OnRemoveGhostCharacterFromMap.Broadcast(Pair.Value);
+			}
+		}
 	}
 
-	if (DeadPlayerCharacters.Num() > 0)
-	{
-		DeadPlayerCharacters.Empty();
-	}
-
-	// --- clean delegates
-	UnregisterFromPlayerDeath();
-
-	OnPlayerCharacterPreRemovedFromLevel.Clear();
-	OnActivateGhostCharacter.Clear();
-	OnRemoveGhostCharacterFromMap.Clear();
-	OnRefreshGhostCharacters.Clear();
-
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get().UnregisterCharacterManagerComponent();
+	DeadPlayerCharacters.Empty();
 }
 
 // To Remove current active applied gameplay effect
