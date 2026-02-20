@@ -61,12 +61,6 @@ public:
 	/*********************************************************************************************
 	 * Data asset
 	 **********************************************************************************************/
-public:
-	/** Returns the data asset that contains all the assets of Ghost Revenge System game feature.
-	 * @see UGRSWorldSubsystem::GRSDataAssetInternal. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	const class UGRSDataAsset* GetGRSDataAsset() const;
-
 protected:
 	/** Contains all the assets and tweaks of Ghost Revenge System game feature.
 	 * Note: Since Subsystem is code-only, there is config property set in BaseGhostRevengeSystem.ini.
@@ -75,9 +69,28 @@ protected:
 	UPROPERTY(Config, VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Ghost Revenge System Data Asset"))
 	TSoftObjectPtr<const class UGRSDataAsset> DataAssetInternal;
 
+public:
+	/** Returns the data asset that contains all the assets of Ghost Revenge System game feature.
+	 * @see UGRSWorldSubsystem::GRSDataAssetInternal. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
+	const class UGRSDataAsset* GetGRSDataAsset() const;
+
 	/*********************************************************************************************
 	 * Side Collisions actors
 	 **********************************************************************************************/
+protected:
+	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
+	TObjectPtr<class UGhostRevengeCollisionComponent> CollisionMangerComponent;
+
+	/** Left Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
+	TObjectPtr<class AActor> LeftSideCollision;
+
+	/** Right Side collision */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
+	TObjectPtr<class AActor> RightSideCollision;
+
 public:
 	/** Register collision manager component used to track if all components loaded and MGF ready to initialize */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -107,22 +120,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ClearCollisions();
 
-protected:
-	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGhostRevengeCollisionComponent> CollisionMangerComponent;
-
-	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<class AActor> LeftSideCollision;
-
-	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<class AActor> RightSideCollision;
-
 	/*********************************************************************************************
 	 * Ghost Characters
 	 **********************************************************************************************/
+protected:
+	/** Current Character Manager Component */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
+	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterManagerComponent;
+
+	/** Ghost character spawned on left side of the map */
+	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
+	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterLeftSide;
+
+	/** Ghost character spawned on right side of the map */
+	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
+	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterRightSide;
+
 public:
 	/** Register character manager component. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -151,19 +164,6 @@ public:
 	/** Clear cached ghost character references */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ClearGhostCharacters();
-
-protected:
-	/** Current Character Manager Component */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterManagerComponent;
-
-	/** Ghost character spawned on left side of the map */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterLeftSide;
-
-	/** Ghost character spawned on right side of the map */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterRightSide;
 
 	/*********************************************************************************************
 	 * Treasury (temp)
