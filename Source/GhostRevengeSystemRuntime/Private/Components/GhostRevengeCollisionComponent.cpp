@@ -22,6 +22,10 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeCollisionComponent)
 
+/*********************************************************************************************
+ * Lifecycle
+ **********************************************************************************************/
+
 // Sets default values for this component's properties
 UGhostRevengeCollisionComponent::UGhostRevengeCollisionComponent()
 {
@@ -41,15 +45,6 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 	BIND_ON_LOCAL_PAWN_READY(this, ThisClass::OnLocalPawnReady);
 }
 
-// Is called when local player character is ready to guarantee that they player controller is initialized
-void UGhostRevengeCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
-{
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
-	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
-	WorldSubsystem.RegisterCollisionManagerComponent(this);
-	WorldSubsystem.OnWorldSubSystemInitialize();
-}
-
 // Clears all transient data created by this component.
 void UGhostRevengeCollisionComponent::OnUnregister()
 {
@@ -65,6 +60,19 @@ void UGhostRevengeCollisionComponent::OnUnregister()
 	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
 	UGRSWorldSubSystem::Get().ClearCollisions();
 	UGRSWorldSubSystem::Get().UnregisterCollisionManagerComponent();
+}
+
+/*********************************************************************************************
+ * Main functionality
+ **********************************************************************************************/
+
+// Is called when local player character is ready to guarantee that they player controller is initialized
+void UGhostRevengeCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
+{
+	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
+	WorldSubsystem.OnInitialize.AddUniqueDynamic(this, &ThisClass::OnInitialize);
+	WorldSubsystem.RegisterCollisionManagerComponent(this);
+	WorldSubsystem.OnWorldSubSystemInitialize();
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded

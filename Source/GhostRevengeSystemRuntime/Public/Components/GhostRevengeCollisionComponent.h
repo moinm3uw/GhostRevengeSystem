@@ -14,24 +14,33 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeCollisionComponent : public UAc
 {
 	GENERATED_BODY()
 
+	/*********************************************************************************************
+	 * Lifecycle
+	 **********************************************************************************************/
+
 public:
 	/** Sets default values for this component's properties */
 	UGhostRevengeCollisionComponent();
 
 protected:
+	/** Called when the game starts */
+	virtual void BeginPlay() override;
+
+	/** Clears all transient data created by this component. */
+	virtual void OnUnregister() override;
+
+	/*********************************************************************************************
+	 * Main functionality
+	 **********************************************************************************************/
+public:
+protected:
 	/** Array of pool actors handlers of collisions that should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))
 	TArray<FPoolObjectHandle> CollisionPoolActorHandlersInternal;
 
-	/** Called when the game starts */
-	virtual void BeginPlay() override;
-
 	/** Is called when local player character is ready to guarantee that they player controller is initialized */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnLocalPawnReady(const struct FGameplayEventData& Payload);
-
-	/** Clears all transient data created by this component. */
-	virtual void OnUnregister() override;
 
 	/** The spawner is considered as loaded only when the subsystem is loaded */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
