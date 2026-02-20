@@ -239,7 +239,7 @@ void UGRSGhostCharacterManagerComponent::RefreshGhostCharacters() const
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients
-void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(class UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
+void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Implementation(UBmrMapComponent* MapComponent, class UObject* DestroyCauser)
 {
 	ABmrPawn* PlayerCharacter = MapComponent->GetOwner<ABmrPawn>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
@@ -311,7 +311,7 @@ void UGRSGhostCharacterManagerComponent::PlayerCharacterOnPreRemovedFromLevel_Im
 }
 
 // Called when the ghost player kills another player and will be swaped with him
-void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocation, class AGRSPlayerCharacter* GhostCharacter)
+void UGRSGhostCharacterManagerComponent::OnGhostEliminatesPlayer(FVector AtLocation, AGRSPlayerCharacter* GhostCharacter)
 {
 	// RevivePlayerCharacter(GhostCharacter);
 }
@@ -366,7 +366,7 @@ void UGRSGhostCharacterManagerComponent::PossessPlayerCharacter(AController* Cur
 }
 
 // Spawn and possess a regular player character to the level at location
-void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(class ABmrPawn* PlayerCharacter)
+void UGRSGhostCharacterManagerComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 {
 	const ABmrGameState& GameState = ABmrGameState::Get();
 	if (!PlayerCharacter || !GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
