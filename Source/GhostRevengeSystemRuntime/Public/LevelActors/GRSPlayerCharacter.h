@@ -87,16 +87,16 @@ protected:
 public:
 	/** Returns the 3D widget component that displays the player name above the character. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponentInternal; }
+	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponent; }
 
-	/** Sets/Updates player name from possessed pawn player state */
+	/** Initialize player name widget (on top of character) */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void UpdatePlayerName(ABmrPlayerState* MyPlayerState);
+	void InitializePlayerNameWidget();
 
 protected:
 	/** 3D widget component that displays the player name above the character. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
-	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponentInternal = nullptr;
+	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponent = nullptr;
 
 	/*********************************************************************************************
 	 * Arrow component
@@ -157,7 +157,7 @@ protected:
 	/** Checks if Pawn is replicated fully (player state and controller present */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	bool bIsReady();
-
+	
 	/** APawn Interface when this pawn was unpossessed */
 	virtual void UnPossessed() override;
 
@@ -172,10 +172,10 @@ protected:
 	/** The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
-
-	/** Listen for Player State property bIsDead. It assumes that PlayerState is not respawned on player join and not destroyed on player leave, but is reused for both human and bot characters */
+	
+	/** Is increased when this player kills an opponent */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnPlayerDeadChanged(bool bIsDead);
+	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
 
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -219,13 +219,13 @@ public:
 	/** Set visibility of the arrow on top of player character */
 	void SetArrowEnabled(bool bVisibility);
 
-	/** Set character visual once added to the level from a refence character (visuals, animations) */
+	/** Initialize character visual (animation, skins)  once added to the level by utilizing player id */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void SetCharacterVisual(const ABmrPawn* PlayerCharacter);
+	void SetCharacterVisual();
 
 	/** Set and apply skeletal mesh for ghost player. Copy mesh from current player. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
-	void SetPlayerMeshData();
+	void InitPlayerMesh();
 
 protected:
 	/** Possess a player controller */

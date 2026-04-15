@@ -10,8 +10,6 @@
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
-#include "FunctionPickerData/FunctionPickerTemplate.h"
-#include "GameFramework/BmrPlayerState.h"
 #include "GhostRevengeUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"

@@ -21,6 +21,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "PoolManagerSubsystem.h"
 #include "Structures/BmrGameStateTag.h"
+#include "UI/Widgets/BmrHUDWidget.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -63,6 +65,11 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventDat
 	TryInit(); // try to initialize
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
+
+	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
+	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
+	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
+	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 }
 
 // Checks if all components present and invokes initialization
@@ -105,6 +112,12 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	UnregisterCollisionManagerComponent();
 	ClearGhostCharacters();
 	ClearCollisions();
+
+	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
+	if (BmrHUD)
+	{
+		BmrHUD->SetVisibility(ESlateVisibility::Visible);
+	}
 }
 
 /*********************************************************************************************
@@ -373,6 +386,20 @@ UGrsPlayerStateComponent* UGRSWorldSubSystem::GetPlayerStateComponent(int32 Targ
 	return nullptr;
 }
 
+// Listen end game states to show/hide HUD temporarry
+void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
+{
+	if (EndGameState == EBmrEndGameState::Lose)
+	{
+		UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
+		if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+		BmrHUD->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 /*********************************************************************************************
  * Treasury (temp)
  **********************************************************************************************/
@@ -385,15 +412,7 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 		ResetRevivedPlayers();
 	}
 
-	/** EngGameState:
-//HUD = UWidgetsSubsystem::Get().GetWidgetByTag();
-if (!ensureMsgf(HUD, TEXT("ASSERT: [%i] %hs:\n'HUD' is not valid!"), __LINE__, __FUNCTION__))
-{
-	break;
-}
-HUD->SetVisibility(ESlateVisibility::Collapsed);
-PlayerStateInternal->SetCharacterDead(false);
-PlayerStateInternal->SetOpponentKilledNum(0);
-PlayerStateInternal->SetEndGameState(EBmrEndGameState::None);
-*/
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::EndGame))
+	{
+	}
 }

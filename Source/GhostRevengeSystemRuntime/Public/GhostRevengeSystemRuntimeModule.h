@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
+/** Define Grs log category. */
+DECLARE_LOG_CATEGORY_EXTERN(LogGrs, Log, All);
+
 class FGhostRevengeSystemRuntimeModule : public IModuleInterface
 {
 public:

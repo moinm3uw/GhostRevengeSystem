@@ -6,6 +6,8 @@
 
 #define LOCTEXT_NAMESPACE "FGhostRevengeSystemRuntimeModule"
 
+DEFINE_LOG_CATEGORY(LogGrs);
+
 void FGhostRevengeSystemRuntimeModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory;

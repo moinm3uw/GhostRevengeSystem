@@ -60,11 +60,16 @@ public:
 	 * Player Character
 	 **********************************************************************************************/
 protected:
-	/** Reference to a main player character that was eliminated (original player, not ghost)  */
+	/** Reference to a main player character (BmrPawn) that was eliminated (original player, not ghost)  */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Bmr Player Character"))
 	APawn* MainPlayerPawn = nullptr;
 
 public:
+	
+	/** Returns main player (BmrPawn) character */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	FORCEINLINE APawn* GetMainPlayerPawn() const { return MainPlayerPawn; } 
+	
 	/** Store reference for possessed player pawn. Used to Unpossess controller back to the pawn
 	 * @param PlayerPawn is a main player pawn that ghost possesses.
 	 */
