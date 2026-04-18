@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
+#include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 /*********************************************************************************************
@@ -59,6 +60,7 @@ void UGRSPlayerControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UGRSWorldSubSystem::Get().RegisterPlayerControllerComponent(this);
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
 }
 

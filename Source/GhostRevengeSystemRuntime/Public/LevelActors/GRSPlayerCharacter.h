@@ -140,7 +140,8 @@ protected:
 
 	/** Overridable function called whenever this actor is being removed from a level. */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
+	
+	
 	/** APawn Interface when this pawn was possessed by a new controller */
 	virtual void PossessedBy(AController* NewController) override;
 

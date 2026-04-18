@@ -386,6 +386,19 @@ UGrsPlayerStateComponent* UGRSWorldSubSystem::GetPlayerStateComponent(int32 Targ
 	return nullptr;
 }
 
+// Register a new grs player controller component
+void UGRSWorldSubSystem::RegisterPlayerControllerComponent(class UGRSPlayerControllerComponent* NewPlayerControllerComponent)
+{
+	if (!NewPlayerControllerComponent)
+	{
+		return;
+	}
+	if (PlayerControllerComponent != NewPlayerControllerComponent)
+	{
+		PlayerControllerComponent = NewPlayerControllerComponent;
+	}
+}
+
 // Listen end game states to show/hide HUD temporarry
 void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
 {

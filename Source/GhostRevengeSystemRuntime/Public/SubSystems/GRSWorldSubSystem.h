@@ -205,13 +205,30 @@ public:
 	UGrsPlayerStateComponent* GetPlayerStateComponent(int32 TargetPlayerID);
 
 	/*********************************************************************************************
+	 * Player Controller Component
+	 **********************************************************************************************/
+protected:
+	/** Player Controller Component attached to BmrPlayerController  */
+	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
+	TObjectPtr<class UGRSPlayerControllerComponent> PlayerControllerComponent;
+
+public:
+	/** Gets current grs player controller component. It's unique and only 1 */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	FORCEINLINE class UGRSPlayerControllerComponent* GetGrsPlayerControllerComponent() const { return PlayerControllerComponent; }
+
+	/** Register a new grs player controller component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void RegisterPlayerControllerComponent(class UGRSPlayerControllerComponent* NewPlayerControllerComponent);
+
+	/*********************************************************************************************
 	 * Treasury (temp)
 	 **********************************************************************************************/
 protected:
 	/** Listen game states to switch character skin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
-	
+
 	/** Listen end game states to show/hide HUD temporarry */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EBmrEndGameState EndGameState);

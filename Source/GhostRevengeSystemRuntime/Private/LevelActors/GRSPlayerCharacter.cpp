@@ -34,6 +34,7 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
 #include "UObject/ConstructorHelpers.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 /*********************************************************************************************
@@ -169,6 +170,16 @@ void AGRSPlayerCharacter::InitPawn(int32 NewPlayerId)
 	{
 		PlayerID = NewPlayerId;
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
+}
+
+// Called on client when player ID is changed
+void AGRSPlayerCharacter::OnRep_PlayerID()
+{
+	// --- Init Grs Pawn logic
+	InitPawn(PlayerID);
 }
 
 //  Register owning pawn component
@@ -196,8 +207,6 @@ void AGRSPlayerCharacter::RegisterPawnComponent(UGrsPawnComponent* NewPawnCompon
 void AGRSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
 // Overridable function called whenever this actor is being removed from a level
@@ -239,12 +248,6 @@ void AGRSPlayerCharacter::OnRep_Controller()
 void AGRSPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-
-	ABmrPlayerState* BmrPlayerState = Cast<ABmrPlayerState>(GetPlayerState());
-	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
-	{
-		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
-	}
 
 	if (!bIsReady())
 	{
@@ -308,6 +311,12 @@ void AGRSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 // The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
 void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 {
+	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
+	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
+	{
+		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+	} 
+	
 	// --- Activate aiming point
 	checkf(AimingSphereComponent, TEXT("ERROR: [%i] %hs:\n'AimingSphereComponent' is null!"), __LINE__, __FUNCTION__);
 	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
@@ -332,25 +341,25 @@ void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 void AGRSPlayerCharacter::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledNum)
 {
 	// --- ghost eliminates a player - remove ghost from map
-	UGRSPlayerControllerComponent* GrsControllerComponent = Cast<UGRSPlayerControllerComponent>(GetController()->FindComponentByClass<UGRSPlayerControllerComponent>());
+	UGRSPlayerControllerComponent* GrsControllerComponent = UGRSWorldSubSystem::Get().GetGrsPlayerControllerComponent();
 	if (!ensureMsgf(GrsControllerComponent, TEXT("ASSERT: [%i] %hs:\n'GrsControllerComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
-
-	RemoveGhostCharacterFromMap();
-
-	if (GetController()->HasAuthority())
+	ABmrPlayerController& CurrentPlayerController = GrsControllerComponent->GetPlayerControllerChecked();
+	if (CurrentPlayerController.HasAuthority())
 	{
-		GetController()->UnPossess();
+		CurrentPlayerController.UnPossess();
 
-		ABmrPawn* PlayerCharacter = Cast<ABmrPawn>(GrsControllerComponent->GetMainPlayerPawn());
-		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'BmrPawn' is not valid!"), __LINE__, __FUNCTION__))
+		ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
+		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 		{
 			return;
 		}
 		UGRSWorldSubSystem::Get().GetPlayerStateComponent(GetPlayerID())->RevivePlayerCharacter(PlayerCharacter);
 	}
+
+	RemoveGhostCharacterFromMap();
 }
 
 // Listen game states to remove ghost character from level
@@ -472,13 +481,6 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
 	// --- update collision mod of this pawn if needed
-}
-
-// Called on client when player ID is changed
-void AGRSPlayerCharacter::OnRep_PlayerID()
-{
-	// --- Init Grs Pawn logic
-	InitPawn(PlayerID);
 }
 
 /*********************************************************************************************
@@ -648,7 +650,7 @@ void AGRSPlayerCharacter::ClearTrajectorySplines()
 	ProjectileSplineComponentInternal->ClearSplinePoints();
 }
 
-//  Add spline mesh to spline points
+//  Add spline mesh to spline pointssssssss
 void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 {
 	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
