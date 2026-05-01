@@ -6,12 +6,10 @@
 #include "AbilitySystemGlobals.h"
 #include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
-#include "Animation/AnimInstance.h"
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrPlayerArrowStartComponent.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Components/GRSGhostCharacterManagerComponent.h"
 #include "Components/GRSPlayerControllerComponent.h"
 #include "Components/GrsPawnComponent.h"
@@ -20,10 +18,6 @@
 #include "Components/SplineMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
-#include "DataAssets/BmrPlayerDataAsset.h"
-#include "DataRegistries/BmrPlayerRow.h"
-#include "DataRegistries/BmrPlayerSkinRow.h"
-#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -36,22 +30,13 @@
 #include "UObject/ConstructorHelpers.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+#include "Utils/GrsPawnHelper.h"
 
-/*********************************************************************************************
- * Nickname component
- **********************************************************************************************/
-
-//  Initialize player name widget (on top of character)
-void AGRSPlayerCharacter::InitializePlayerNameWidget()
+// Returns the Ability System Component from the Player State
+UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
 {
-	ABmrPlayerState* MyPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked();
-	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is not valid!"), __LINE__, __FUNCTION__)
-	    || !ensureMsgf(PlayerName3DWidgetComponent, TEXT("ASSERT: [%i] %hs:\n'PlayerName3DWidgetComponentInternal' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	PlayerName3DWidgetComponent->Init(MyPlayerState);
+	const ABmrPlayerState* InPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked();
+	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
 /*********************************************************************************************
@@ -62,23 +47,32 @@ void AGRSPlayerCharacter::InitializePlayerNameWidget()
 AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<UBmrSkeletalMeshComponent>(MeshComponentName)) // Init UBmrSkeletalMeshComponent instead of USkeletalMeshComponent
 {
-	// Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
-	SetDefaultParams();
+	// --- Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	// Initialize skeletal mesh of the character
-	InitializeSkeletalMesh();
+	// --- Replicate an actor
+	bReplicates = true;
+	bAlwaysRelevant = true;
+	SetReplicatingMovement(true);
 
-	// Configure the movement component
-	MovementComponentConfiguration();
+	// --- Do not rotate player by camera
+	bUseControllerRotationYaw = false;
 
-	// Setup capsule component
-	SetupCapsuleComponent();
+	// --- Initialize skeletal mesh of the character
+	UGrsPawnHelper::InitializeSkeletalMesh(this);
 
-	// Initialize 3D widget component for the player name
+	// --- Configure the movement component
+	UGrsPawnHelper::MovementComponentConfiguration(this);
+
+	// --- Setup capsule component
+	UGrsPawnHelper::SetupCapsuleComponent(this);
+
+	// --- Initialize 3D widget component for the player name
 	PlayerName3DWidgetComponent = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
 	PlayerName3DWidgetComponent->SetupAttachment(RootComponent);
 
-	// setup spline component
+	// --- setup spline component
 	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
 	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
 
@@ -93,70 +87,11 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	}
 }
 
-// Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
-void AGRSPlayerCharacter::SetDefaultParams()
+// Called on client when player ID is changed
+void AGRSPlayerCharacter::OnRep_PlayerID()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = false;
-
-	// Replicate an actor
-	bReplicates = true;
-	bAlwaysRelevant = true;
-	SetReplicatingMovement(true);
-
-	// Do not rotate player by camera
-	bUseControllerRotationYaw = false;
-}
-
-// Initialize skeletal mesh of the character
-void AGRSPlayerCharacter::InitializeSkeletalMesh()
-{
-	// Initialize skeletal mesh
-	USkeletalMeshComponent* SkeletalMeshComponent = GetMesh();
-	checkf(SkeletalMeshComponent, TEXT("ERROR: [%i] %hs:\n'SkeletalMeshComponent' is null!"), __LINE__, __FUNCTION__);
-	static const FVector MeshRelativeLocation(0, 0, -90.f);
-	SkeletalMeshComponent->SetRelativeLocation_Direct(MeshRelativeLocation);
-	static const FRotator MeshRelativeRotation(0, -90.f, 0);
-	SkeletalMeshComponent->SetRelativeRotation_Direct(MeshRelativeRotation);
-	SkeletalMeshComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-	// Enable all lighting channels, so it's clearly visible in the dark
-	SkeletalMeshComponent->SetLightingChannels(/*bChannel0*/ true, /*bChannel1*/ true, /*bChannel2*/ true);
-}
-
-// Configure the movement component of the character
-void AGRSPlayerCharacter::MovementComponentConfiguration()
-{
-	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
-	{
-		// Rotate player by movement
-		MovementComponent->bOrientRotationToMovement = true;
-		static const FRotator RotationRate(0.f, 540.f, 0.f);
-		MovementComponent->RotationRate = RotationRate;
-
-		// Do not push out clients from collision
-		MovementComponent->MaxDepenetrationWithGeometryAsProxy = 0.f;
-	}
-}
-
-// Set up the capsule component of the character
-void AGRSPlayerCharacter::SetupCapsuleComponent()
-{
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp"), __LINE__, __FUNCTION__);
-	if (UCapsuleComponent* RootCapsuleComponent = GetCapsuleComponent())
-	{
-		// Setup collision to allow overlap players with each other, but block all other actors
-		RootCapsuleComponent->CanCharacterStepUpOn = ECB_Yes;
-		RootCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		RootCapsuleComponent->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
-
-		RootCapsuleComponent->SetIsReplicated(true);
-	}
+	// --- Init Grs Pawn logic
+	InitPawn(PlayerID);
 }
 
 /*********************************************************************************************
@@ -170,16 +105,36 @@ void AGRSPlayerCharacter::InitPawn(int32 NewPlayerId)
 	{
 		PlayerID = NewPlayerId;
 	}
-	
+
 	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
-// Called on client when player ID is changed
-void AGRSPlayerCharacter::OnRep_PlayerID()
+// The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
+void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 {
-	// --- Init Grs Pawn logic
-	InitPawn(PlayerID);
+	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
+	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
+	{
+		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+	}
+
+	// --- Initiate and Activate aiming point
+	checkf(AimingSphereComponent, TEXT("ERROR: [%i] %hs:\n'AimingSphereComponent' is null!"), __LINE__, __FUNCTION__);
+	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	AimingSphereComponent->SetVisibility(false);
+
+	// --- bind to  clear ghost data
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
+
+	// --- default params required for the fist start to have character prepared
+	UGrsPawnHelper::InitPlayerMesh(this); // --- default init of mesh
+	UGrsPawnHelper::SetCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
+	UGrsPawnHelper::InitializePlayerNameWidget(this); // somehow should be hidden as well.
+	UGrsPawnHelper::SetVisibility(this, false); // -- hidden by default
+	UGrsPawnHelper::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+
+	OnGhostAddedToLevel.Broadcast(); // --- ghost added to level
 }
 
 //  Register owning pawn component
@@ -223,12 +178,12 @@ void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (!bIsReady())
+	if (!UGrsPawnHelper::bIsReady(this))
 	{
 		return;
 	}
 
-	RefreshPawn();
+	UGrsPawnHelper::RefreshPawn(this);
 }
 
 // APawn Interface when this pawn was replicated by a new controller
@@ -236,12 +191,12 @@ void AGRSPlayerCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-	if (!bIsReady())
+	if (!UGrsPawnHelper::bIsReady(this))
 	{
 		return;
 	}
 
-	RefreshPawn();
+	UGrsPawnHelper::RefreshPawn(this);
 }
 
 //  APawn Interface when this pawn was replicated by a new player state
@@ -249,57 +204,24 @@ void AGRSPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	if (!bIsReady())
+	if (!UGrsPawnHelper::bIsReady(this))
 	{
 		return;
 	}
 
-	RefreshPawn();
-}
-
-// Refresh the pawn visuals
-void AGRSPlayerCharacter::RefreshPawn()
-{
-	// --- Clear splines
-	ClearTrajectorySplines();
-	SetVisibility(true);
-	SetArrowEnabled(true);
-	AimingSphereComponent->SetVisibility(true);
-}
-
-// Checks if Pawn is replicated fully (player state and controller present
-bool AGRSPlayerCharacter::bIsReady()
-{
-	if (!GetController())
-	{
-		return false;
-	}
-
-	if (!GetPlayerState())
-	{
-		// UE_LOG(LogGrs, Verbose, TEXT("GetPlayerState() is not available"), ___FUNCTION___); // ~ Log LogGrs Verbose
-		return false;
-	}
-
-	return true;
+	UGrsPawnHelper::RefreshPawn(this);
 }
 
 // APawn Interface when this pawn was unpossessed
 void AGRSPlayerCharacter::UnPossessed()
 {
-	SetVisibility(false);
-	SetArrowEnabled(false);
+	UGrsPawnHelper::SetVisibility(this, false);
+	UGrsPawnHelper::SetArrowEnabled(this, false);
 
 	Super::UnPossessed();
 }
 
-// Returns the Ability System Component from the Player State
-UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
-{
-	const ABmrPlayerState* InPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked();
-	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
-}
-
+// Returns properties that are replicated for the lifetime of the actor channel
 void AGRSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -308,49 +230,25 @@ void AGRSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, PlayerID, Params);
 }
 
-// The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
-void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
-{
-	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
-	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
-	{
-		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
-	} 
-	
-	// --- Activate aiming point
-	checkf(AimingSphereComponent, TEXT("ERROR: [%i] %hs:\n'AimingSphereComponent' is null!"), __LINE__, __FUNCTION__);
-	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	AimingSphereComponent->SetVisibility(false);
-
-	// --- bind to  clear ghost data
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
-	// --- default params required for the fist start to have character prepared
-	InitPlayerMesh(); // --- default init of mesh
-	SetCharacterVisual(); // --- set character visuals (mesh, animation, skin)
-
-	InitializePlayerNameWidget(); // somehow should be hidden as well.
-	SetVisibility(false); // -- hidden by default
-
-	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-
-	OnGhostAddedToLevel.Broadcast(); // --- ghost added to level
-}
-
 // Is increased when this player kills an opponent
 void AGRSPlayerCharacter::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledNum)
 {
-	// --- ghost eliminates a player - remove ghost from map
-	UGRSPlayerControllerComponent* GrsControllerComponent = UGRSWorldSubSystem::Get().GetGrsPlayerControllerComponent();
-	if (!ensureMsgf(GrsControllerComponent, TEXT("ASSERT: [%i] %hs:\n'GrsControllerComponent' is not valid!"), __LINE__, __FUNCTION__))
+	// --- ignore reset cases
+	if (OpponentsKilledNum < 1)
 	{
 		return;
 	}
-	ABmrPlayerController& CurrentPlayerController = GrsControllerComponent->GetPlayerControllerChecked();
-	if (CurrentPlayerController.HasAuthority())
-	{
-		CurrentPlayerController.UnPossess();
 
+	// --- ghost eliminates a player - remove ghost from map
+	ABmrPlayerController* CurrentPlayerController = Cast<ABmrPlayerController>(GetController());
+	if (!ensureMsgf(CurrentPlayerController, TEXT("ASSERT: [%i] %hs:\n'CurrentPlayerController' is no longer available for Grs Pawn!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	if (CurrentPlayerController->HasAuthority())
+	{
+		CurrentPlayerController->UnPossess();
 		ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
 		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 		{
@@ -403,8 +301,8 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	}
 	GrsControllerComponent->SetPossessedPlayerPawn(FromPlayerCharacter);
 
-	GetMeshChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	SetVisibility(true);
+	UGrsPawnHelper::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	UGrsPawnHelper::SetVisibility(this, true);
 
 	// --- clients calls:
 	// --- update collision settings
@@ -418,7 +316,7 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	TryPossessController(PlayerController);
 
 	// --- set pawn location (side)
-	SetPawnSide();
+	UGrsPawnHelper::SetPawnSide(this);
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -428,18 +326,6 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComp
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
 	    || PlayerCharacter->IsBotControlled()
 	    || !DestroyCauser)
-	{
-		return;
-	}
-
-	const ABmrPlayerState* DestroyCauserPlayerState = Cast<ABmrPlayerState>(DestroyCauser);
-	if (!DestroyCauserPlayerState)
-	{
-		return;
-	}
-
-	APawn* Causer = DestroyCauserPlayerState->GetPawn();
-	if (!Causer)
 	{
 		return;
 	}
@@ -467,8 +353,8 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	}
 
 	// --- reset bindings
-	ABmrPlayerState* BmrPlayerState = Cast<ABmrPlayerState>(GetPlayerState());
-	if (BmrPlayerState)
+	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
+	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' fail to obtain from player ID!"), __LINE__, __FUNCTION__))
 	{
 		if (BmrPlayerState->OnOpponentsKilledNumChanged.IsBound())
 		{
@@ -481,74 +367,6 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
 	// --- update collision mod of this pawn if needed
-}
-
-/*********************************************************************************************
- * Utils
- **********************************************************************************************/
-// Returns the Skeletal Mesh of ghost revenge character
-UBmrSkeletalMeshComponent& AGRSPlayerCharacter::GetMeshChecked() const
-{
-	return *CastChecked<UBmrSkeletalMeshComponent>(GetMesh());
-}
-
-// Set visibility of the player character
-void AGRSPlayerCharacter::SetVisibility(bool Visibility)
-{
-	GetMesh()->SetVisibility(Visibility, true);
-}
-
-// Set visibility of the arrow on top of player character
-void AGRSPlayerCharacter::SetArrowEnabled(bool bVisibility)
-{
-	PlayerArrowStartComponent->SetArrowEnabled(bVisibility);
-}
-
-//  Initialize character visual (SkeletalMesh, Skins)  once added to the level by utilizing player id
-void AGRSPlayerCharacter::SetCharacterVisual()
-{
-	ABmrPawn* PlayerCharacter = &UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked()->GetPawnChecked();
-	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
-
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		const TSubclassOf<UAnimInstance> AnimInstanceClass = UBmrPlayerDataAsset::Get().GetAnimInstanceClass();
-		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
-	}
-
-	const UBmrSkeletalMeshComponent* MainCharacterMeshComponent = &PlayerCharacter->GetMeshComponentChecked();
-	if (!ensureMsgf(MainCharacterMeshComponent, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-	const FName CurrentSkinRowName = MainCharacterMeshComponent->GetAppliedSkinRowName();
-
-	UBmrSkeletalMeshComponent* CurrentMeshComponent = &GetMeshChecked();
-	if (!ensureMsgf(CurrentMeshComponent, TEXT("ASSERT: [%i] %hs:\n'CurrentMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-	CurrentMeshComponent->InitSkeletalMesh(MainCharacterMeshComponent->GetMeshData());
-	CurrentMeshComponent->ApplySkinByRowName(CurrentSkinRowName);
-}
-
-// Set and apply skeletal mesh for ghost player. Copy mesh from current player
-void AGRSPlayerCharacter::InitPlayerMesh()
-{
-	const ABmrPawn* PlayerCharacter = &UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked()->GetPawnChecked();
-	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
-
-	const FBmrPlayerRow* Row = FBmrPlayerRow::GetFirstRow();
-	const FName RowName = FBmrPlayerRow::GetFirstRowName();
-	if (!ensureMsgf(Row, TEXT("ASSERT: [%i] %hs:\n'Row' is not found!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	FBmrMeshData MeshData = FBmrMeshData::Empty;
-	MeshData.RowName = RowName;
-	MeshData.SkinRowName = FBmrPlayerSkinRow::GetSkinRowName(Row->PlayerTag, PlayerCharacter->GetPlayerId());
-	GetMeshChecked().InitSkeletalMesh(MeshData);
 }
 
 //  Possess a player controller
@@ -571,38 +389,6 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	PlayerController->Possess(this);
 }
 
-//  Set side for this pawn (left or right)
-void AGRSPlayerCharacter::SetPawnSide()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-	EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get().RegisterGhostCharacter(this);
-
-	checkf(!(CharacterSide == EGRSCharacterSide::None), TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
-
-	FBmrCell ActorSpawnLocation;
-	float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
-
-	if (CharacterSide == EGRSCharacterSide::Left)
-	{
-		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
-		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
-		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
-	}
-	else if (CharacterSide == EGRSCharacterSide::Right)
-	{
-		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
-		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
-		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
-	}
-
-	// Match the Z axis to what we have on the level
-	ActorSpawnLocation.Location.Z = 100.0f;
-	SetActorLocation(ActorSpawnLocation);
-}
-
 // Add a mesh to the last element of the predict Projectile path results
 void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FVector Location)
 {
@@ -610,22 +396,10 @@ void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FVector Location)
 	AimingSphereComponent->SetWorldLocation(Location);
 }
 
-// Applies spawn bomb gameplay effect
-void AGRSPlayerCharacter::ApplyExplosionGameplayEffect()
-{
-	UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->ApplyBombSpawningGameplayEffect();
-}
-
-// Removes spawn bomb gameplay effect
-void AGRSPlayerCharacter::RemoveExplosionGameplayEffect()
-{
-	UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->RemoveBombSpawningGameplayEffect();
-}
-
 // Add spline points to the spline component
 void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
 {
-	ClearTrajectorySplines();
+	UGrsPawnHelper::ClearTrajectorySplines(this);
 
 	for (int32 i = 0; i < Result.PathData.Num(); i++)
 	{
@@ -638,19 +412,7 @@ void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
 	ProjectileSplineComponentInternal->UpdateSpline();
 }
 
-// Hide spline elements (trajectory)
-void AGRSPlayerCharacter::ClearTrajectorySplines()
-{
-	for (USplineMeshComponent* SplineMeshComponent : SplineMeshArrayInternal)
-	{
-		SplineMeshComponent->DestroyComponent();
-	}
-
-	SplineMeshArrayInternal.Empty();
-	ProjectileSplineComponentInternal->ClearSplinePoints();
-}
-
-//  Add spline mesh to spline pointssssssss
+//  Add spline mesh to spline points
 void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 {
 	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
@@ -694,7 +456,7 @@ void AGRSPlayerCharacter::ThrowProjectile()
 	ThrowDirection.Normalize();
 	FVector LaunchVelocity = ThrowDirection * 100;
 
-	ClearTrajectorySplines();
+	UGrsPawnHelper::ClearTrajectorySplines(this);
 }
 
 // Spawn bomb on aiming sphere position.
@@ -713,13 +475,14 @@ void AGRSPlayerCharacter::SpawnBomb(FBmrCell TargetCell)
 //  Clean up the character for the MGF unload
 void AGRSPlayerCharacter::PerformCleanUp()
 {
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
 	RemoveGhostCharacterFromMap();
 
 	if (AimingSphereComponent)
 	{
 		AimingSphereComponent->EmptyOverrideMaterials();
 	}
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
+
 	if (MeshComponentInternal)
 	{
 		MeshComponentInternal->DestroyComponent();
