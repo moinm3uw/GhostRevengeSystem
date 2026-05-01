@@ -199,6 +199,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void UnRegisterPlayerStateComponent(class UGrsPlayerStateComponent* PlayerStateComponent);
 
+	/** Clear all cached player states */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void ClearPlayerStates();
+
 	/** Find a player state component by player ID or nullptr
 	 * @param TargetPlayerID to obtain his player state component  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))

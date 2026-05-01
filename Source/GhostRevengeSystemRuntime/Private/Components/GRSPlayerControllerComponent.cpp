@@ -80,7 +80,21 @@ void UGRSPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 	// --- reset currently possessed pawn
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
-		MainPlayerPawn = nullptr;
+		MainBmrPlayerPawn = nullptr;
+	}
+
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	{
+		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(GetCurrentPawn());
+		if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+
+		if (MainBmrPlayerPawn && MainBmrPlayerPawn != CurrentPawn)
+		{
+			MainBmrPlayerPawn = CurrentPawn;
+		}
 	}
 }
 
@@ -88,7 +102,7 @@ void UGRSPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 {
 	ABmrPlayerController* PlayerController = GetPlayerController();
-	if (!MainPlayerPawn
+	if (!MainBmrPlayerPawn
 	    || !PlayerController
 	    || !PlayerController->HasAuthority())
 	{
@@ -100,7 +114,7 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 	if (!CurrentPossessedPawn)
 	{
 		// --- Always possess to player character when ghost character is no longer in control
-		// PlayerController->Possess(MainPlayerPawn);
+		PlayerController->Possess(MainBmrPlayerPawn);
 	}
 	else
 	{
@@ -113,15 +127,15 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 
 		// At first, unpossess previous controller
 		PlayerController->UnPossess();
-		// PlayerController->Possess(MainPlayerPawn);
+		PlayerController->Possess(MainBmrPlayerPawn);
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- MainPlayerPawn is %s"), __LINE__, __FUNCTION__, MainPlayerPawn ? TEXT("TRUE") : TEXT("FALSE"));
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(MainPlayerPawn));
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- MainPlayerPawn is %s"), __LINE__, __FUNCTION__, MainBmrPlayerPawn ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(MainBmrPlayerPawn));
 
 	// --- reset player character reference
-	MainPlayerPawn = nullptr;
+	MainBmrPlayerPawn = nullptr;
 }
 
 // Disables current enhanced input and input bindings
@@ -139,20 +153,6 @@ void UGRSPlayerControllerComponent::DisableGhostInputs()
 		const UBmrInputMappingContext* InputContext = DataAsset->GetInputContext();
 		UInputUtilsLibrary::UnbindInputActionsInContext(PlayerController, InputContext);
 		UInputUtilsLibrary::SetInputContextEnabled(PlayerController, false, InputContext);
-	}
-}
-
-// Store reference for possessed player pawn. Used to Unpossess controller back to the pawn
-void UGRSPlayerControllerComponent::SetPossessedPlayerPawn(APawn* PlayerPawn)
-{
-	if (!PlayerPawn)
-	{
-		return;
-	}
-
-	if (MainPlayerPawn != PlayerPawn)
-	{
-		MainPlayerPawn = PlayerPawn;
 	}
 }
 

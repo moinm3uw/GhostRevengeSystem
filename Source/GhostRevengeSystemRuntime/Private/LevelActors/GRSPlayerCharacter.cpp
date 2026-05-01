@@ -7,11 +7,8 @@
 #include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
 #include "Components/BmrMapComponent.h"
-#include "Components/BmrPlayerArrowStartComponent.h"
-#include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "Components/GRSGhostCharacterManagerComponent.h"
-#include "Components/GRSPlayerControllerComponent.h"
 #include "Components/GrsPawnComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Components/SplineComponent.h"
@@ -98,12 +95,6 @@ void AGRSPlayerCharacter::InitPawn(int32 NewPlayerId)
 // The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
 void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 {
-	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
-	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
-	{
-		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
-	}
-
 	AimingComponent.InitAimingSphere();
 
 	// --- bind to  clear ghost data
@@ -126,34 +117,47 @@ void AGRSPlayerCharacter::OnOpponentsKilledNumChanged_Implementation(int32 Oppon
 		return;
 	}
 
-	// --- ghost eliminates a player - remove ghost from map
-	ABmrPlayerController* CurrentPlayerController = Cast<ABmrPlayerController>(GetController());
-	if (!ensureMsgf(CurrentPlayerController, TEXT("ASSERT: [%i] %hs:\n'CurrentPlayerController' is no longer available for Grs Pawn!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
+	RemoveGhostCharacterFromMap(); // remove on clients and server ghost from map
 
-	if (CurrentPlayerController->HasAuthority())
+	// --- unpossess on server when ghost eliminates a player (even if bot)
+	if (HasAuthority())
 	{
-		CurrentPlayerController->UnPossess();
-		ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
-		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+		// --- ghost eliminates a player - remove ghost from map
+		ABmrPlayerController* CurrentPlayerController = Cast<ABmrPlayerController>(GetController());
+		if (!ensureMsgf(CurrentPlayerController, TEXT("ASSERT: [%i] %hs:\n'CurrentPlayerController' is no longer available for Grs Pawn!"), __LINE__, __FUNCTION__))
 		{
 			return;
 		}
-		UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->RevivePlayerCharacter(PlayerCharacter);
-	}
 
-	RemoveGhostCharacterFromMap();
+		if (CurrentPlayerController->HasAuthority())
+		{
+			CurrentPlayerController->UnPossess();
+			ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
+			if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+			{
+				return;
+			}
+			UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->RevivePlayerCharacter(PlayerCharacter);
+		}
+	}
 }
 
 // Listen game states to remove ghost character from level
 void AGRSPlayerCharacter::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
 {
-	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame) || !Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
 		// -- release (unpossess) all ghosts
 		RemoveGhostCharacterFromMap();
+	}
+
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	{
+		ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
+		if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
+		{
+			BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+		}
 	}
 }
 
@@ -219,13 +223,6 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	{
 		return;
 	}
-
-	UGRSPlayerControllerComponent* GrsControllerComponent = Cast<UGRSPlayerControllerComponent>(PlayerController->GetComponentByClass(UGRSPlayerControllerComponent::StaticClass()));
-	if (!ensureMsgf(GrsControllerComponent, TEXT("ASSERT: [%i] %hs:\n'GrsControllerComponent' is not set!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-	GrsControllerComponent->SetPossessedPlayerPawn(FromPlayerCharacter);
 
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	FGrsPawnVisualizer::SetVisibility(this, true);

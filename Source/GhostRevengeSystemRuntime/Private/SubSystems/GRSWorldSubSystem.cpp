@@ -112,6 +112,7 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	UnregisterCollisionManagerComponent();
 	ClearGhostCharacters();
 	ClearCollisions();
+	ClearPlayerStates();
 
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (BmrHUD)
@@ -354,6 +355,9 @@ void UGRSWorldSubSystem::RegisterPlayerStateComponent(UGrsPlayerStateComponent* 
 	}
 
 	PlayerStateComponents.AddUnique(NewPlayerStateComponent);
+
+	int32 MaxPlayers = 4;
+	ensureMsgf(PlayerStateComponents.Num() <= MaxPlayers, TEXT("ASSERT: [%i] %hs:\n'PlayerStateComponents' size is bigger than maximum players allowed!"), __LINE__, __FUNCTION__);
 }
 
 // Unregister a player state component
@@ -365,6 +369,12 @@ void UGRSWorldSubSystem::UnRegisterPlayerStateComponent(UGrsPlayerStateComponent
 	}
 
 	PlayerStateComponents.Remove(PlayerStateComponent);
+}
+
+// Clear all cached player states
+void UGRSWorldSubSystem::ClearPlayerStates()
+{
+	PlayerStateComponents.Empty();
 }
 
 // Find a player state component by player ID
