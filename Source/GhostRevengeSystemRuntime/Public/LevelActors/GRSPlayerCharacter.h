@@ -3,11 +3,12 @@
 #pragma once
 
 #include "AbilitySystemInterface.h"
-#include "ActiveGameplayEffectHandle.h"
 #include "Actors/BmrPawn.h"
-#include "Components/BmrMapComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GrsPawnSubobjects/GrsPawnAimingComponent.h"
+#include "GrsPawnSubobjects/GrsPawnArrowStartWidgetComponent.h"
+#include "GrsPawnSubobjects/GrsPawnPlayerNickNameWidgetComponent.h"
 #include "Kismet/GameplayStaticsTypes.h"
 #include "Net/UnrealNetwork.h"
 
@@ -74,29 +75,17 @@ public:
 	/*********************************************************************************************
 	 * Nickname component
 	 **********************************************************************************************/
-public:
-	/** Returns the 3D widget component that displays the player name above the character. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponent; }
-
-
-protected:
-	/** 3D widget component that displays the player name above the character. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
-	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerName3DWidgetComponent = nullptr;
-
-	/*********************************************************************************************
-	 * Arrow component
-	 **********************************************************************************************/
-public:
-	/** Returns static mesh component that displays the arrow above the local player during match start. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[Bomber]")
-	FORCEINLINE class UBmrPlayerArrowStartComponent* GetPlayerArrowStartWidgetComponent() const { return PlayerArrowStartComponent; }
+	// public:
+	///** Returns the 3D widget component that displays the player name above the character. */
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
+	// FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponent; }
 
 protected:
-	/** Static mesh component that displays the arrow above the local player during match start. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[Bomber]", meta = (BlueprintProtected))
-	TObjectPtr<class UBmrPlayerArrowStartComponent> PlayerArrowStartComponent = nullptr;
+	/** 3D widget component that displays the player name above the character */
+	FGrsPawnPlayerNickNameWidgetComponent PlayerNickName3DWidgetComponent;
+
+	/** 3D Static mesh component that displays the arrow above the local player during match start. */
+	FGrsPawnArrowStartWidgetComponent ArrowStartWidgetComponent;
 
 	/** A GrsPawnComponent that spawned this pawn */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Owning Grs Pawn Component"))
@@ -185,43 +174,17 @@ protected:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void TryPossessController(AController* PlayerController);
 
+	/** Refresh and enable this pawn */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
+	void RefreshPawn();
+
 	/*********************************************************************************************
-	 * Aiming
+	 * Aiming & Bomb
 	 **********************************************************************************************/
 protected:
-	/** Mesh of component. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Mesh Component"))
-	TObjectPtr<class UMeshComponent> MeshComponentInternal = nullptr;
-
-	/** Spline component used to visually display a projectile trajectory path */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]")
-	class USplineComponent* ProjectileSplineComponentInternal;
-
-	/** Spline component used to build a projectile trajectory path */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]")
-	TArray<class USplineMeshComponent*> SplineMeshArrayInternal;
-
-	/** Aiming sphere used when a player aiming */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem")
-	class UStaticMeshComponent* AimingSphereComponent;
+	FGrsPawnAimingComponent AimingComponent;
 
 public:
-	/** Returns static mesh component */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UMeshComponent* GetPawnMeshComponent() const { return MeshComponentInternal; }
-
-	/** Returns spline component used to visually display a projectile trajectory path */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class USplineComponent* GetSplineComponent() const { return ProjectileSplineComponentInternal; }
-
-	/** Returns array of spline meshes used to build a projectile trajectory path */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class TArray<class USplineMeshComponent*> GetSplineMeshArray() const { return SplineMeshArrayInternal; }
-
-	/** Returns Aiming sphere used when a player aiming */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UStaticMeshComponent* GetAimingSphereComponent() const { return AimingSphereComponent; }
-
 	/** Add a mesh to the last element of the predict Projectile path results */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddMeshToEndProjectilePath(FVector Location);
@@ -233,18 +196,10 @@ public:
 	/** Add spline mesh to spline points */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
-
-	/*********************************************************************************************
-	 * Bomb
-	 **********************************************************************************************/
-public:
+	
 	/** Throw projectile event, bound to onetime button press */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ThrowProjectile();
-
-	/** Spawn bomb on aiming sphere position. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void SpawnBomb(FBmrCell TargetCell);
 
 public:
 	/** Clean up the character for the MGF unload */

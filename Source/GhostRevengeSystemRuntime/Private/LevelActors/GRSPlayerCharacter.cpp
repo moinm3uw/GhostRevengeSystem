@@ -17,19 +17,21 @@
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
-#include "Data/GRSDataAsset.h"
+
 #include "Engine/StaticMesh.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GrsGameplayTags.h"
+
+#include "LevelActors/GrsPawnSubobjects/GrsPawnSubobject.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
-#include "UObject/ConstructorHelpers.h"
+
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
 #include "Utils/GrsPawnHelper.h"
 
 // Returns the Ability System Component from the Player State
@@ -60,31 +62,17 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	bUseControllerRotationYaw = false;
 
 	// --- Initialize skeletal mesh of the character
-	UGrsPawnHelper::InitializeSkeletalMesh(this);
+	FGrsPawnVisualizer::InitializeSkeletalMesh(this);
 
 	// --- Configure the movement component
-	UGrsPawnHelper::MovementComponentConfiguration(this);
+	FGrsPawnVisualizer::MovementComponentConfiguration(this);
 
 	// --- Setup capsule component
-	UGrsPawnHelper::SetupCapsuleComponent(this);
+	FGrsPawnVisualizer::InitCapsuleComponent(this);
 
-	// --- Initialize 3D widget component for the player name
-	PlayerName3DWidgetComponent = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
-	PlayerName3DWidgetComponent->SetupAttachment(RootComponent);
-
-	// --- setup spline component
-	ProjectileSplineComponentInternal = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
-	ProjectileSplineComponentInternal->AttachToComponent(MeshComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
-
-	PlayerArrowStartComponent = CreateDefaultSubobject<UBmrPlayerArrowStartComponent>(TEXT("PlayerArrowStartWidgetComponent"));
-	PlayerArrowStartComponent->SetupAttachment(RootComponent);
-
-	AimingSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	if (SphereMesh.Succeeded())
-	{
-		AimingSphereComponent->SetStaticMesh(SphereMesh.Object);
-	}
+	PlayerNickName3DWidgetComponent.SetupWidget(this); // --- Initialize 3D widget component for the player name
+	ArrowStartWidgetComponent.InitArrowStartWidgetComponent(this); // --- Initialize 3D player arrow widget component that appears on top of character when player start to control it
+	AimingComponent.SetupSplineComponent(this); // --- Initial setup of spline component and aiming sphere
 }
 
 // Called on client when player ID is changed
@@ -118,21 +106,18 @@ void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 	{
 		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
-
-	// --- Initiate and Activate aiming point
-	checkf(AimingSphereComponent, TEXT("ERROR: [%i] %hs:\n'AimingSphereComponent' is null!"), __LINE__, __FUNCTION__);
-	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
-	AimingSphereComponent->SetVisibility(false);
-
+	
+	AimingComponent.InitAimingSphere();
+	
 	// --- bind to  clear ghost data
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 
 	// --- default params required for the fist start to have character prepared
-	UGrsPawnHelper::InitPlayerMesh(this); // --- default init of mesh
-	UGrsPawnHelper::SetCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
-	UGrsPawnHelper::InitializePlayerNameWidget(this); // somehow should be hidden as well.
-	UGrsPawnHelper::SetVisibility(this, false); // -- hidden by default
-	UGrsPawnHelper::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
+	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
+	PlayerNickName3DWidgetComponent.InitializePlayerNameWidget(this); // somehow should be hidden as well.
+	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
+	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
 	OnGhostAddedToLevel.Broadcast(); // --- ghost added to level
 }
@@ -183,7 +168,7 @@ void AGRSPlayerCharacter::PossessedBy(AController* NewController)
 		return;
 	}
 
-	UGrsPawnHelper::RefreshPawn(this);
+	RefreshPawn();
 }
 
 // APawn Interface when this pawn was replicated by a new controller
@@ -196,7 +181,7 @@ void AGRSPlayerCharacter::OnRep_Controller()
 		return;
 	}
 
-	UGrsPawnHelper::RefreshPawn(this);
+	RefreshPawn();
 }
 
 //  APawn Interface when this pawn was replicated by a new player state
@@ -209,14 +194,14 @@ void AGRSPlayerCharacter::OnRep_PlayerState()
 		return;
 	}
 
-	UGrsPawnHelper::RefreshPawn(this);
+	RefreshPawn();
 }
 
 // APawn Interface when this pawn was unpossessed
 void AGRSPlayerCharacter::UnPossessed()
 {
-	UGrsPawnHelper::SetVisibility(this, false);
-	UGrsPawnHelper::SetArrowEnabled(this, false);
+	FGrsPawnVisualizer::SetVisibility(this, false);
+	ArrowStartWidgetComponent.SetArrowEnabled(false);
 
 	Super::UnPossessed();
 }
@@ -301,8 +286,8 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	}
 	GrsControllerComponent->SetPossessedPlayerPawn(FromPlayerCharacter);
 
-	UGrsPawnHelper::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	UGrsPawnHelper::SetVisibility(this, true);
+	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	FGrsPawnVisualizer::SetVisibility(this, true);
 
 	// --- clients calls:
 	// --- update collision settings
@@ -316,7 +301,7 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	TryPossessController(PlayerController);
 
 	// --- set pawn location (side)
-	UGrsPawnHelper::SetPawnSide(this);
+	UGrsPawnHelper::SetPawnToAvailableSide(this);
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -345,12 +330,8 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	// --- possess back to player character for any cases
 	// PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
-	// --- Disable aiming point
-	if (AimingSphereComponent)
-	{
-		AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		AimingSphereComponent->SetVisibility(false);
-	}
+	// --- disable aiming sphere component
+	AimingComponent.AimingSphereComponent->SetVisibility(false);
 
 	// --- reset bindings
 	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
@@ -389,87 +370,37 @@ void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 	PlayerController->Possess(this);
 }
 
+// Refresh and enable this pawn
+void AGRSPlayerCharacter::RefreshPawn()
+{
+	GetMesh()->SetVisibility(true, true);
+	AimingComponent.ClearTrajectorySplines();
+	ArrowStartWidgetComponent.SetArrowEnabled(true);
+	AimingComponent.AimingSphereComponent->SetVisibility(true);
+}
+
 // Add a mesh to the last element of the predict Projectile path results
 void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FVector Location)
 {
-	AimingSphereComponent->SetVisibility(true);
-	AimingSphereComponent->SetWorldLocation(Location);
+	AimingComponent.AddMeshToEndOfProjectedPath(Location);
 }
 
 // Add spline points to the spline component
 void AGRSPlayerCharacter::AddSplinePoints(FPredictProjectilePathResult& Result)
 {
-	UGrsPawnHelper::ClearTrajectorySplines(this);
-
-	for (int32 i = 0; i < Result.PathData.Num(); i++)
-	{
-		FVector SplinePoint = Result.PathData[i].Location;
-		ProjectileSplineComponentInternal->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
-		ProjectileSplineComponentInternal->Mobility = EComponentMobility::Static;
-	}
-
-	ProjectileSplineComponentInternal->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
-	ProjectileSplineComponentInternal->UpdateSpline();
+	AimingComponent.AddSplinePoints(Result);
 }
 
 //  Add spline mesh to spline points
 void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 {
-	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
-	{
-		// Create and attach the spline mesh component
-		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this); // 'this' is usually your actor
-		SplineMesh->AttachToComponent(ProjectileSplineComponentInternal, FAttachmentTransformRules::KeepRelativeTransform);
-		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
-		SplineMesh->Mobility = EComponentMobility::Static;
-		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
-		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
-
-		// Set mesh and material
-		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
-		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
-		FVector TangentStart = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
-		FVector TangentEnd = ProjectileSplineComponentInternal->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
-
-		// Set start and end
-		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
-		// Register the component so it appears in the game
-		SplineMesh->RegisterComponent();
-
-		SplineMeshArrayInternal.AddUnique(SplineMesh);
-	}
+	AimingComponent.AddSplineMesh(Result, this);
 }
 
 // Throw projectile event, bound to onetime button press
 void AGRSPlayerCharacter::ThrowProjectile()
 {
-	//--- Calculate Cell to spawn bomb
-	FBmrCell CurrentCell;
-	CurrentCell.Location = AimingSphereComponent->GetComponentLocation();
-
-	//--- hide aiming sphere from ui
-	AimingSphereComponent->SetVisibility(false);
-
-	SpawnBomb(CurrentCell);
-
-	FVector ThrowDirection = GetActorForwardVector() + FVector(5, 5, 0.0f);
-	ThrowDirection.Normalize();
-	FVector LaunchVelocity = ThrowDirection * 100;
-
-	UGrsPawnHelper::ClearTrajectorySplines(this);
-}
-
-// Spawn bomb on aiming sphere position.
-void AGRSPlayerCharacter::SpawnBomb(FBmrCell TargetCell)
-{
-	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
-
-	// Activate bomb ability
-	FGameplayEventData EventData;
-	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
-	EventData.Instigator = this;
-	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
-	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
+	AimingComponent.ThrowProjectile(this);
 }
 
 //  Clean up the character for the MGF unload
@@ -478,15 +409,15 @@ void AGRSPlayerCharacter::PerformCleanUp()
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
 	RemoveGhostCharacterFromMap();
 
-	if (AimingSphereComponent)
+	if (AimingComponent.AimingSphereComponent)
 	{
-		AimingSphereComponent->EmptyOverrideMaterials();
+		AimingComponent.AimingSphereComponent->EmptyOverrideMaterials();
 	}
 
-	if (MeshComponentInternal)
+	if (AimingComponent.MeshComponentInternal)
 	{
-		MeshComponentInternal->DestroyComponent();
-		MeshComponentInternal = nullptr;
+		AimingComponent.MeshComponentInternal->DestroyComponent();
+		AimingComponent.MeshComponentInternal = nullptr;
 	}
 
 	// Components created via CreateDefaultSubobject must NOT cleanup, they are defaults this actor:
