@@ -38,26 +38,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-public:
-	/*********************************************************************************************
-	 * Delegates
-	 **********************************************************************************************/
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostAddedToLevel);
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Client);
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGhostPossesController_Server);
-
-	/** Is called when a ghost character added to level without possession */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
-	FOnGhostAddedToLevel OnGhostAddedToLevel;
-
-	/** Is called when a ghost character is added to level and possessed a controller on client */
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
-	FOnGhostPossesController_Client OnGhostPossesController_Client;
-
-	/** Is called when a ghost character is added to level and possessed a controller on server*/
-	UPROPERTY(BlueprintCallable, BlueprintAssignable, Transient, Category = "[GhostRevengeSystem]")
-	FOnGhostPossesController_Server OnGhostPossesController_Server;
-
 protected:
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
@@ -65,20 +45,8 @@ protected:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 public:
-	/*********************************************************************************************
-	 * Initialization
-	 **********************************************************************************************/
-
 	/** Sets default values for this character's properties */
 	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
-
-	/*********************************************************************************************
-	 * Nickname component
-	 **********************************************************************************************/
-	// public:
-	///** Returns the 3D widget component that displays the player name above the character. */
-	// UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	// FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerName3DWidgetComponent() const { return PlayerName3DWidgetComponent; }
 
 protected:
 	/** 3D widget component that displays the player name above the character */
@@ -123,20 +91,39 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent);
 
-	/** Remove ghost character from the level */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RemoveGhostCharacterFromMap();
-
 protected:
+	/** Returns properties that are replicated for the lifetime of the actor channel. */
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/** The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	/** Called when the game starts or when spawned (on spawned on the level) */
-	virtual void BeginPlay() override;
+	/** Is increased when this player kills an opponent */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
+
+	/** Listen game states to remove ghost character from level */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnGameStateChanged(const struct FGameplayEventData& Payload);
+
+	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnPreRemovedFromLevel(class UBmrMapComponent* PlayerMapComponent, class UObject* DestroyCauser);
+
+	/** Activates ghost with required initiation  */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, ABmrPawn* FromPlayerCharacter);
+
+	/** Possess a player controller */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
+	void TryPossessController(AController* PlayerController);
 
 	/** Overridable function called whenever this actor is being removed from a level. */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** APawn Interface when this pawn was unpossessed */
+	virtual void UnPossessed() override;
 
 	/** APawn Interface when this pawn was possessed by a new controller */
 	virtual void PossessedBy(AController* NewController) override;
@@ -147,41 +134,22 @@ protected:
 	/** APawn Interface when this pawn was replicated by a new player state */
 	virtual void OnRep_PlayerState() override;
 
-	/** APawn Interface when this pawn was unpossessed */
-	virtual void UnPossessed() override;
-
-	/** Returns properties that are replicated for the lifetime of the actor channel. */
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	/** Is increased when this player kills an opponent */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
-
-	/** Listen game states to remove ghost character from level */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnGameStateChanged(const struct FGameplayEventData& Payload);
-
-	/** Activates ghost with required initiation  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, ABmrPawn* FromPlayerCharacter);
-
-	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnPreRemovedFromLevel(class UBmrMapComponent* PlayerMapComponent, class UObject* DestroyCauser);
-
-protected:
-	/** Possess a player controller */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
-	void TryPossessController(AController* PlayerController);
-
 	/** Refresh and enable this pawn */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void RefreshPawn();
 
+	/** Remove ghost character from the level */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void RemoveGhostCharacterFromMap();
+
+	/** Clean up the character for the MGF unload */
+	void PerformCleanUp();
+
 	/*********************************************************************************************
-	 * Aiming & Bomb
+	 * Aiming functionality
 	 **********************************************************************************************/
 protected:
+	/**  Ghost player Aiming visualization and bomb spawn functionality component */
 	FGrsPawnAimingComponent AimingComponent;
 
 public:
@@ -200,8 +168,4 @@ public:
 	/** Throw projectile event, bound to onetime button press */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ThrowProjectile();
-
-public:
-	/** Clean up the character for the MGF unload */
-	void PerformCleanUp();
 };

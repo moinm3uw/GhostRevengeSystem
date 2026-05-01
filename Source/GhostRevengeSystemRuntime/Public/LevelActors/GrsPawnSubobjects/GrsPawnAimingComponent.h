@@ -6,7 +6,7 @@
 class AGRSPlayerCharacter;
 
 /**
- * Ghost player Aiming visualization component
+ * Ghost player Aiming visualization and bomb spawn functionality component
  */
 struct FGrsPawnAimingComponent
 {
@@ -45,4 +45,7 @@ struct FGrsPawnAimingComponent
 
 	/** Hide spline elements (trajectory) */
 	void ClearTrajectorySplines();
+	
+	/** Clean up all transient data */
+	void PerformCleanUp();
 };

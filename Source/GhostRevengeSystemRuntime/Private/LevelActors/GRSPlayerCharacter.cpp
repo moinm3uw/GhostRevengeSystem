@@ -37,10 +37,6 @@ UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
 	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
-/*********************************************************************************************
- * Initialization
- **********************************************************************************************/
-
 // Sets default values for this character's properties
 AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<UBmrSkeletalMeshComponent>(MeshComponentName)) // Init UBmrSkeletalMeshComponent instead of USkeletalMeshComponent
@@ -71,16 +67,21 @@ AGRSPlayerCharacter::AGRSPlayerCharacter(const FObjectInitializer& ObjectInitial
 	AimingComponent.SetupSplineComponent(this); // --- Initial setup of spline component and aiming sphere
 }
 
+// Returns properties that are replicated for the lifetime of the actor channel
+void AGRSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams Params;
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, PlayerID, Params);
+}
+
 // Called on client when player ID is changed
 void AGRSPlayerCharacter::OnRep_PlayerID()
 {
 	// --- Init Grs Pawn logic
 	InitPawn(PlayerID);
 }
-
-/*********************************************************************************************
- * Main functionality (core loop)
- **********************************************************************************************/
 
 // Basic initialization of the Pawn
 void AGRSPlayerCharacter::InitPawn(int32 NewPlayerId)
@@ -111,104 +112,9 @@ void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 	// --- default params required for the fist start to have character prepared
 	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
-	PlayerNickName3DWidgetComponent.InitializePlayerNameWidget(this); // somehow should be hidden as well.
 	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-
-	OnGhostAddedToLevel.Broadcast(); // --- ghost added to level
-}
-
-//  Register owning pawn component
-void AGRSPlayerCharacter::RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent)
-{
-	if (NewPawnComponent || OwningPawnComponent != NewPawnComponent)
-	{
-		OwningPawnComponent = NewPawnComponent;
-
-		ABmrPawn* MyPawn = &OwningPawnComponent->GetBmrPawnChecked();
-		if (MyPawn)
-		{
-			UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyPawn);
-			if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
-			{
-				return;
-			}
-
-			MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-		}
-	}
-}
-
-// Called when the game starts or when spawned (on spawned on the level)
-void AGRSPlayerCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-// Overridable function called whenever this actor is being removed from a level
-void AGRSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
-
-	PerformCleanUp();
-	Super::EndPlay(EndPlayReason);
-}
-
-// APawn Interface when this pawn was possessed by a new controller
-void AGRSPlayerCharacter::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
-
-	if (!UGrsPawnHelper::bIsReady(this))
-	{
-		return;
-	}
-
-	RefreshPawn();
-}
-
-// APawn Interface when this pawn was replicated by a new controller
-void AGRSPlayerCharacter::OnRep_Controller()
-{
-	Super::OnRep_Controller();
-
-	if (!UGrsPawnHelper::bIsReady(this))
-	{
-		return;
-	}
-
-	RefreshPawn();
-}
-
-//  APawn Interface when this pawn was replicated by a new player state
-void AGRSPlayerCharacter::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-
-	if (!UGrsPawnHelper::bIsReady(this))
-	{
-		return;
-	}
-
-	RefreshPawn();
-}
-
-// APawn Interface when this pawn was unpossessed
-void AGRSPlayerCharacter::UnPossessed()
-{
-	FGrsPawnVisualizer::SetVisibility(this, false);
-	ArrowStartWidgetComponent.SetArrowEnabled(false);
-
-	Super::UnPossessed();
-}
-
-// Returns properties that are replicated for the lifetime of the actor channel
-void AGRSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	FDoRepLifetimeParams Params;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, PlayerID, Params);
+	PlayerNickName3DWidgetComponent.InitializePlayerNameWidget(this); // somehow should be hidden as well.
 }
 
 // Is increased when this player kills an opponent
@@ -235,7 +141,7 @@ void AGRSPlayerCharacter::OnOpponentsKilledNumChanged_Implementation(int32 Oppon
 		{
 			return;
 		}
-		UGRSWorldSubSystem::Get().GetPlayerStateComponent(GetPlayerID())->RevivePlayerCharacter(PlayerCharacter);
+		UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->RevivePlayerCharacter(PlayerCharacter);
 	}
 
 	RemoveGhostCharacterFromMap();
@@ -248,6 +154,45 @@ void AGRSPlayerCharacter::OnGameStateChanged_Implementation(const struct FGamepl
 	{
 		// -- release (unpossess) all ghosts
 		RemoveGhostCharacterFromMap();
+	}
+}
+
+//  Register owning pawn component
+void AGRSPlayerCharacter::RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent)
+{
+	if (NewPawnComponent || OwningPawnComponent != NewPawnComponent)
+	{
+		OwningPawnComponent = NewPawnComponent;
+
+		ABmrPawn* MyPawn = &OwningPawnComponent->GetBmrPawnChecked();
+		if (MyPawn)
+		{
+			UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyPawn);
+			if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
+			{
+				return;
+			}
+
+			MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+		}
+	}
+}
+
+// Called right before owner actor going to remove from the Generated Map, on both server and clients.
+void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComponent* PlayerMapComponent, class UObject* DestroyCauser)
+{
+	ABmrPawn* PlayerCharacter = PlayerMapComponent->GetOwner<ABmrPawn>();
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
+	    || PlayerCharacter->IsBotControlled()
+	    || !DestroyCauser)
+	{
+		return;
+	}
+
+	// --- a player was eliminated - activate ghost character
+	if (PlayerCharacter->GetPlayerId() == PlayerID)
+	{
+		TryActivateGhostCharacter(this, PlayerCharacter);
 	}
 }
 
@@ -300,22 +245,90 @@ void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCh
 	UGrsPawnHelper::SetPawnToAvailableSide(this);
 }
 
-// Called right before owner actor going to remove from the Generated Map, on both server and clients.
-void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComponent* PlayerMapComponent, class UObject* DestroyCauser)
+//  Possess a player controller
+void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
 {
-	ABmrPawn* PlayerCharacter = PlayerMapComponent->GetOwner<ABmrPawn>();
-	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
-	    || PlayerCharacter->IsBotControlled()
-	    || !DestroyCauser)
+	if (!PlayerController || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	// --- a player was eliminated - activate ghost character
-	if (PlayerCharacter->GetPlayerId() == PlayerID)
+	if (PlayerController)
 	{
-		TryActivateGhostCharacter(this, PlayerCharacter);
+		// Unpossess current pawn first
+		if (PlayerController->GetPawn())
+		{
+			PlayerController->UnPossess();
+		}
 	}
+
+	PlayerController->Possess(this);
+}
+
+// Overridable function called whenever this actor is being removed from a level
+void AGRSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
+	PerformCleanUp();
+}
+
+// APawn Interface when this pawn was unpossessed
+void AGRSPlayerCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+
+	FGrsPawnVisualizer::SetVisibility(this, false);
+	ArrowStartWidgetComponent.SetArrowEnabled(false);
+}
+
+// APawn Interface when this pawn was possessed by a new controller
+void AGRSPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (!UGrsPawnHelper::bIsReady(this))
+	{
+		return;
+	}
+
+	RefreshPawn();
+}
+
+// APawn Interface when this pawn was replicated by a new controller
+void AGRSPlayerCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	if (!UGrsPawnHelper::bIsReady(this))
+	{
+		return;
+	}
+
+	RefreshPawn();
+}
+
+//  APawn Interface when this pawn was replicated by a new player state
+void AGRSPlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	if (!UGrsPawnHelper::bIsReady(this))
+	{
+		return;
+	}
+
+	RefreshPawn();
+}
+
+// Refresh and enable this pawn
+void AGRSPlayerCharacter::RefreshPawn()
+{
+	GetMesh()->SetVisibility(true, true);
+	AimingComponent.ClearTrajectorySplines();
+	ArrowStartWidgetComponent.SetArrowEnabled(true);
+	AimingComponent.AimingSphereComponent->SetVisibility(true);
 }
 
 // Remove ghost character from the level
@@ -346,34 +359,25 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	// --- update collision mod of this pawn if needed
 }
 
-//  Possess a player controller
-void AGRSPlayerCharacter::TryPossessController(AController* PlayerController)
+//  Clean up the character for the MGF unload
+void AGRSPlayerCharacter::PerformCleanUp()
 {
-	if (!PlayerController || !PlayerController->HasAuthority())
-	{
-		return;
-	}
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
+	RemoveGhostCharacterFromMap();
 
-	if (PlayerController)
-	{
-		// Unpossess current pawn first
-		if (PlayerController->GetPawn())
-		{
-			PlayerController->UnPossess();
-		}
-	}
+	AimingComponent.PerformCleanUp();
 
-	PlayerController->Possess(this);
+	OwningPawnComponent = nullptr;
+	PlayerID = 0;
+
+	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
+	UGRSWorldSubSystem::Get().ResetRevivedPlayers();
 }
 
-// Refresh and enable this pawn
-void AGRSPlayerCharacter::RefreshPawn()
-{
-	GetMesh()->SetVisibility(true, true);
-	AimingComponent.ClearTrajectorySplines();
-	ArrowStartWidgetComponent.SetArrowEnabled(true);
-	AimingComponent.AimingSphereComponent->SetVisibility(true);
-}
+/*********************************************************************************************
+ * Aiming functionality
+ **********************************************************************************************/
 
 // Add a mesh to the last element of the predict Projectile path results
 void AGRSPlayerCharacter::AddMeshToEndProjectilePath(FVector Location)
@@ -397,32 +401,4 @@ void AGRSPlayerCharacter::AddSplineMesh(FPredictProjectilePathResult& Result)
 void AGRSPlayerCharacter::ThrowProjectile()
 {
 	AimingComponent.ThrowProjectile(this);
-}
-
-//  Clean up the character for the MGF unload
-void AGRSPlayerCharacter::PerformCleanUp()
-{
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
-	RemoveGhostCharacterFromMap();
-
-	if (AimingComponent.AimingSphereComponent)
-	{
-		AimingComponent.AimingSphereComponent->EmptyOverrideMaterials();
-	}
-
-	if (AimingComponent.MeshComponentInternal)
-	{
-		AimingComponent.MeshComponentInternal->DestroyComponent();
-		AimingComponent.MeshComponentInternal = nullptr;
-	}
-
-	// Components created via CreateDefaultSubobject must NOT cleanup, they are defaults this actor:
-	// ProjectileSplineComponentInternal, AimingSphereComponent, PlayerName3DWidgetComponentInternal
-
-	OwningPawnComponent = nullptr;
-	PlayerID = 0;
-
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
-	UGRSWorldSubSystem::Get().ResetRevivedPlayers();
 }

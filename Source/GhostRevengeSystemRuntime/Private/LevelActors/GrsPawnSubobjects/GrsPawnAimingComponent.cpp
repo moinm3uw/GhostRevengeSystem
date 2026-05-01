@@ -126,3 +126,20 @@ void FGrsPawnAimingComponent::ClearTrajectorySplines()
 	SplineMeshArrayInternal.Empty();
 	ProjectileSplineComponentInternal->ClearSplinePoints();
 }
+
+//  Clean up all transient data
+void FGrsPawnAimingComponent::PerformCleanUp()
+{
+	// Components created via CreateDefaultSubobject must NOT cleanup, they are defaults this actor:
+	// ProjectileSplineComponentInternal, AimingSphereComponent, PlayerName3DWidgetComponentInternal
+	
+	if (AimingSphereComponent)
+	{
+		AimingSphereComponent->EmptyOverrideMaterials();
+	}
+	if (MeshComponentInternal)
+	{
+		MeshComponentInternal->DestroyComponent();
+		MeshComponentInternal = nullptr;
+	}
+}
