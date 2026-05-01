@@ -19,16 +19,10 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-//
-void UGrsPawnHelper::GrsPawnCheckf(class AGRSPlayerCharacter* GrsPawn)
-{
-	checkf(GrsPawn, TEXT("%s: 'GrsPawn' is not valid"), *FString(__FUNCTION__));
-}
-
 //  Initialize skeletal mesh of the character
 void UGrsPawnHelper::InitializeSkeletalMesh(class AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	// Initialize skeletal mesh
 	USkeletalMeshComponent* SkeletalMeshComponent = GrsPawn->GetMesh();
@@ -45,7 +39,7 @@ void UGrsPawnHelper::InitializeSkeletalMesh(class AGRSPlayerCharacter* GrsPawn)
 // Configure the movement component of the character
 void UGrsPawnHelper::MovementComponentConfiguration(class AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	if (UCharacterMovementComponent* MovementComponent = GrsPawn->GetCharacterMovement())
 	{
@@ -62,7 +56,7 @@ void UGrsPawnHelper::MovementComponentConfiguration(class AGRSPlayerCharacter* G
 // Set up the capsule component of the character
 void UGrsPawnHelper::SetupCapsuleComponent(class AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp"), __LINE__, __FUNCTION__);
 	if (UCapsuleComponent* RootCapsuleComponent = GrsPawn->GetCapsuleComponent())
@@ -85,28 +79,31 @@ void UGrsPawnHelper::SetupCapsuleComponent(class AGRSPlayerCharacter* GrsPawn)
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* UGrsPawnHelper::GetMeshChecked(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
+
 	return CastChecked<UBmrSkeletalMeshComponent>(GrsPawn->GetMesh());
 }
 
 // Set visibility of the player character
 void UGrsPawnHelper::SetVisibility(AGRSPlayerCharacter* GrsPawn, bool Visibility)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
+
 	GrsPawn->GetMesh()->SetVisibility(Visibility, true);
 }
 
 // Set visibility of the arrow on top of player character
 void UGrsPawnHelper::SetArrowEnabled(AGRSPlayerCharacter* GrsPawn, bool bVisibility)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
+
 	GrsPawn->GetPlayerArrowStartWidgetComponent()->SetArrowEnabled(bVisibility);
 }
 
 // Initialize character visual (animation, skins)  once added to the level by utilizing player id
 void UGrsPawnHelper::SetCharacterVisual(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	ABmrPawn* PlayerCharacter = &UGRSWorldSubSystem::Get().GetPlayerStateComponent(GrsPawn->GetPlayerID())->GetCurrentPlayerStateChecked()->GetPawnChecked();
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
@@ -136,7 +133,7 @@ void UGrsPawnHelper::SetCharacterVisual(AGRSPlayerCharacter* GrsPawn)
 // Set and apply skeletal mesh for ghost player. Copy mesh from current player
 void UGrsPawnHelper::InitPlayerMesh(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	const ABmrPawn* PlayerCharacter = &UGRSWorldSubSystem::Get().GetPlayerStateComponent(GrsPawn->GetPlayerID())->GetCurrentPlayerStateChecked()->GetPawnChecked();
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
@@ -157,7 +154,7 @@ void UGrsPawnHelper::InitPlayerMesh(AGRSPlayerCharacter* GrsPawn)
 // Set side for this pawn (left or right)
 void UGrsPawnHelper::SetPawnSide(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	if (!GrsPawn->HasAuthority())
 	{
@@ -191,7 +188,7 @@ void UGrsPawnHelper::SetPawnSide(AGRSPlayerCharacter* GrsPawn)
 // Checks if Pawn is replicated fully (player state and controller present
 bool UGrsPawnHelper::bIsReady(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	if (!GrsPawn->GetController())
 	{
@@ -210,7 +207,7 @@ bool UGrsPawnHelper::bIsReady(AGRSPlayerCharacter* GrsPawn)
 // Refresh the pawn visuals
 void UGrsPawnHelper::RefreshPawn(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	// --- Clear splines
 	ClearTrajectorySplines(GrsPawn);
@@ -222,7 +219,7 @@ void UGrsPawnHelper::RefreshPawn(AGRSPlayerCharacter* GrsPawn)
 // Hide spline elements (trajectory)
 void UGrsPawnHelper::ClearTrajectorySplines(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	for (USplineMeshComponent* SplineMeshComponent : GrsPawn->GetSplineMeshArray())
 	{
@@ -236,7 +233,7 @@ void UGrsPawnHelper::ClearTrajectorySplines(AGRSPlayerCharacter* GrsPawn)
 // Initialize player name widget (on top of character)
 void UGrsPawnHelper::InitializePlayerNameWidget(AGRSPlayerCharacter* GrsPawn)
 {
-	GrsPawnCheckf(GrsPawn);
+	check(GrsPawn);
 
 	ABmrPlayerState* MyPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(GrsPawn->GetPlayerID())->GetCurrentPlayerStateChecked();
 	class UBmrPlayerNameWidgetComponent* GrsPlayerName3DWidgetComponent = GrsPawn->GetPlayerName3DWidgetComponent();

@@ -18,10 +18,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnHelper : public UObject
 	GENERATED_BODY()
 
 public:
-	/** GrsPawn checker  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	static void GrsPawnCheckf(class AGRSPlayerCharacter* GrsPawn);
-
+	
 	/** Initialize skeletal mesh of the character */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static void InitializeSkeletalMesh(class AGRSPlayerCharacter* GrsPawn);
