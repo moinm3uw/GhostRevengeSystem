@@ -100,7 +100,7 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 	if (!CurrentPossessedPawn)
 	{
 		// --- Always possess to player character when ghost character is no longer in control
-		//PlayerController->Possess(MainPlayerPawn);
+		// PlayerController->Possess(MainPlayerPawn);
 	}
 	else
 	{
@@ -113,7 +113,7 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 
 		// At first, unpossess previous controller
 		PlayerController->UnPossess();
-		//PlayerController->Possess(MainPlayerPawn);
+		// PlayerController->Possess(MainPlayerPawn);
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));

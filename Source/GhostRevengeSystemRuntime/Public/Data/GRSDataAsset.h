@@ -21,7 +21,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSDataAsset : public UDalPrimaryDataAsset
 public:
 	/** Returns the progression data asset or crash when can not be obtained. */
 	static const UGRSDataAsset& Get();
-	
+
 	/** Returns the Grs player character class */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
 	TSubclassOf<class AGRSPlayerCharacter> GetGrsActorClass() const { return GrsActorClass; }
@@ -110,11 +110,10 @@ public:
 	FORCEINLINE FGameplayTag GetReviePlayerCharacterTriggerTag() const { return ReviveCharacterTriggerTag; }
 
 protected:
-	
 	/** Grs Player Character Data Asset */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, ShowOnlyInnerProperties))
 	TSubclassOf<class AGRSPlayerCharacter> GrsActorClass = nullptr;
-	
+
 	/** Input mapping context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
 	TObjectPtr<class UBmrInputMappingContext> InputContextInternal;

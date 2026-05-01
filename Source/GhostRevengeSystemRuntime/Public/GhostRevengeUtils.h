@@ -24,7 +24,7 @@ public:
 	/** Returns the ghost controller component, nullptr otherwise. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class UGRSPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
-	
+
 	/** Calculates the character side from an actor reference */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static EGRSCharacterSide GetCharacterSideFromActor(AActor* Actor);

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Data/PoolObjectHandle.h"
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Data/PoolObjectHandle.h"
 
 #include "GrsPawnComponent.generated.h"
 
@@ -19,16 +19,16 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnComponent : public UActorComponent
 	/*********************************************************************************************
 	 * Initialization
 	 **********************************************************************************************/
-	
+
 public:
 	// Sets default values for this component's properties
 	UGrsPawnComponent();
-	
+
 	/** Returns BmrPawn of this component */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	ABmrPawn* GetBmrPawn() const;
 	ABmrPawn& GetBmrPawnChecked() const;
-	
+
 	/** Returns GrsPlayerStateComponent obtaining from pawn's player id */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
@@ -41,27 +41,25 @@ protected:
 	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "GrsPawn Pool Manager Handlers"))
 	TArray<FPoolObjectHandle> GrsPawnPoolManagerHandlers;
-	
-	
+
 protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
-	
+
 	/** Clears all transient data created by this component */
 	virtual void OnUnregister() override;
-	
+
 	/** A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
-	
+
 	/** Add ghost character to the current active game (on level map) */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void AddGhostCharacter();
-	
+
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
-	
 };

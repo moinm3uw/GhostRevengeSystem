@@ -65,11 +65,10 @@ protected:
 	APawn* MainPlayerPawn = nullptr;
 
 public:
-	
 	/** Returns main player (BmrPawn) character */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	FORCEINLINE APawn* GetMainPlayerPawn() const { return MainPlayerPawn; } 
-	
+	FORCEINLINE APawn* GetMainPlayerPawn() const { return MainPlayerPawn; }
+
 	/** Store reference for possessed player pawn. Used to Unpossess controller back to the pawn
 	 * @param PlayerPawn is a main player pawn that ghost possesses.
 	 */

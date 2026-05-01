@@ -17,21 +17,17 @@
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
-
 #include "Engine/StaticMesh.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GrsGameplayTags.h"
-
 #include "LevelActors/GrsPawnSubobjects/GrsPawnSubobject.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
-
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-
 #include "Utils/GrsPawnHelper.h"
 
 // Returns the Ability System Component from the Player State
@@ -106,9 +102,9 @@ void AGRSPlayerCharacter::OnInitialize(const struct FGameplayEventData& Payload)
 	{
 		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
-	
+
 	AimingComponent.InitAimingSphere();
-	
+
 	// --- bind to  clear ghost data
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 

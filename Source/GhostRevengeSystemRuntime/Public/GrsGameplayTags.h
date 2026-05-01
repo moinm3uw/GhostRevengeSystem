@@ -7,7 +7,7 @@
 
 namespace GrsGameplayTags
 {
-	
+
 	namespace Event
 	{
 		/** Event that fires when MGF(GFP) is loaded and/or ready */

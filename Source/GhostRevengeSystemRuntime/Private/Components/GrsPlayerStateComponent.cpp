@@ -139,7 +139,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
-	
+
 	UGRSWorldSubSystem::Get().SetRevivedPlayer(PlayerCharacter);
 }
 
@@ -202,7 +202,6 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 // Spawn bomb on target location
 void UGrsPlayerStateComponent::UseSpawnBomb(FBmrCell TargetCell, const AActor* TargetInstigator)
 {
-	
 }
 
 //  To apply explosion (bomb spawning) gameplay effect

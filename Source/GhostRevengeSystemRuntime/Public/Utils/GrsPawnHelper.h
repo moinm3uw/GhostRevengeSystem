@@ -18,8 +18,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnHelper : public UObject
 	GENERATED_BODY()
 
 public:
-	
-
 	/** Set pawn location to available side (left or right) */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	static void SetPawnToAvailableSide(class AGRSPlayerCharacter* GrsPawn);

@@ -196,7 +196,7 @@ public:
 	/** Add spline mesh to spline points */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddSplineMesh(FPredictProjectilePathResult& Result);
-	
+
 	/** Throw projectile event, bound to onetime button press */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ThrowProjectile();
