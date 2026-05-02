@@ -124,11 +124,6 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 		return;
 	}
 
-	if (PlayerCharacter->GetPlayerState() != Cast<APlayerState>(GetCurrentPlayerStateChecked()))
-	{
-		return;
-	}
-
 	// --- Activate revive ability if player was NOT revived previously
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
 	if (!ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n 'ASC' is not set!"), __LINE__, __FUNCTION__))
@@ -198,11 +193,6 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 /*********************************************************************************************
  * Bomb spawning ability that automatically explodes after a certain time
  **********************************************************************************************/
-
-// Spawn bomb on target location
-void UGrsPlayerStateComponent::UseSpawnBomb(FBmrCell TargetCell, const AActor* TargetInstigator)
-{
-}
 
 //  To apply explosion (bomb spawning) gameplay effect
 void UGrsPlayerStateComponent::ApplyBombSpawningGameplayEffect()

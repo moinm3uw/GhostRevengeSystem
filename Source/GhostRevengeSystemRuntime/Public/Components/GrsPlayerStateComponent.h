@@ -77,9 +77,6 @@ protected:
 	FActiveGameplayEffectHandle AppliedBombSpawnEffectHandle;
 
 public:
-	/** Spawn bomb on target location */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void UseSpawnBomb(FBmrCell TargetCell, const AActor* TargetInstigator);
 
 	/** Returns handle of current applied ability effect  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
