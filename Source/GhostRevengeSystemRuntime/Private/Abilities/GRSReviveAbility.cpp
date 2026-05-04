@@ -7,7 +7,6 @@
 #include "Actors/BmrGeneratedMap.h"
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrMoverComponent.h"
-#include "Data/GRSDataAsset.h"
 
 // Actually activate ability, do not call this directly
 void UGRSReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

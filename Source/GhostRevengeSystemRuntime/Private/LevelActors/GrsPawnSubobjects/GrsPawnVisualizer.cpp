@@ -19,7 +19,6 @@
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "LevelActors/GRSPlayerCharacter.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
