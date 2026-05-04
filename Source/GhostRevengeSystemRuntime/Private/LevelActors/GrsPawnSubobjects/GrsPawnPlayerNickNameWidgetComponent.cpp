@@ -2,8 +2,9 @@
 
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
+#include "GameFramework/BmrPlayerState.h"
 #include "LevelActors/GRSPlayerCharacter.h"
-#include "SubSystems/GRSWorldSubSystem.h"
+#include "Utils/GrsPawnHelper.h"
 
 // Initialize 3d widget component for the player name
 void FGrsPawnPlayerNickNameWidgetComponent::SetupWidget(class AGRSPlayerCharacter* GrsPawn)
@@ -19,7 +20,7 @@ void FGrsPawnPlayerNickNameWidgetComponent::InitializePlayerNameWidget(AGRSPlaye
 {
 	check(GrsPawn);
 
-	ABmrPlayerState* MyPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(GrsPawn->GetPlayerID())->GetCurrentPlayerStateChecked();
+	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(UGrsPawnHelper::GetPlayerStateForPlayerID(GrsPawn));
 	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is not valid!"), __LINE__, __FUNCTION__)
 	    || !ensureMsgf(PlayerName3DWidgetComponent, TEXT("ASSERT: [%i] %hs:\n'PlayerName3DWidgetComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{

@@ -30,8 +30,36 @@
 // Returns the Ability System Component from the Player State
 UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
 {
-	const ABmrPlayerState* InPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerStateChecked();
+	const ABmrPlayerState* InPlayerState = Cast<ABmrPlayerState>(UGrsPawnHelper::GetPlayerStateForPlayerID(this));
 	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
+}
+
+// Obtains players state from the cached and replicated PlayerID
+class UGrsPlayerStateComponent* AGRSPlayerCharacter::GetGrsPlayerStateComponent() const
+{
+	APlayerState* MyPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
+	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
+	if (ensureMsgf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is not found on APlayerState (not attached, initialized or no longer exists"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+	return GrsPlayerStateComponent;
+}
+
+// Obtains players state from the cached and replicated PlayerID
+UGrsPlayerStateComponent& AGRSPlayerCharacter::GetGrsPlayerStateComponentChecked() const
+{
+	APlayerState* MyPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
+	checkf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
+
+	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
+	checkf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
+
+	return *GrsPlayerStateComponent;
 }
 
 // Sets default values for this character's properties
@@ -137,7 +165,8 @@ void AGRSPlayerCharacter::OnOpponentsKilledNumChanged_Implementation(int32 Oppon
 			{
 				return;
 			}
-			UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->RevivePlayerCharacter(PlayerCharacter);
+			UGrsPlayerStateComponent& GrsPlayerStateComponent = GetGrsPlayerStateComponentChecked();
+			GrsPlayerStateComponent.RevivePlayerCharacter(PlayerCharacter);
 		}
 	}
 }
@@ -153,7 +182,7 @@ void AGRSPlayerCharacter::OnGameStateChanged_Implementation(const struct FGamepl
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
-		ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
+		ABmrPlayerState* BmrPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
 		if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
 		{
 			BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
@@ -204,7 +233,6 @@ void AGRSPlayerCharacter::OnPreRemovedFromLevel_Implementation(class UBmrMapComp
 void AGRSPlayerCharacter::TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, ABmrPawn* FromPlayerCharacter)
 {
 	if (!GhostCharacter
-	    || GhostCharacter != this
 	    || !FromPlayerCharacter
 	    || !UGRSWorldSubSystem::Get().IsRevivable(FromPlayerCharacter))
 	{
@@ -340,8 +368,9 @@ void AGRSPlayerCharacter::RemoveGhostCharacterFromMap()
 	AimingComponent.AimingSphereComponent->SetVisibility(false);
 
 	// --- reset bindings
-	ABmrPlayerState* BmrPlayerState = UGRSWorldSubSystem::Get().GetPlayerStateComponent(PlayerID)->GetCurrentPlayerState();
-	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' fail to obtain from player ID!"), __LINE__, __FUNCTION__))
+
+	ABmrPlayerState* BmrPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
+	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' fail to obtain from player ID! %i"), __LINE__, __FUNCTION__, PlayerID))
 	{
 		if (BmrPlayerState->OnOpponentsKilledNumChanged.IsBound())
 		{

@@ -43,6 +43,11 @@ protected:
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	/** Obtains players state from the cached and replicated PlayerID  */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
+	class UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
 
 public:
 	/** Sets default values for this character's properties */
@@ -74,7 +79,7 @@ public:
 
 	/**Returns current replicated player ID */
 	UFUNCTION()
-	FORCEINLINE int32 GetPlayerID() { return PlayerID; }
+	FORCEINLINE int32 GetPlayerID() const { return PlayerID; }
 
 	/*********************************************************************************************
 	 * Main functionality (core loop)
@@ -138,7 +143,7 @@ protected:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void RefreshPawn();
 
-	/** Remove ghost character from the level */
+	/** Remove ghost character from the level when clean up or ghost kills a player */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RemoveGhostCharacterFromMap();
 

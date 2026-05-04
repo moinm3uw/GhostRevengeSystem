@@ -25,4 +25,8 @@ public:
 	/** Checks if Pawn is replicated fully (player state and controller present */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static bool bIsReady(class AGRSPlayerCharacter* GrsPawn);
+	
+	/** Obtains player state from the provided playerID */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	static class APlayerState* GetPlayerStateForPlayerID(const class AGRSPlayerCharacter* GrsPawn);
 };

@@ -17,6 +17,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "LevelActors/GRSPlayerCharacter.h"
 #include "SubSystems/GRSWorldSubSystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // Set pawn location to available side (left or right)
@@ -70,4 +71,15 @@ bool UGrsPawnHelper::bIsReady(AGRSPlayerCharacter* GrsPawn)
 	}
 
 	return true;
+}
+
+// Obtains player state from the provided playerID
+APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGRSPlayerCharacter* GrsPawn)
+{
+	APlayerState* FoundPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID());
+	if (!ensureMsgf(FoundPlayerState, TEXT("ASSERT: [%i] %hs:\n'FoundPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+	return FoundPlayerState;
 }

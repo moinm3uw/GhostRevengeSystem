@@ -48,8 +48,6 @@ void UGrsPlayerStateComponent::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogTemp, Log, TEXT("UGrsPlayerStateComponent::BeginPlay  --- %s - %s"), *this->GetName(), GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
-	WorldSubsystem.RegisterPlayerStateComponent(this);
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
@@ -67,9 +65,6 @@ void UGrsPlayerStateComponent::OnUnregister()
 	{
 		AppliedBombSpawnEffectHandle.Invalidate();
 	}
-
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
-	WorldSubsystem.UnRegisterPlayerStateComponent(this);
 }
 
 // Starting point once whole module is ready(loaded) to be initialized

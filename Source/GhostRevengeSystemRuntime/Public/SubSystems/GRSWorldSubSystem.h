@@ -183,32 +183,6 @@ public:
 	void ClearGhostCharacters();
 
 	/*********************************************************************************************
-	 * PlayerState Component
-	 **********************************************************************************************/
-protected:
-	/** Pawn Components attached to BmrPawn to track Pawn's state change */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TArray<TObjectPtr<class UGrsPlayerStateComponent>> PlayerStateComponents;
-
-public:
-	/** Register a new player state component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterPlayerStateComponent(class UGrsPlayerStateComponent* NewPlayerStateComponent);
-
-	/** Unregister a player state component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void UnRegisterPlayerStateComponent(class UGrsPlayerStateComponent* PlayerStateComponent);
-
-	/** Clear all cached player states */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void ClearPlayerStates();
-
-	/** Find a player state component by player ID or nullptr
-	 * @param TargetPlayerID to obtain his player state component  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	UGrsPlayerStateComponent* GetPlayerStateComponent(int32 TargetPlayerID);
-
-	/*********************************************************************************************
 	 * Player Controller Component
 	 **********************************************************************************************/
 protected:

@@ -16,6 +16,7 @@
 #include "Components/GrsPawnComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Engine/Engine.h"
+#include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GrsGameplayTags.h"
 #include "Kismet/GameplayStatics.h"
@@ -90,8 +91,13 @@ bool UGRSWorldSubSystem::IsReady()
 	// todo: obtain max player param from Bmr core
 	int32 MaxPlayers = 4;
 
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: IsReady --- %s"), __LINE__, __FUNCTION__, CharacterManagerComponent && CollisionMangerComponent && PawnComponents.Num() == MaxPlayers ? TEXT("READY") : TEXT("NOT READY"));
-	return CharacterManagerComponent && CollisionMangerComponent && PawnComponents.Num() == MaxPlayers;
+	const ABmrGameState& GameState = ABmrGameState::Get();
+	bool isReady = CharacterManagerComponent
+	               && CollisionMangerComponent
+	               && PawnComponents.Num() == MaxPlayers
+	               && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: IsReady --- %s"), __LINE__, __FUNCTION__, isReady ? TEXT("READY") : TEXT("NOT READY"));
+	return isReady;
 }
 
 // Clears all transient data created by this subsystem
@@ -112,7 +118,6 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	UnregisterCollisionManagerComponent();
 	ClearGhostCharacters();
 	ClearCollisions();
-	ClearPlayerStates();
 
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (BmrHUD)
@@ -346,56 +351,6 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 	}
 }
 
-// Register a new player state component
-void UGRSWorldSubSystem::RegisterPlayerStateComponent(UGrsPlayerStateComponent* NewPlayerStateComponent)
-{
-	if (!NewPlayerStateComponent)
-	{
-		return;
-	}
-
-	PlayerStateComponents.AddUnique(NewPlayerStateComponent);
-
-	int32 MaxPlayers = 4;
-	ensureMsgf(PlayerStateComponents.Num() <= MaxPlayers, TEXT("ASSERT: [%i] %hs:\n'PlayerStateComponents' size is bigger than maximum players allowed!"), __LINE__, __FUNCTION__);
-}
-
-// Unregister a player state component
-void UGRSWorldSubSystem::UnRegisterPlayerStateComponent(UGrsPlayerStateComponent* PlayerStateComponent)
-{
-	if (!PlayerStateComponent)
-	{
-		return;
-	}
-
-	PlayerStateComponents.Remove(PlayerStateComponent);
-}
-
-// Clear all cached player states
-void UGRSWorldSubSystem::ClearPlayerStates()
-{
-	PlayerStateComponents.Empty();
-}
-
-// Find a player state component by player ID
-UGrsPlayerStateComponent* UGRSWorldSubSystem::GetPlayerStateComponent(int32 TargetPlayerID)
-{
-	for (UGrsPlayerStateComponent* PlayerStateComponent : PlayerStateComponents)
-	{
-		ABmrPlayerState* BmrPlayerState = Cast<ABmrPlayerState>(PlayerStateComponent->GetOwner());
-		if (!ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not valid!"), __LINE__, __FUNCTION__))
-		{
-			return nullptr;
-		}
-
-		if (BmrPlayerState->GetPlayerId() == TargetPlayerID)
-		{
-			return PlayerStateComponent;
-		}
-	}
-	return nullptr;
-}
-
 // Register a new grs player controller component
 void UGRSWorldSubSystem::RegisterPlayerControllerComponent(class UGRSPlayerControllerComponent* NewPlayerControllerComponent)
 {
@@ -430,8 +385,9 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 // Listen game states to switch character skin.
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
-	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
+		TryInit();
 		ResetRevivedPlayers();
 	}
 
