@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Yevhenii Selivanov
 
-#include "Components/GRSGhostCharacterManagerComponent.h"
+#include "Components/GrsCharacterManagerComponent.h"
 
 // GRS
 #include "Data/GRSDataAsset.h"
@@ -13,14 +13,14 @@
 #include "Components/GrsPawnComponent.h"
 #include "Engine/World.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSGhostCharacterManagerComponent)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCharacterManagerComponent)
 
 /*********************************************************************************************
  * Lifecycle
  **********************************************************************************************/
 
 // Sets default values for this component's properties
-UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
+UGrsCharacterManagerComponent::UGrsCharacterManagerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
@@ -29,7 +29,7 @@ UGRSGhostCharacterManagerComponent::UGRSGhostCharacterManagerComponent()
 }
 
 // Called when the game starts
-void UGRSGhostCharacterManagerComponent::BeginPlay()
+void UGrsCharacterManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -38,7 +38,7 @@ void UGRSGhostCharacterManagerComponent::BeginPlay()
 }
 
 // Called when the GRS data asset is loaded and available
-void UGRSGhostCharacterManagerComponent::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
+void UGrsCharacterManagerComponent::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnDataAssetLoaded_Implementation RegisterCharacterManagerComponent"), __LINE__, __FUNCTION__);
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
@@ -46,7 +46,7 @@ void UGRSGhostCharacterManagerComponent::OnDataAssetLoaded_Implementation(const 
 }
 
 // Clears all transient data created by this component.
-void UGRSGhostCharacterManagerComponent::OnUnregister()
+void UGrsCharacterManagerComponent::OnUnregister()
 {
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- OnUnregister UnregisterCharacterManagerComponent"), __LINE__, __FUNCTION__);
 	Super::OnUnregister();

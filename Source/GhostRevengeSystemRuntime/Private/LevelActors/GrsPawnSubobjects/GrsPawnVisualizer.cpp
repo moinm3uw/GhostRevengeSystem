@@ -18,12 +18,12 @@
 #include "DataRegistries/BmrPlayerSkinRow.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
-UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGRSPlayerCharacter* GrsPawn)
+UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -31,7 +31,7 @@ UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGRSPlayerCharacte
 }
 
 // Set visibility of the player character
-void FGrsPawnVisualizer::SetVisibility(AGRSPlayerCharacter* GrsPawn, bool Visibility)
+void FGrsPawnVisualizer::SetVisibility(AGrsPawn* GrsPawn, bool Visibility)
 {
 	check(GrsPawn);
 
@@ -39,7 +39,7 @@ void FGrsPawnVisualizer::SetVisibility(AGRSPlayerCharacter* GrsPawn, bool Visibi
 }
 
 //  Initialize skeletal mesh of the character
-void FGrsPawnVisualizer::InitializeSkeletalMesh(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitializeSkeletalMesh(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -56,7 +56,7 @@ void FGrsPawnVisualizer::InitializeSkeletalMesh(AGRSPlayerCharacter* GrsPawn)
 }
 
 // Configure the movement component of the character
-void FGrsPawnVisualizer::MovementComponentConfiguration(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::MovementComponentConfiguration(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -73,7 +73,7 @@ void FGrsPawnVisualizer::MovementComponentConfiguration(AGRSPlayerCharacter* Grs
 }
 
 // Set up the capsule component of the character
-void FGrsPawnVisualizer::InitCapsuleComponent(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitCapsuleComponent(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -96,7 +96,7 @@ void FGrsPawnVisualizer::InitCapsuleComponent(AGRSPlayerCharacter* GrsPawn)
 }
 
 // Set and apply skeletal mesh for ghost player. Copy mesh from current player
-void FGrsPawnVisualizer::InitPlayerMesh(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitPlayerMesh(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -117,7 +117,7 @@ void FGrsPawnVisualizer::InitPlayerMesh(AGRSPlayerCharacter* GrsPawn)
 }
 
 // Initialize character visual (animation, skins)  once added to the level by utilizing player id
-void FGrsPawnVisualizer::InitCharacterVisual(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitCharacterVisual(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 

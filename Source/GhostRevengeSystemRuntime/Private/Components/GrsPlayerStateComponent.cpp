@@ -16,7 +16,7 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
 // Sets default values for this component's properties
 UGrsPlayerStateComponent::UGrsPlayerStateComponent()

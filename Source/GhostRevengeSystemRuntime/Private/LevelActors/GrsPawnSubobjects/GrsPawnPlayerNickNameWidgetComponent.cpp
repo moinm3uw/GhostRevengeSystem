@@ -3,11 +3,11 @@
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "GameFramework/BmrPlayerState.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "Utils/GrsPawnHelper.h"
 
 // Initialize 3d widget component for the player name
-void FGrsPawnPlayerNickNameWidgetComponent::SetupWidget(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnPlayerNickNameWidgetComponent::SetupWidget(class AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -16,7 +16,7 @@ void FGrsPawnPlayerNickNameWidgetComponent::SetupWidget(class AGRSPlayerCharacte
 }
 
 // Initialize player name widget (on top of character)
-void FGrsPawnPlayerNickNameWidgetComponent::InitializePlayerNameWidget(AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnPlayerNickNameWidgetComponent::InitializePlayerNameWidget(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 

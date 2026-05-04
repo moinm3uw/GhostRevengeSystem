@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Yevhenii Selivanov
 
-#include "Abilities/GRSReviveAbility.h"
+#include "Abilities/GrsReviveAbility.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
@@ -8,10 +8,10 @@
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrMoverComponent.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSReviveAbility)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)
 
 // Actually activate ability, do not call this directly
-void UGRSReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UGrsReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- GRS Activate triggered"), __LINE__, __FUNCTION__);

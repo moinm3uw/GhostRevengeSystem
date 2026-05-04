@@ -8,14 +8,14 @@
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GrsGameplayTags.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "PoolManagerSubsystem.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
 
 class UGRSWorldSubSystem;
 // Sets default values for this component's properties
@@ -48,9 +48,9 @@ UGrsPlayerStateComponent* UGrsPawnComponent::GetGrsPlayerStateComponent() const
 
 UGrsPlayerStateComponent* UGrsPawnComponent::GetGrsPlayerStateComponentChecked() const
 {
-	UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
-	checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' is null"), *FString(__FUNCTION__));
-	return GrsPlayerStateComponent;
+    UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
+    checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' is null"), *FString(__FUNCTION__));
+    return GrsPlayerStateComponent;
 }
 */
 
@@ -129,7 +129,7 @@ void UGrsPawnComponent::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectDa
 	// --- Setup spawned characters
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
-		AGRSPlayerCharacter& GhostCharacter = CreatedObject.GetChecked<AGRSPlayerCharacter>();
+		AGrsPawn& GhostCharacter = CreatedObject.GetChecked<AGrsPawn>();
 		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());

@@ -24,7 +24,7 @@ public:
 
 	/** Returns the Grs player character class */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "C++")
-	TSubclassOf<class AGRSPlayerCharacter> GetGrsActorClass() const { return GrsActorClass; }
+	TSubclassOf<class AGrsPawn> GetGrsActorClass() const { return GrsActorClass; }
 
 	/** Returns if the display of trajectory is enabled */
 	UFUNCTION(BlueprintPure, Category = "C++")
@@ -50,7 +50,7 @@ public:
 	/** Returns projectile class
 	 * @see UGRSDataAsset::BombClass.*/
 	UFUNCTION(BlueprintPure, Category = "C++")
-	FORCEINLINE class TSubclassOf<class AGRSBombProjectile> GetProjectileClass() const { return BombClass; }
+	FORCEINLINE class TSubclassOf<class AGrsBombProjectile> GetProjectileClass() const { return BombClass; }
 
 	/** Returns projectile mesh
 	 * @see UGRSDataAsset::StaticMesh.*/
@@ -112,7 +112,7 @@ public:
 protected:
 	/** Grs Player Character Data Asset */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BlueprintProtected, ShowOnlyInnerProperties))
-	TSubclassOf<class AGRSPlayerCharacter> GrsActorClass = nullptr;
+	TSubclassOf<class AGrsPawn> GrsActorClass = nullptr;
 
 	/** Input mapping context for the GRSPlayerCharacter */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "C++", meta = (BlueprintProtected, DisplayName = "Input Mapping Context", ShowOnlyInnerProperties))
@@ -123,7 +123,7 @@ protected:
 	FTransform CollisionTransformInternal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "C++")
-	TSubclassOf<class AGRSBombProjectile> BombClass;
+	TSubclassOf<class AGrsBombProjectile> BombClass;
 
 	/** Parameter to control trajectory visual display */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Display trajectory"))

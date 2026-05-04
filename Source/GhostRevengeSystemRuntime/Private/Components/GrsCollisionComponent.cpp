@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Yevhenii Selivanov
 
-#include "Components/GhostRevengeCollisionComponent.h"
+#include "Components/GrsCollisionComponent.h"
 
 // GRS
 #include "Data/GRSDataAsset.h"
@@ -20,14 +20,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GhostRevengeCollisionComponent)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
 
 /*********************************************************************************************
  * Lifecycle
  **********************************************************************************************/
 
 // Sets default values for this component's properties
-UGhostRevengeCollisionComponent::UGhostRevengeCollisionComponent()
+UGrsCollisionComponent::UGrsCollisionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
@@ -36,7 +36,7 @@ UGhostRevengeCollisionComponent::UGhostRevengeCollisionComponent()
 }
 
 // Called when the game starts
-void UGhostRevengeCollisionComponent::BeginPlay()
+void UGrsCollisionComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -48,7 +48,7 @@ void UGhostRevengeCollisionComponent::BeginPlay()
 }
 
 // Clears all transient data created by this component.
-void UGhostRevengeCollisionComponent::OnUnregister()
+void UGrsCollisionComponent::OnUnregister()
 {
 	Super::OnUnregister();
 
@@ -73,7 +73,7 @@ void UGhostRevengeCollisionComponent::OnUnregister()
  **********************************************************************************************/
 
 // Is called when local player character is ready to guarantee that they player controller is initialized
-void UGhostRevengeCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
+void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
 	WorldSubsystem.RegisterCollisionManagerComponent(this);
@@ -82,7 +82,7 @@ void UGhostRevengeCollisionComponent::OnLocalPawnReady_Implementation(const FGam
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded
-void UGhostRevengeCollisionComponent::OnInitialize(const struct FGameplayEventData& Payload)
+void UGrsCollisionComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
 	// spawn collisions only once
 	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
@@ -92,13 +92,13 @@ void UGhostRevengeCollisionComponent::OnInitialize(const struct FGameplayEventDa
 }
 
 //  Spawn a collision box the side of the map
-void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide()
+void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 {
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
 	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
 	{
-		if (UGhostRevengeCollisionComponent* This = WeakThis.Get())
+		if (UGrsCollisionComponent* This = WeakThis.Get())
 		{
 			This->OnTakeCollisionActorsFromPoolCompleted(CreatedObjects);
 		}
@@ -109,7 +109,7 @@ void UGhostRevengeCollisionComponent::SpawnMapCollisionOnSide()
 }
 
 // Grabs a side collision asset from the pool manager (Object pooling patter)
-void UGhostRevengeCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
+void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
 {
 	APlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this);
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))

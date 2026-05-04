@@ -7,10 +7,10 @@
 #include "Data/PoolObjectHandle.h"
 #include "Net/UnrealNetwork.h"
 
-#include "GhostRevengeCollisionComponent.generated.h"
+#include "GrsCollisionComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeCollisionComponent : public UActorComponent
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsCollisionComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -20,7 +20,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeCollisionComponent : public UAc
 
 public:
 	/** Sets default values for this component's properties */
-	UGhostRevengeCollisionComponent();
+	UGrsCollisionComponent();
 
 protected:
 	/** Called when the game starts */

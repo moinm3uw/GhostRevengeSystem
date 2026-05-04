@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "Net/UnrealNetwork.h"
 
-#include "GRSGhostCharacterManagerComponent.generated.h"
+#include "GrsCharacterManagerComponent.generated.h"
 
 enum class EBmrCurrentGameState : uint8;
 
@@ -14,7 +14,7 @@ enum class EBmrCurrentGameState : uint8;
  * Actor component attached to game state to spawn ghost characters
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public UActorComponent
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsCharacterManagerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -23,7 +23,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSGhostCharacterManagerComponent : public 
 	 **********************************************************************************************/
 public:
 	// Sets default values for this component's properties
-	UGRSGhostCharacterManagerComponent();
+	UGrsCharacterManagerComponent();
 
 protected:
 	/** Called when the game starts */

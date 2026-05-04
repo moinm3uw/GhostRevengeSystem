@@ -1,10 +1,10 @@
 ﻿#include "LevelActors/GrsPawnSubobjects/GrsPawnArrowStartWidgetComponent.h"
 
 #include "Components/BmrPlayerArrowStartComponent.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 
 //  Initialize 3D player arrow widget component that appears on top of character when player start to control it
-void FGrsPawnArrowStartWidgetComponent::InitArrowStartWidgetComponent(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnArrowStartWidgetComponent::InitArrowStartWidgetComponent(class AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 

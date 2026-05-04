@@ -1,6 +1,6 @@
 // Copyright (c) Yevhenii Selivanov
 
-#include "LevelActors/GRSBombProjectile.h"
+#include "LevelActors/GrsBombProjectile.h"
 
 #include "Bomber.h"
 #include "Components/CapsuleComponent.h"
@@ -11,10 +11,10 @@
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSBombProjectile)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsBombProjectile)
 
 // Sets default values
-AGRSBombProjectile::AGRSBombProjectile()
+AGrsBombProjectile::AGrsBombProjectile()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
@@ -36,7 +36,7 @@ AGRSBombProjectile::AGRSBombProjectile()
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
 
-	CollisionSphere->OnComponentHit.AddDynamic(this, &AGRSBombProjectile::OnHit);
+	CollisionSphere->OnComponentHit.AddDynamic(this, &AGrsBombProjectile::OnHit);
 
 	// Mesh
 	BombMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BombMesh"));
@@ -52,13 +52,13 @@ AGRSBombProjectile::AGRSBombProjectile()
 	ProjectileMovement->ProjectileGravityScale = 1.0f;
 }
 
-void AGRSBombProjectile::Launch(const FVector& LaunchVelocity)
+void AGrsBombProjectile::Launch(const FVector& LaunchVelocity)
 {
 	ProjectileMovement->Velocity = LaunchVelocity;
 }
 
 // Called when the game starts or when spawned
-void AGRSBombProjectile::BeginPlay()
+void AGrsBombProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -66,18 +66,18 @@ void AGRSBombProjectile::BeginPlay()
 }
 
 // Called when the GRS data asset is loaded and available
-void AGRSBombProjectile::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
+void AGrsBombProjectile::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
 	BombMesh->SetStaticMesh(DataAsset->GetProjectileMesh());
 }
 
-void AGRSBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void AGrsBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	UE_LOG(LogTemp, Log, TEXT("GRS Projectile HIT"));
 }
 
 // Called every frame
-void AGRSBombProjectile::Tick(float DeltaTime)
+void AGrsBombProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }

@@ -5,14 +5,14 @@
 #include "Abilities/GameplayAbility.h"
 #include "CoreMinimal.h"
 
-#include "GRSReviveAbility.generated.h"
+#include "GrsReviveAbility.generated.h"
 
 /**
  * Handles player revive after ghost kills a player.
  * Ability is triggered by the BmrGameplayTags::Event::Player_Revive event, where:
  */
 UCLASS()
-class GHOSTREVENGESYSTEMRUNTIME_API UGRSReviveAbility : public UGameplayAbility
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsReviveAbility : public UGameplayAbility
 {
 	GENERATED_BODY()
 	/*********************************************************************************************

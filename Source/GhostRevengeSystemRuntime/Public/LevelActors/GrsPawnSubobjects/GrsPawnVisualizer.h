@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Kismet/GameplayStaticsTypes.h"
 
-class AGRSPlayerCharacter;
+class AGrsPawn;
 
 /**
  * GrsPawnInitializer properties and methods
@@ -9,23 +9,23 @@ class AGRSPlayerCharacter;
 struct FGrsPawnVisualizer
 {
 	/** Returns the Skeletal Mesh of ghost revenge character. */
-	static class UBmrSkeletalMeshComponent* GetMeshChecked(AGRSPlayerCharacter* GrsPawn);
+	static class UBmrSkeletalMeshComponent* GetMeshChecked(AGrsPawn* GrsPawn);
 
 	/** Set visibility of the player character */
-	static void SetVisibility(AGRSPlayerCharacter* GrsPawn, bool Visibility);
+	static void SetVisibility(AGrsPawn* GrsPawn, bool Visibility);
 
 	/** Initialize skeletal mesh of the character */
-	static void InitializeSkeletalMesh(AGRSPlayerCharacter* GrsPawn);
+	static void InitializeSkeletalMesh(AGrsPawn* GrsPawn);
 
 	/** Configure the movement component of the character */
-	static void MovementComponentConfiguration(AGRSPlayerCharacter* GrsPawn);
+	static void MovementComponentConfiguration(AGrsPawn* GrsPawn);
 
 	/** Set up the capsule component of the character */
-	static void InitCapsuleComponent(AGRSPlayerCharacter* GrsPawn);
+	static void InitCapsuleComponent(AGrsPawn* GrsPawn);
 
 	/** Set and apply skeletal mesh for ghost player. Copy mesh from current player. */
-	static void InitPlayerMesh(AGRSPlayerCharacter* GrsPawn);
+	static void InitPlayerMesh(AGrsPawn* GrsPawn);
 
 	/** Initialize character visual (animation, skins)  once added to the level by utilizing player id */
-	static void InitCharacterVisual(AGRSPlayerCharacter* GrsPawn);
+	static void InitCharacterVisual(AGrsPawn* GrsPawn);
 };

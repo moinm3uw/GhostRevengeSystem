@@ -3,7 +3,7 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // GRS
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 
 // Bmr
 #include "Actors/BmrPawn.h"
@@ -23,7 +23,7 @@
 #include "UI/Widgets/BmrHUDWidget.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
 /*********************************************************************************************
  * Subsystem's Lifecycle
@@ -61,14 +61,12 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventDat
 {
 	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
 
-	TryInit(); // try to initialize
-
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
 	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
 	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
+	
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Checks if all components present and invokes initialization
@@ -129,7 +127,7 @@ void UGRSWorldSubSystem::PerformCleanUp()
  **********************************************************************************************/
 
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
-void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGhostRevengeCollisionComponent* NewCollisionManagerComponent)
+void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent)
 {
 	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
 	{
@@ -225,7 +223,7 @@ void UGRSWorldSubSystem::ResetRevivedPlayers()
  **********************************************************************************************/
 
 // Register character manager component
-void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent)
+void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerComponent* NewCharacterManagerComponent)
 {
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- RegisterCharacterManagerComponent"), __LINE__, __FUNCTION__);
 	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
@@ -241,7 +239,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGRSGhostCharacterMan
  **********************************************************************************************/
 
 // Register ghost character
-EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
+EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
@@ -261,7 +259,7 @@ EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGRSPlayerCharacter
 }
 
 // Returns currently available ghost character or nullptr if there is no available ghosts.
-AGRSPlayerCharacter* UGRSWorldSubSystem::GetAvailableGhostCharacter()
+AGrsPawn* UGRSWorldSubSystem::GetAvailableGhostCharacter()
 {
 	if (!GhostCharacterLeftSide->GetController())
 	{
@@ -313,7 +311,7 @@ void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
 }
 
 // Clear cached ghost character by reference
-void UGRSWorldSubSystem::UnregisterGhostCharacter(AGRSPlayerCharacter* GhostPlayerCharacter)
+void UGRSWorldSubSystem::UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
 	if (!GhostPlayerCharacter)
 	{
@@ -350,7 +348,7 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 }
 
 // Register a new grs player controller component
-void UGRSWorldSubSystem::RegisterPlayerControllerComponent(class UGRSPlayerControllerComponent* NewPlayerControllerComponent)
+void UGRSWorldSubSystem::RegisterPlayerControllerComponent(class UGrsPlayerControllerComponent* NewPlayerControllerComponent)
 {
 	if (!NewPlayerControllerComponent)
 	{

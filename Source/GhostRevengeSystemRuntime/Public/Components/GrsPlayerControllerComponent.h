@@ -8,13 +8,13 @@
 #include "CoreMinimal.h"
 #include "Kismet/GameplayStaticsTypes.h"
 
-#include "GRSPlayerControllerComponent.generated.h"
+#include "GrsPlayerControllerComponent.generated.h"
 
 /**
  *  Attached to the BmrPlayerController to handle player input when a ghost character is possessed
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class GHOSTREVENGESYSTEMRUNTIME_API UGRSPlayerControllerComponent : public UActorComponent
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerControllerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -24,7 +24,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSPlayerControllerComponent : public UActo
 
 public:
 	/** Sets default values for this component's properties */
-	UGRSPlayerControllerComponent();
+	UGrsPlayerControllerComponent();
 
 	/** Returns Player Controller of this component. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")

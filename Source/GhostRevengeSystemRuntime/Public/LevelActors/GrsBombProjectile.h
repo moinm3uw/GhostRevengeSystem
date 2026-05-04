@@ -5,16 +5,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "GRSBombProjectile.generated.h"
+#include "GrsBombProjectile.generated.h"
 
 UCLASS()
-class GHOSTREVENGESYSTEMRUNTIME_API AGRSBombProjectile : public AActor
+class GHOSTREVENGESYSTEMRUNTIME_API AGrsBombProjectile : public AActor
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this actor's properties
-	AGRSBombProjectile();
+	AGrsBombProjectile();
 
 	UFUNCTION(BlueprintCallable)
 	void Launch(const FVector& LaunchVelocity);

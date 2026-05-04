@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Yevhenii Selivanov
 
-#include "Components/GRSPlayerControllerComponent.h"
+#include "Components/GrsPlayerControllerComponent.h"
 
 #include "Controllers/BmrPlayerController.h"
 #include "DalSubsystem.h"
@@ -10,33 +10,33 @@
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
-#include "GhostRevengeUtils.h"
+#include "GrsUtils.h"
 #include "Kismet/GameplayStatics.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSPlayerControllerComponent)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
 /*********************************************************************************************
  * Lifecycle
  **********************************************************************************************/
 
 // Sets default values for this component's properties
-UGRSPlayerControllerComponent::UGRSPlayerControllerComponent()
+UGrsPlayerControllerComponent::UGrsPlayerControllerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
 // Returns Player Controller of this component
-ABmrPlayerController* UGRSPlayerControllerComponent::GetPlayerController() const
+ABmrPlayerController* UGrsPlayerControllerComponent::GetPlayerController() const
 {
 	return Cast<ABmrPlayerController>(GetOwner());
 }
 
-ABmrPlayerController& UGRSPlayerControllerComponent::GetPlayerControllerChecked() const
+ABmrPlayerController& UGrsPlayerControllerComponent::GetPlayerControllerChecked() const
 {
 	ABmrPlayerController* MyPlayerController = GetPlayerController();
 	checkf(MyPlayerController, TEXT("%s: 'MyPlayerController' is null"), *FString(__FUNCTION__));
@@ -44,13 +44,13 @@ ABmrPlayerController& UGRSPlayerControllerComponent::GetPlayerControllerChecked(
 }
 
 // Returns current possessed pawn
-APawn* UGRSPlayerControllerComponent::GetCurrentPawn() const
+APawn* UGrsPlayerControllerComponent::GetCurrentPawn() const
 {
 	return GetPlayerControllerChecked().GetPawn();
 }
 
 // Returns current possessed pawn with checkf
-APawn& UGRSPlayerControllerComponent::GetCurrentPawnChecked() const
+APawn& UGrsPlayerControllerComponent::GetCurrentPawnChecked() const
 {
 	APawn* CurrentPawn = GetPlayerControllerChecked().GetPawn();
 	checkf(CurrentPawn, TEXT("%s: 'CurrentPawn' is null"), *FString(__FUNCTION__));
@@ -58,7 +58,7 @@ APawn& UGRSPlayerControllerComponent::GetCurrentPawnChecked() const
 }
 
 // Called when the game starts
-void UGRSPlayerControllerComponent::BeginPlay()
+void UGrsPlayerControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -67,7 +67,7 @@ void UGRSPlayerControllerComponent::BeginPlay()
 }
 
 // Clears all transient data created by this component
-void UGRSPlayerControllerComponent::OnUnregister()
+void UGrsPlayerControllerComponent::OnUnregister()
 {
 	DisableGhostInputs();
 	// --- unpossess back to a pawn
@@ -77,7 +77,7 @@ void UGRSPlayerControllerComponent::OnUnregister()
 }
 
 // Listen game states to reset player controller state
-void UGRSPlayerControllerComponent::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
+void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
 {
 	// --- reset currently possessed pawn
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
@@ -101,7 +101,7 @@ void UGRSPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 }
 
 // Unpossess current pawn from ghost to BmwPlayerPawn
-void UGRSPlayerControllerComponent::UnpossessGhostPawn()
+void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 {
 	ABmrPlayerController* PlayerController = GetPlayerController();
 	if (!MainBmrPlayerPawn
@@ -121,7 +121,7 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 	else
 	{
 		// --- if pawn is ghost unpossess back to BmrPawn
-		AGRSPlayerCharacter* GhostPawn = Cast<AGRSPlayerCharacter>(CurrentPossessedPawn);
+		AGrsPawn* GhostPawn = Cast<AGrsPawn>(CurrentPossessedPawn);
 		if (!GhostPawn)
 		{
 			return;
@@ -141,7 +141,7 @@ void UGRSPlayerControllerComponent::UnpossessGhostPawn()
 }
 
 // Disables current enhanced input and input bindings
-void UGRSPlayerControllerComponent::DisableGhostInputs()
+void UGrsPlayerControllerComponent::DisableGhostInputs()
 {
 	const ABmrPlayerController* PlayerController = GetPlayerController();
 	if (!PlayerController)
@@ -163,12 +163,12 @@ void UGRSPlayerControllerComponent::DisableGhostInputs()
  **********************************************************************************************/
 
 // Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
-void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
+void UGrsPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
 {
 	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character)
 	if (NewPawn)
 	{
-		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(NewPawn);
+		AGrsPawn* GhostCharacter = Cast<AGrsPawn>(NewPawn);
 		if (GhostCharacter)
 		{
 			SetManagedInputContextEnabled(GetPlayerController(), true);
@@ -178,7 +178,7 @@ void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn*
 	// --- case 2: unpossess ghost character (OldPawn is a ghost character)
 	if (OldPawn)
 	{
-		AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(OldPawn);
+		AGrsPawn* GhostCharacter = Cast<AGrsPawn>(OldPawn);
 		if (GhostCharacter)
 		{
 			UnpossessGhostPawn();
@@ -188,7 +188,7 @@ void UGRSPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn*
 }
 
 // Enables or disables the input context
-void UGRSPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
+void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
 {
 	if (!PlayerController || !PlayerController->IsLocalController())
 	{
@@ -242,7 +242,7 @@ void UGRSPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 }
 
 // Move the player character
-void UGRSPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionValue)
+void UGrsPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionValue)
 {
 	if (GetPlayerControllerChecked().IsMoveInputIgnored())
 	{
@@ -274,7 +274,7 @@ void UGRSPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionVa
 }
 
 // Hold button to increase trajectory on button release trow bomb
-void UGRSPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionValue)
+void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionValue)
 {
 	ShowVisualTrajectory();
 
@@ -286,7 +286,7 @@ void UGRSPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 	{
 		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
 		{
-			AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(GetPlayerControllerChecked().GetPawn());
+			AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
 			if (!GhostCharacter)
 			{
 				return;
@@ -300,9 +300,9 @@ void UGRSPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 }
 
 //  Add and update visual representation of charging (aiming) progress as trajectory
-void UGRSPlayerControllerComponent::ShowVisualTrajectory()
+void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 {
-	AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(GetPlayerControllerChecked().GetPawn());
+	AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
 	if (!GhostCharacter)
 	{
 		return;
@@ -325,7 +325,7 @@ void UGRSPlayerControllerComponent::ShowVisualTrajectory()
 }
 
 // Configure PredictProjectilePath settings and get result
-void UGRSPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
+void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
 {
 	// Set launch velocity (forward direction with some upward angle)
 	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
@@ -337,7 +337,7 @@ void UGRSPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 	Params.StartLocation = GetCurrentPawnChecked().GetActorLocation();
 
 	// --- pick a direction based on the side of the map (left or right)
-	const float SideSign = UGhostRevengeUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+	const float SideSign = UGrsUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
 	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
 	Params.ActorsToIgnore.Add(GetCurrentPawn());
@@ -346,9 +346,9 @@ void UGRSPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 }
 
 // Throw projectile event, bound to onetime button press
-void UGRSPlayerControllerComponent::ThrowProjectile()
+void UGrsPlayerControllerComponent::ThrowProjectile()
 {
-	AGRSPlayerCharacter* GhostCharacter = Cast<AGRSPlayerCharacter>(GetPlayerControllerChecked().GetPawn());
+	AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
 	if (!GhostCharacter)
 	{
 		return;

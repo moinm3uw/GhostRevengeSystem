@@ -57,7 +57,7 @@ public:
 protected:
 	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGhostRevengeCollisionComponent> CollisionMangerComponent;
+	TObjectPtr<class UGrsCollisionComponent> CollisionMangerComponent;
 
 	/** Left Side collision */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
@@ -70,7 +70,7 @@ protected:
 public:
 	/** Register collision manager component used to track if all components loaded and MGF ready to initialize */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterCollisionManagerComponent(class UGhostRevengeCollisionComponent* NewCollisionManagerComponent);
+	void RegisterCollisionManagerComponent(class UGrsCollisionComponent* NewCollisionManagerComponent);
 
 	/** Add spawned collision actors to be cached */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
@@ -122,32 +122,32 @@ public:
 protected:
 	/** Current Character Manager Component */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGRSGhostCharacterManagerComponent> CharacterManagerComponent;
+	TObjectPtr<class UGrsCharacterManagerComponent> CharacterManagerComponent;
 
 	/** Ghost character spawned on left side of the map */
 	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterLeftSide;
+	TObjectPtr<class AGrsPawn> GhostCharacterLeftSide;
 
 	/** Ghost character spawned on right side of the map */
 	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGRSPlayerCharacter> GhostCharacterRightSide;
+	TObjectPtr<class AGrsPawn> GhostCharacterRightSide;
 
 public:
 	/** Register character manager component. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterCharacterManagerComponent(class UGRSGhostCharacterManagerComponent* NewCharacterManagerComponent);
+	void RegisterCharacterManagerComponent(class UGrsCharacterManagerComponent* NewCharacterManagerComponent);
 
 	/** Register character manager component. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FORCEINLINE class UGRSGhostCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterManagerComponent; }
+	FORCEINLINE class UGrsCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterManagerComponent; }
 
 	/** Register ghost character to obtain it's side NONE if all sides occupied  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	EGRSCharacterSide RegisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter);
+	EGRSCharacterSide RegisterGhostCharacter(class AGrsPawn* GhostPlayerCharacter);
 
 	/** Returns currently available ghost character or nullptr if there is no available ghosts. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class AGRSPlayerCharacter* GetAvailableGhostCharacter();
+	class AGrsPawn* GetAvailableGhostCharacter();
 
 	/*********************************************************************************************
 	 * Pawn Component
@@ -176,7 +176,7 @@ public:
 
 	/** Clear cached ghost character by reference */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void UnregisterGhostCharacter(class AGRSPlayerCharacter* GhostPlayerCharacter);
+	void UnregisterGhostCharacter(class AGrsPawn* GhostPlayerCharacter);
 
 	/** Clear cached ghost character references */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
@@ -188,16 +188,16 @@ public:
 protected:
 	/** Player Controller Component attached to BmrPlayerController  */
 	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGRSPlayerControllerComponent> PlayerControllerComponent;
+	TObjectPtr<class UGrsPlayerControllerComponent> PlayerControllerComponent;
 
 public:
 	/** Gets current grs player controller component. It's unique and only 1 */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FORCEINLINE class UGRSPlayerControllerComponent* GetGrsPlayerControllerComponent() const { return PlayerControllerComponent; }
+	FORCEINLINE class UGrsPlayerControllerComponent* GetGrsPlayerControllerComponent() const { return PlayerControllerComponent; }
 
 	/** Register a new grs player controller component */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterPlayerControllerComponent(class UGRSPlayerControllerComponent* NewPlayerControllerComponent);
+	void RegisterPlayerControllerComponent(class UGrsPlayerControllerComponent* NewPlayerControllerComponent);
 
 	/*********************************************************************************************
 	 * Treasury (temp)

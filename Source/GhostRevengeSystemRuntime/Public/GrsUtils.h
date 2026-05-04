@@ -4,26 +4,26 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 
-#include "GhostRevengeUtils.generated.h"
+#include "GrsUtils.generated.h"
 
 /**
  *
  */
 UCLASS()
-class GHOSTREVENGESYSTEMRUNTIME_API UGhostRevengeUtils : public UBlueprintFunctionLibrary
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsUtils : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 
 public:
 	/** Returns the ghost character */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get Ghost Player Character", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
-	static class AGRSPlayerCharacter* GetGhostPlayerCharacter(const UObject* OptionalWorldContext = nullptr);
+	static class AGrsPawn* GetGhostPlayerCharacter(const UObject* OptionalWorldContext = nullptr);
 
 	/** Returns the ghost controller component, nullptr otherwise. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get BMR Player Controller (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
-	static class UGRSPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
+	static class UGrsPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
 
 	/** Calculates the character side from an actor reference */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")

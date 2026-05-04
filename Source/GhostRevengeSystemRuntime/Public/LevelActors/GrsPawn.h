@@ -12,7 +12,7 @@
 #include "Kismet/GameplayStaticsTypes.h"
 #include "Net/UnrealNetwork.h"
 
-#include "GRSPlayerCharacter.generated.h"
+#include "GrsPawn.generated.h"
 
 /**
  * Represents the side of ghost character
@@ -33,7 +33,7 @@ enum class EGRSCharacterSide : uint8
  * Copy the died player mesh and skin.
  */
 UCLASS()
-class GHOSTREVENGESYSTEMRUNTIME_API AGRSPlayerCharacter : public ACharacter
+class GHOSTREVENGESYSTEMRUNTIME_API AGrsPawn : public ACharacter
     , public IAbilitySystemInterface
 {
 	GENERATED_BODY()
@@ -51,7 +51,7 @@ protected:
 
 public:
 	/** Sets default values for this character's properties */
-	AGRSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+	AGrsPawn(const FObjectInitializer& ObjectInitializer);
 
 protected:
 	/** 3D widget component that displays the player name above the character */
@@ -117,7 +117,7 @@ protected:
 
 	/** Activates ghost with required initiation  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void TryActivateGhostCharacter(AGRSPlayerCharacter* GhostCharacter, ABmrPawn* FromPlayerCharacter);
+	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* FromPlayerCharacter);
 
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")

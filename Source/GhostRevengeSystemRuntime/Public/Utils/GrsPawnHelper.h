@@ -7,7 +7,7 @@
 
 #include "GrsPawnHelper.generated.h"
 
-class AGRSPlayerCharacter;
+class AGrsPawn;
 
 /**
  * This is helper designed only for the GrsPlayerCharacter with main intent to reduce the size of GrsPlayerCharacter
@@ -20,13 +20,13 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnHelper : public UObject
 public:
 	/** Set pawn location to available side (left or right) */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
-	static void SetPawnToAvailableSide(class AGRSPlayerCharacter* GrsPawn);
+	static void SetPawnToAvailableSide(class AGrsPawn* GrsPawn);
 
 	/** Checks if Pawn is replicated fully (player state and controller present */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	static bool bIsReady(class AGRSPlayerCharacter* GrsPawn);
-	
+	static bool bIsReady(class AGrsPawn* GrsPawn);
+
 	/** Obtains player state from the provided playerID */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	static class APlayerState* GetPlayerStateForPlayerID(const class AGRSPlayerCharacter* GrsPawn);
+	static class APlayerState* GetPlayerStateForPlayerID(const class AGrsPawn* GrsPawn);
 };

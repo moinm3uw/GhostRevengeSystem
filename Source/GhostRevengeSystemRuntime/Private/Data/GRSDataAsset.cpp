@@ -4,7 +4,7 @@
 
 #include "DalSubsystem.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSDataAsset)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSDataAsset)
 
 const UGRSDataAsset& UGRSDataAsset::Get()
 {

@@ -8,15 +8,15 @@
 #include "Components/SplineComponent.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnHelper)
+// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnHelper)
 
 // Set pawn location to available side (left or right)
-void UGrsPawnHelper::SetPawnToAvailableSide(AGRSPlayerCharacter* GrsPawn)
+void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -50,7 +50,7 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGRSPlayerCharacter* GrsPawn)
 }
 
 // Checks if Pawn is replicated fully (player state and controller present
-bool UGrsPawnHelper::bIsReady(AGRSPlayerCharacter* GrsPawn)
+bool UGrsPawnHelper::bIsReady(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -69,7 +69,7 @@ bool UGrsPawnHelper::bIsReady(AGRSPlayerCharacter* GrsPawn)
 }
 
 // Obtains player state from the provided playerID
-APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGRSPlayerCharacter* GrsPawn)
+APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* GrsPawn)
 {
 	APlayerState* FoundPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID());
 	if (!ensureMsgf(FoundPlayerState, TEXT("ASSERT: [%i] %hs:\n'FoundPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))

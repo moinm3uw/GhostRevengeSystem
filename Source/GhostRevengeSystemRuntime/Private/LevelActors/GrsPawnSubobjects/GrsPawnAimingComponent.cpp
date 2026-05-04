@@ -5,12 +5,12 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Data/GRSDataAsset.h"
-#include "LevelActors/GRSPlayerCharacter.h"
+#include "LevelActors/GrsPawn.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // Initial setup of spline component
-void FGrsPawnAimingComponent::SetupSplineComponent(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnAimingComponent::SetupSplineComponent(class AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -56,7 +56,7 @@ void FGrsPawnAimingComponent::AddSplinePoints(FPredictProjectilePathResult& Resu
 }
 
 // Add spline mesh to spline points
-void FGrsPawnAimingComponent::AddSplineMesh(FPredictProjectilePathResult& Result, AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnAimingComponent::AddSplineMesh(FPredictProjectilePathResult& Result, AGrsPawn* GrsPawn)
 {
 	for (int32 i = 0; i < ProjectileSplineComponentInternal->GetNumberOfSplinePoints() - 2; i++)
 	{
@@ -84,7 +84,7 @@ void FGrsPawnAimingComponent::AddSplineMesh(FPredictProjectilePathResult& Result
 }
 
 // Throw projectile towards the direction of pawn watching, bound to onetime button press
-void FGrsPawnAimingComponent::ThrowProjectile(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnAimingComponent::ThrowProjectile(class AGrsPawn* GrsPawn)
 {
 	//--- Calculate Cell to spawn bomb
 	FBmrCell CurrentCell;
@@ -103,7 +103,7 @@ void FGrsPawnAimingComponent::ThrowProjectile(class AGRSPlayerCharacter* GrsPawn
 }
 
 //  Spawn bomb on aiming sphere position
-void FGrsPawnAimingComponent::SpawnBomb(FBmrCell TargetCell, class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnAimingComponent::SpawnBomb(FBmrCell TargetCell, class AGrsPawn* GrsPawn)
 {
 	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
 
