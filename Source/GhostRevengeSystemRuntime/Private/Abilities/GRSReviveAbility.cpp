@@ -8,6 +8,8 @@
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrMoverComponent.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSReviveAbility)
+
 // Actually activate ability, do not call this directly
 void UGRSReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {

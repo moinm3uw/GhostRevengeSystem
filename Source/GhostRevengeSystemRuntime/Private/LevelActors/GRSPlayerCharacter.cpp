@@ -27,6 +27,8 @@
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "Utils/GrsPawnHelper.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSPlayerCharacter)
+
 // Returns the Ability System Component from the Player State
 UAbilitySystemComponent* AGRSPlayerCharacter::GetAbilitySystemComponent() const
 {

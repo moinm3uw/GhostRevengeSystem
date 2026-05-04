@@ -17,6 +17,8 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSPlayerControllerComponent)
+
 /*********************************************************************************************
  * Lifecycle
  **********************************************************************************************/

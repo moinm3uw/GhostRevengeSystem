@@ -13,6 +13,8 @@
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnHelper)
+
 // Set pawn location to available side (left or right)
 void UGrsPawnHelper::SetPawnToAvailableSide(AGRSPlayerCharacter* GrsPawn)
 {

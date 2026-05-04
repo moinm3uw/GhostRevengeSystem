@@ -11,6 +11,8 @@
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSBombProjectile)
+
 // Sets default values
 AGRSBombProjectile::AGRSBombProjectile()
 {
