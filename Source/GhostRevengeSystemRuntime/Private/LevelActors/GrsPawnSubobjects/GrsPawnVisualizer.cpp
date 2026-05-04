@@ -1,6 +1,6 @@
 ﻿
 
-#include "LevelActors/GrsPawnSubobjects/GrsPawnSubobject.h"
+#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
 
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Animation/AnimInstance.h"

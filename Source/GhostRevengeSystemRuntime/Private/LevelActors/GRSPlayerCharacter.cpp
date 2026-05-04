@@ -18,7 +18,7 @@
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GrsGameplayTags.h"
-#include "LevelActors/GrsPawnSubobjects/GrsPawnSubobject.h"
+#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"

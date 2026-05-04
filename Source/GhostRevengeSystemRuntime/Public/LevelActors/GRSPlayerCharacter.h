@@ -43,7 +43,7 @@ protected:
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
+
 	/** Obtains players state from the cached and replicated PlayerID  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
@@ -84,7 +84,6 @@ public:
 	/*********************************************************************************************
 	 * Main functionality (core loop)
 	 **********************************************************************************************/
-
 public:
 	friend class UBmrCheatManager;
 
