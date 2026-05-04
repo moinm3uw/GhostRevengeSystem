@@ -39,7 +39,7 @@ void FGrsPawnVisualizer::SetVisibility(AGRSPlayerCharacter* GrsPawn, bool Visibi
 }
 
 //  Initialize skeletal mesh of the character
-void FGrsPawnVisualizer::InitializeSkeletalMesh(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitializeSkeletalMesh(AGRSPlayerCharacter* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -56,7 +56,7 @@ void FGrsPawnVisualizer::InitializeSkeletalMesh(class AGRSPlayerCharacter* GrsPa
 }
 
 // Configure the movement component of the character
-void FGrsPawnVisualizer::MovementComponentConfiguration(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::MovementComponentConfiguration(AGRSPlayerCharacter* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -73,7 +73,7 @@ void FGrsPawnVisualizer::MovementComponentConfiguration(class AGRSPlayerCharacte
 }
 
 // Set up the capsule component of the character
-void FGrsPawnVisualizer::InitCapsuleComponent(class AGRSPlayerCharacter* GrsPawn)
+void FGrsPawnVisualizer::InitCapsuleComponent(AGRSPlayerCharacter* GrsPawn)
 {
 	check(GrsPawn);
 
