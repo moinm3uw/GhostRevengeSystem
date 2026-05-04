@@ -5,6 +5,7 @@
 #include "Animation/AnimInstance.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
+#include "Components/GrsPawnComponent.h"
 #include "Components/SplineComponent.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -77,4 +78,12 @@ APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* Gr
 		return nullptr;
 	}
 	return FoundPlayerState;
+}
+
+// Obtains bmr player pawn from the provided GrsPawn
+ABmrPawn* UGrsPawnHelper::GetOwningBmrPawn(class AGrsPawn* GrsPawn)
+{
+	UGrsPawnComponent* OwningPawnComponent = GrsPawn->GetOwningPawnComponent();
+	ABmrPawn* PlayerCharacter = Cast<ABmrPawn>(OwningPawnComponent->GetOwner());
+	return PlayerCharacter;
 }

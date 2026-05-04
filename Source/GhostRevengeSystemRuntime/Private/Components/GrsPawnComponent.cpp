@@ -62,7 +62,8 @@ void UGrsPawnComponent::BeginPlay()
 	UE_LOG(LogTemp, Log, TEXT("UGrsPawnComponent::BeginPlay  --- %s - %s"), *this->GetName(), GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
 	WorldSubsystem.RegisterPawnComponent(this);
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
+
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::Player_PawnReady);
 }
 
 // Clears all transient data created by this component
@@ -89,6 +90,18 @@ void UGrsPawnComponent::OnUnregister()
 	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
 
 	Super::OnUnregister();
+}
+
+// Event that fires when any pawn is spawned, possessed, and replicated, obtain pawn from Payload.Instigator
+void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payload)
+{
+	const ABmrPawn* OwnerBmrPawn = Cast<ABmrPawn>(GetOwner());
+	const ABmrPawn* InstigatorPawn = Cast<ABmrPawn>(Payload.Instigator);
+
+	if (OwnerBmrPawn == InstigatorPawn)
+	{
+		UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
+	}
 }
 
 // A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required
@@ -132,8 +145,8 @@ void UGrsPawnComponent::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectDa
 		AGrsPawn& GhostCharacter = CreatedObject.GetChecked<AGrsPawn>();
 		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
-		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
 		GhostCharacter.RegisterPawnComponent(this);
+		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
 
 		FBmrCell ActorSpawnLocation;
 		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);

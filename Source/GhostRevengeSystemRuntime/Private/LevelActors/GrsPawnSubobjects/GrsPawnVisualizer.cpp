@@ -8,6 +8,7 @@
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/GrsPawnComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SplineComponent.h"
@@ -21,6 +22,7 @@
 #include "LevelActors/GrsPawn.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "Utils/GrsPawnHelper.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)
@@ -100,7 +102,7 @@ void FGrsPawnVisualizer::InitPlayerMesh(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
-	const ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+	ABmrPawn* PlayerCharacter = UGrsPawnHelper::GetOwningBmrPawn(GrsPawn);
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
 	const FBmrPlayerRow* Row = FBmrPlayerRow::GetFirstRow();
@@ -121,7 +123,7 @@ void FGrsPawnVisualizer::InitCharacterVisual(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
-	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+	ABmrPawn* PlayerCharacter = UGrsPawnHelper::GetOwningBmrPawn(GrsPawn);
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
 	if (USkeletalMeshComponent* MeshComp = GrsPawn->GetMesh())

@@ -53,6 +53,10 @@ public:
 	/** Sets default values for this character's properties */
 	AGrsPawn(const FObjectInitializer& ObjectInitializer);
 
+	/** Obtain owning pawn component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	FORCEINLINE class UGrsPawnComponent* GetOwningPawnComponent() { return OwningPawnComponent; }
+
 protected:
 	/** 3D widget component that displays the player name above the character */
 	FGrsPawnPlayerNickNameWidgetComponent PlayerNickName3DWidgetComponent;

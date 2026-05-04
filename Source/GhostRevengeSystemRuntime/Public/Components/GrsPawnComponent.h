@@ -48,7 +48,11 @@ protected:
 
 	/** Clears all transient data created by this component */
 	virtual void OnUnregister() override;
-
+	
+	/** Event that fires when any pawn is spawned, possessed, and replicated, obtain pawn from Payload.Instigator */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void Player_PawnReady(const struct FGameplayEventData& Payload);
+	
 	/** A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
