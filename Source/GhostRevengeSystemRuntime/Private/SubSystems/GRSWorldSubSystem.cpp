@@ -65,7 +65,7 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventDat
 	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
-	
+
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
@@ -290,6 +290,26 @@ void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnC
 TArray<class UGrsPawnComponent*> UGRSWorldSubSystem::GetPawnComponents() const
 {
 	return PawnComponents;
+}
+
+// Returns pawn component by player ID that needed for the GrsPawn to initialize
+class UGrsPawnComponent* UGRSWorldSubSystem::GetPawnComponentByPlayerID(int32 PlayerID) const
+{
+	if (!ensureMsgf(PlayerID >= 0, TEXT("ASSERT: [%i] %hs:\n'PlayerID' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+
+	for (TObjectPtr<class UGrsPawnComponent> PawnComponent : PawnComponents)
+	{
+		ABmrPawn* BmrPawn = Cast<ABmrPawn>(PawnComponent->GetOwner());
+
+		if (BmrPawn && BmrPawn->GetPlayerId() == PlayerID)
+		{
+			return PawnComponent;
+		}
+	}
+	return nullptr;
 }
 
 // Clears the registered pawn component once it deleted

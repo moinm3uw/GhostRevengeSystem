@@ -29,11 +29,6 @@ public:
 	ABmrPawn* GetBmrPawn() const;
 	ABmrPawn& GetBmrPawnChecked() const;
 
-	/** Returns GrsPlayerStateComponent obtaining from pawn's player id */
-	//UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	//class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
-	//class UGrsPlayerStateComponent* GetGrsPlayerStateComponentChecked() const;
-
 	/*********************************************************************************************
 	 * Main functionality (core loop)
 	 **********************************************************************************************/

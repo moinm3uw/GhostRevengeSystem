@@ -14,6 +14,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GrsPawn.h"
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
+#include "Structures/BmrGameplayTags.h"
+#include "Subsystems/GlobalMessageSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
@@ -64,6 +66,8 @@ void UGrsPlayerControllerComponent::BeginPlay()
 
 	UGRSWorldSubSystem::Get().RegisterPlayerControllerComponent(this);
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
+	
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Clears all transient data created by this component
@@ -87,13 +91,14 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
-		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(GetCurrentPawn());
+		APawn* CurrentPossessedPawn = GetCurrentPawn();
+		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(CurrentPossessedPawn);
 		if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))
 		{
 			return;
 		}
 
-		if (MainBmrPlayerPawn && MainBmrPlayerPawn != CurrentPawn)
+		if (MainBmrPlayerPawn != CurrentPawn)
 		{
 			MainBmrPlayerPawn = CurrentPawn;
 		}

@@ -38,22 +38,6 @@ ABmrPawn& UGrsPawnComponent::GetBmrPawnChecked() const
 	return *MyBmrPawn;
 }
 
-/*
-// Returns GrsPlayerStateComponent obtaining from pawn's player id
-UGrsPlayerStateComponent* UGrsPawnComponent::GetGrsPlayerStateComponent() const
-{
-    return UGRSWorldSubSystem::Get().GetPlayerStateComponent(GetBmrPawn()->GetPlayerId());
-}
-
-
-UGrsPlayerStateComponent* UGrsPawnComponent::GetGrsPlayerStateComponentChecked() const
-{
-    UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
-    checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' is null"), *FString(__FUNCTION__));
-    return GrsPlayerStateComponent;
-}
-*/
-
 // Called when the game starts
 void UGrsPawnComponent::BeginPlay()
 {
@@ -69,6 +53,8 @@ void UGrsPawnComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPawnComponent::OnUnregister()
 {
+	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
+	
 	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();

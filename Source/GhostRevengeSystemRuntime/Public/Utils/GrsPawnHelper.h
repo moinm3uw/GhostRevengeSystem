@@ -29,8 +29,8 @@ public:
 	/** Obtains player state from the provided playerID */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static class APlayerState* GetPlayerStateForPlayerID(const class AGrsPawn* GrsPawn);
-	
-	/** Obtains bmr player pawn from the provided GrsPawn */
+
+	/** Obtains bmr pawn from the provided GrsPawn */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	static class ABmrPawn* GetOwningBmrPawn(class AGrsPawn* GrsPawn);
 };

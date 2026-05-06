@@ -80,10 +80,14 @@ APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* Gr
 	return FoundPlayerState;
 }
 
-// Obtains bmr player pawn from the provided GrsPawn
+// Obtains bmr pawn from the provided GrsPawn
 ABmrPawn* UGrsPawnHelper::GetOwningBmrPawn(class AGrsPawn* GrsPawn)
 {
-	UGrsPawnComponent* OwningPawnComponent = GrsPawn->GetOwningPawnComponent();
-	ABmrPawn* PlayerCharacter = Cast<ABmrPawn>(OwningPawnComponent->GetOwner());
-	return PlayerCharacter;
+	UGrsPawnComponent* OwningPawnComponent = UGRSWorldSubSystem::Get().GetPawnComponentByPlayerID(GrsPawn->GetPlayerID());
+	if (!ensureMsgf(OwningPawnComponent, TEXT("ASSERT: [%i] %hs:\n'OwningPawnComponent' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+	ABmrPawn* BmrPawn = Cast<ABmrPawn>(OwningPawnComponent->GetOwner());
+	return BmrPawn;
 }

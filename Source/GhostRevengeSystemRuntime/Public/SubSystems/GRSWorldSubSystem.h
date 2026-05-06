@@ -165,6 +165,10 @@ public:
 	/** Returns all available Pawn */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	TArray<class UGrsPawnComponent*> GetPawnComponents() const;
+	
+	/** Returns pawn component by player ID that needed for the GrsPawn to initialize */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	class UGrsPawnComponent* GetPawnComponentByPlayerID(int32 PlayerID) const;
 
 	/** Clears the registered pawn component once it deleted  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
