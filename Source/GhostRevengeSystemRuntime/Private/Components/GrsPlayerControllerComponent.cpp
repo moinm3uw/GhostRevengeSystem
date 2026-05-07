@@ -91,6 +91,7 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
+		AActor* CurrentOnwer = GetOwner();
 		APawn* CurrentPossessedPawn = GetCurrentPawn();
 		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(CurrentPossessedPawn);
 		if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))

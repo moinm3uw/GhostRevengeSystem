@@ -166,6 +166,7 @@ void AGrsPawn::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledN
 
 		if (CurrentPlayerController->HasAuthority())
 		{
+			
 			CurrentPlayerController->UnPossess();
 			ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
 			if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
