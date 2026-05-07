@@ -37,17 +37,17 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGrsPawn : public ACharacter
     , public IAbilitySystemInterface
 {
 	GENERATED_BODY()
+public:
+	/** Obtains players state from the cached and replicated PlayerID  */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
+	class UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
 
 protected:
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-
-	/** Obtains players state from the cached and replicated PlayerID  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
-	class UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
 
 public:
 	/** Sets default values for this character's properties */
@@ -62,6 +62,7 @@ protected:
 	FGrsPawnPlayerNickNameWidgetComponent PlayerNickName3DWidgetComponent;
 
 	/** 3D Static mesh component that displays the arrow above the local player during match start. */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	FGrsPawnArrowStartWidgetComponent ArrowStartWidgetComponent;
 
 	/** A GrsPawnComponent that spawned this pawn */
@@ -107,10 +108,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	/** Is increased when this player kills an opponent */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
-
 	/** Listen game states to remove ghost character from level */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
@@ -148,7 +145,7 @@ protected:
 
 	/** Remove ghost character from the level when clean up or ghost kills a player */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RemoveGhostCharacterFromMap();
+	void HideGhostCharacterFromMap();
 
 	/** Clean up the character for the MGF unload */
 	void PerformCleanUp();

@@ -2,6 +2,7 @@
 
 #include "Components/GrsPlayerControllerComponent.h"
 
+#include "Components/GrsPlayerStateComponent.h"
 #include "Controllers/BmrPlayerController.h"
 #include "DalSubsystem.h"
 #include "Data/GRSDataAsset.h"
@@ -10,13 +11,15 @@
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
+#include "GameFramework/BmrPlayerState.h"
 #include "GrsUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelActors/GrsPawn.h"
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
 #include "Structures/BmrGameplayTags.h"
-#include "Subsystems/GlobalMessageSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
+#include "Subsystems/GlobalMessageSubsystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
@@ -66,16 +69,14 @@ void UGrsPlayerControllerComponent::BeginPlay()
 
 	UGRSWorldSubSystem::Get().RegisterPlayerControllerComponent(this);
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
-	
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Clears all transient data created by this component
 void UGrsPlayerControllerComponent::OnUnregister()
 {
-	DisableGhostInputs();
-	// --- unpossess back to a pawn
-	UnpossessGhostPawn();
+	DisableGhostInputs(); // --- disables ghost input on local client
+	UnpossessGhostPawn(); // --- unpossess ghost pawn
 
 	Super::OnUnregister();
 }
@@ -91,7 +92,14 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
-		AActor* CurrentOnwer = GetOwner();
+		ABmrPlayerState* BmrPlayerState = GetPlayerControllerChecked().GetPlayerState<ABmrPlayerState>();
+		if (!ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+
+		AActor* CurrentOwner = GetOwner();
 		APawn* CurrentPossessedPawn = GetCurrentPawn();
 		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(CurrentPossessedPawn);
 		if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))
@@ -103,6 +111,44 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const stru
 		{
 			MainBmrPlayerPawn = CurrentPawn;
 		}
+	}
+}
+
+// Is increased when this player kills an opponent
+void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledNum)
+{
+	// --- ignore reset cases
+	if (OpponentsKilledNum < 1)
+	{
+		return;
+	}
+
+	ReviveCharacter(); // --- revive main player character
+	DisableGhostInputs(); // --- disables ghost input on local client
+	UnpossessGhostPawn(); // --- unpossess ghost pawn
+}
+
+// Revives main player character when a ghost eliminates an enemy on level including bots
+void UGrsPlayerControllerComponent::ReviveCharacter()
+{
+	// --- unpossess on server when ghost eliminates a player (even if Grs eliminated a bot player)
+	ABmrPlayerController& BmrPlayerController = GetPlayerControllerChecked();
+	if (BmrPlayerController.HasAuthority())
+	{
+		AGrsPawn* GrsPawn = Cast<AGrsPawn>(BmrPlayerController.GetPawn());
+		if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+
+		ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+
+		UGrsPlayerStateComponent& GrsPlayerStateComponent = GrsPawn->GetGrsPlayerStateComponentChecked();
+		GrsPlayerStateComponent.RevivePlayerCharacter(PlayerCharacter);
 	}
 }
 
@@ -178,17 +224,6 @@ void UGrsPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn*
 		if (GhostCharacter)
 		{
 			SetManagedInputContextEnabled(GetPlayerController(), true);
-		}
-	}
-
-	// --- case 2: unpossess ghost character (OldPawn is a ghost character)
-	if (OldPawn)
-	{
-		AGrsPawn* GhostCharacter = Cast<AGrsPawn>(OldPawn);
-		if (GhostCharacter)
-		{
-			UnpossessGhostPawn();
-			DisableGhostInputs();
 		}
 	}
 }

@@ -19,6 +19,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
+#include "PoolManagerSubsystem.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
@@ -39,8 +40,8 @@ UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const
 // Obtains players state from the cached and replicated PlayerID
 class UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 {
-	APlayerState* MyPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
-	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
+	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
+	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UGrsPawnHelper::GetPlayerStateForPlayerID!"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
 	}
@@ -55,7 +56,7 @@ class UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 // Obtains players state from the cached and replicated PlayerID
 UGrsPlayerStateComponent& AGrsPawn::GetGrsPlayerStateComponentChecked() const
 {
-	APlayerState* MyPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
+	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
 	checkf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
 
 	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
@@ -143,58 +144,16 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 	PlayerNickName3DWidgetComponent.InitializePlayerNameWidget(this); // somehow should be hidden as well.
 }
 
-// Is increased when this player kills an opponent
-void AGrsPawn::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledNum)
-{
-	// --- ignore reset cases
-	if (OpponentsKilledNum < 1)
-	{
-		return;
-	}
-
-	RemoveGhostCharacterFromMap(); // remove on clients and server ghost from map
-
-	// --- unpossess on server when ghost eliminates a player (even if bot)
-	if (HasAuthority())
-	{
-		// --- ghost eliminates a player - remove ghost from map
-		ABmrPlayerController* CurrentPlayerController = Cast<ABmrPlayerController>(GetController());
-		if (!ensureMsgf(CurrentPlayerController, TEXT("ASSERT: [%i] %hs:\n'CurrentPlayerController' is no longer available for Grs Pawn!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-
-		if (CurrentPlayerController->HasAuthority())
-		{
-			
-			CurrentPlayerController->UnPossess();
-			ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
-			if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
-			{
-				return;
-			}
-			UGrsPlayerStateComponent& GrsPlayerStateComponent = GetGrsPlayerStateComponentChecked();
-			GrsPlayerStateComponent.RevivePlayerCharacter(PlayerCharacter);
-		}
-	}
-}
-
 // Listen game states to remove ghost character from level
 void AGrsPawn::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
 {
 	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame) || !Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
-		// -- release (unpossess) all ghosts
-		RemoveGhostCharacterFromMap();
+		HideGhostCharacterFromMap();
 	}
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
-		ABmrPlayerState* BmrPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
-		if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' is not set!"), __LINE__, __FUNCTION__))
-		{
-			BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
-		}
 	}
 }
 
@@ -312,8 +271,7 @@ void AGrsPawn::UnPossessed()
 {
 	Super::UnPossessed();
 
-	FGrsPawnVisualizer::SetVisibility(this, false);
-	ArrowStartWidgetComponent.SetArrowEnabled(false);
+	HideGhostCharacterFromMap(); // remove on clients and server ghost from map
 }
 
 // APawn Interface when this pawn was possessed by a new controller
@@ -358,46 +316,34 @@ void AGrsPawn::OnRep_PlayerState()
 // Refresh and enable this pawn
 void AGrsPawn::RefreshPawn()
 {
-	GetMesh()->SetVisibility(true, true);
+	FGrsPawnVisualizer::SetVisibility(this, true);
 	AimingComponent.ClearTrajectorySplines();
-	ArrowStartWidgetComponent.SetArrowEnabled(true);
 	AimingComponent.AimingSphereComponent->SetVisibility(true);
+	ArrowStartWidgetComponent.SetArrowEnabled(true);
 }
 
 // Remove ghost character from the level
-void AGrsPawn::RemoveGhostCharacterFromMap()
+void AGrsPawn::HideGhostCharacterFromMap()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- RemoveGhostCharacterFromMap Started"), __LINE__, __FUNCTION__);
-	// --- move all functional part such as posses to ability
-	// --- possess back to player character for any cases
-	// PlayerCharacter->GetMeshComponentChecked().SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-
-	// --- disable aiming sphere component
-	AimingComponent.AimingSphereComponent->SetVisibility(false);
-
-	// --- reset bindings
-
-	ABmrPlayerState* BmrPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(PlayerID);
-	if (ensureMsgf(BmrPlayerState, TEXT("ASSERT: [%i] %hs:\n'BmrPlayerState' fail to obtain from player ID! %i"), __LINE__, __FUNCTION__, PlayerID))
-	{
-		if (BmrPlayerState->OnOpponentsKilledNumChanged.IsBound())
-		{
-			BmrPlayerState->OnOpponentsKilledNumChanged.RemoveDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
-		}
-	}
-
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
+	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- HideGhostCharacterFromMap Started"), __LINE__, __FUNCTION__);
 
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
 	// --- update collision mod of this pawn if needed
+
+	FGrsPawnVisualizer::SetVisibility(this, false);
+	AimingComponent.ClearTrajectorySplines();
+	AimingComponent.AimingSphereComponent->SetVisibility(false);
+	ArrowStartWidgetComponent.SetArrowEnabled(false);
+
+	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 }
 
 //  Clean up the character for the MGF unload
 void AGrsPawn::PerformCleanUp()
 {
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
-	RemoveGhostCharacterFromMap();
+	HideGhostCharacterFromMap();
 
 	AimingComponent.PerformCleanUp();
 
@@ -407,6 +353,12 @@ void AGrsPawn::PerformCleanUp()
 	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
 	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 	UGRSWorldSubSystem::Get().ResetRevivedPlayers();
+
+	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
+	if (PoolManager)
+	{
+		PoolManager->ReturnToPool(this);
+	}
 }
 
 /*********************************************************************************************

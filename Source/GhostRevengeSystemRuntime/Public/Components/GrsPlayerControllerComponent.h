@@ -47,6 +47,14 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
+	/** Is increased when this player kills an opponent */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
+
+	/** Revives main player character when a ghost eliminates an enemy on level including bots */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void ReviveCharacter();
+
 public:
 	/** Unpossess current pawn from ghost to BmwPlayerPawn */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
