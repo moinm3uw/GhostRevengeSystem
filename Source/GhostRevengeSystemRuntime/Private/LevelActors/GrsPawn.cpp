@@ -7,6 +7,8 @@
 #include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
 #include "Components/BmrMapComponent.h"
+#include "Components/BmrPlayerArrowStartComponent.h"
+#include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "Components/GrsCharacterManagerComponent.h"
 #include "Components/GrsPawnComponent.h"
@@ -25,7 +27,6 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "Utils/GrsPawnHelper.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
@@ -90,9 +91,26 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 	// --- Setup capsule component
 	FGrsPawnVisualizer::InitCapsuleComponent(this);
 
-	PlayerNickName3DWidgetComponent.SetupWidget(this); // --- Initialize 3D widget component for the player name
-	ArrowStartWidgetComponent.InitArrowStartWidgetComponent(this); // --- Initialize 3D player arrow widget component that appears on top of character when player start to control it
+	PlayerNickName3DWidgetComponent = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
+	PlayerNickName3DWidgetComponent->SetupAttachment(GetRootComponent());
+
+	// --- Initialize 3D player arrow widget component that appears on top of character when player start to control it
+	PlayerArrowStartComponent = CreateDefaultSubobject<UBmrPlayerArrowStartComponent>(TEXT("PlayerArrowStartWidgetComponent"));
+	PlayerArrowStartComponent->SetupAttachment(GetRootComponent());
+
 	AimingComponent.SetupSplineComponent(this); // --- Initial setup of spline component and aiming sphere
+}
+
+// Initialize player name widget (on top of character)
+void AGrsPawn::InitializePlayerNameWidget()
+{
+	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(UGrsPawnHelper::GetPlayerStateForPlayerID(this));
+	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	PlayerNickName3DWidgetComponent->Init(MyPlayerState);
 }
 
 // Returns properties that are replicated for the lifetime of the actor channel
@@ -141,7 +159,7 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
 	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	PlayerNickName3DWidgetComponent.InitializePlayerNameWidget(this); // somehow should be hidden as well.
+	InitializePlayerNameWidget();
 }
 
 // Listen game states to remove ghost character from level
@@ -221,14 +239,6 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* Fro
 
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	FGrsPawnVisualizer::SetVisibility(this, true);
-
-	// --- clients calls:
-	// --- update collision settings
-	// --- activate arrow
-
-	// --- just refresh visibility of player name needed, to be changed. Player name to be set by default
-	// ABmrPlayerState* BmrPlayerState = Cast<ABmrPlayerState>(FromPlayerCharacter->GetPlayerState());
-	// UpdatePlayerName(BmrPlayerState);
 
 	// --- authority calls:
 	TryPossessController(PlayerController);
@@ -319,7 +329,7 @@ void AGrsPawn::RefreshPawn()
 	FGrsPawnVisualizer::SetVisibility(this, true);
 	AimingComponent.ClearTrajectorySplines();
 	AimingComponent.AimingSphereComponent->SetVisibility(true);
-	ArrowStartWidgetComponent.SetArrowEnabled(true);
+	PlayerArrowStartComponent->SetArrowEnabled(true);
 }
 
 // Remove ghost character from the level
@@ -334,7 +344,7 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	FGrsPawnVisualizer::SetVisibility(this, false);
 	AimingComponent.ClearTrajectorySplines();
 	AimingComponent.AimingSphereComponent->SetVisibility(false);
-	ArrowStartWidgetComponent.SetArrowEnabled(false);
+	PlayerArrowStartComponent->SetArrowEnabled(false);
 
 	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 }

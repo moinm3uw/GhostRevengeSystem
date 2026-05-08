@@ -7,8 +7,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "GrsPawnSubobjects/GrsPawnAimingComponent.h"
-#include "GrsPawnSubobjects/GrsPawnArrowStartWidgetComponent.h"
-#include "GrsPawnSubobjects/GrsPawnPlayerNickNameWidgetComponent.h"
 #include "Kismet/GameplayStaticsTypes.h"
 #include "Net/UnrealNetwork.h"
 
@@ -59,11 +57,28 @@ public:
 
 protected:
 	/** 3D widget component that displays the player name above the character */
-	FGrsPawnPlayerNickNameWidgetComponent PlayerNickName3DWidgetComponent;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
+	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerNickName3DWidgetComponent = nullptr;
+	
+	/** Initialize player name widget (on top of character) */
+	void InitializePlayerNameWidget();
 
+public:
+	/** Returns the 3D widget component that displays the player name above the character. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerNameNick3DWidgetComponent() const { return PlayerNickName3DWidgetComponent; }
+
+protected:
 	/** 3D Static mesh component that displays the arrow above the local player during match start. */
-	FGrsPawnArrowStartWidgetComponent ArrowStartWidgetComponent;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TObjectPtr<class UBmrPlayerArrowStartComponent> PlayerArrowStartComponent = nullptr;
 
+public:
+	/** Returns static mesh component that displays the arrow above the local player during match start. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE class UBmrPlayerArrowStartComponent* GetPlayerArrowStartWidgetComponent() const { return PlayerArrowStartComponent; }
+
+protected:
 	/** A GrsPawnComponent that spawned this pawn */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Owning Grs Pawn Component"))
 	class UGrsPawnComponent* OwningPawnComponent = nullptr;
