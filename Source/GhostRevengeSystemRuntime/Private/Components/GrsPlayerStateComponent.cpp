@@ -5,15 +5,18 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "Actors/BmrPawn.h"
+#include "Controllers/BmrPlayerController.h"
 #include "Data/GRSDataAsset.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GrsGameplayTags.h"
+#include "LevelActors/GrsPawn.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
@@ -31,17 +34,17 @@ ABmrPlayerState* UGrsPlayerStateComponent::GetCurrentPlayerState() const
 	return Cast<ABmrPlayerState>(GetOwner());
 }
 
-ABmrPlayerState* UGrsPlayerStateComponent::GetCurrentPlayerStateChecked() const
+ABmrPlayerState& UGrsPlayerStateComponent::GetCurrentPlayerStateChecked() const
 {
 	ABmrPlayerState* InPlayerState = GetCurrentPlayerState();
 	checkf(InPlayerState, TEXT("ERROR: [%i] %hs:\n'InPlayerState' is null!"), __LINE__, __FUNCTION__);
-	return InPlayerState;
+	return *InPlayerState;
 }
 
 //  Checks if player state has authority
 bool UGrsPlayerStateComponent::HasAuthority()
 {
-	return GetCurrentPlayerStateChecked()->HasAuthority();
+	return GetCurrentPlayerStateChecked().HasAuthority();
 }
 
 // Called when the game starts
@@ -66,6 +69,12 @@ void UGrsPlayerStateComponent::OnUnregister()
 	if (AppliedBombSpawnEffectHandle.IsValid())
 	{
 		AppliedBombSpawnEffectHandle.Invalidate();
+	}
+
+	ABmrPlayerState* BmrPlayerState = GetCurrentPlayerState();
+	if (BmrPlayerState && BmrPlayerState->OnOpponentsKilledNumChanged.IsBound())
+	{
+		BmrPlayerState->OnOpponentsKilledNumChanged.RemoveDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
 }
 
@@ -94,6 +103,48 @@ void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const struct FG
 	{
 		GrantPlayerReviveEffect();
 	}
+
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	{
+		ABmrPlayerState& BmrPlayerState = GetCurrentPlayerStateChecked();
+		BmrPlayerState.OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+	}
+}
+
+// Is increased when this player kills an opponent
+void UGrsPlayerStateComponent::OnOpponentsKilledNumChanged_Implementation(int32 OpponentsKilledNum)
+{
+	// --- ignore reset cases
+	if (OpponentsKilledNum < 1)
+	{
+		return;
+	}
+
+	ReviveCharacter(); // --- revive main player character
+}
+
+// Revives main player character when a ghost eliminates an enemy on level including bots
+void UGrsPlayerStateComponent::ReviveCharacter()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	APawn& CurrentPawn = GetCurrentPlayerStateChecked().GetPawnChecked();
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn);
+
+	if (!GrsPawn || GrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
+	{
+		return;
+	}
+
+	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	RevivePlayerCharacter(PlayerCharacter);
 }
 
 // Returns the Ability System Component from the Player State

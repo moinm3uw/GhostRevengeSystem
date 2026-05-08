@@ -25,7 +25,7 @@ public:
 	/** Returns the player state from attached BmrPlayerState component */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	class ABmrPlayerState* GetCurrentPlayerState() const;
-	class ABmrPlayerState* GetCurrentPlayerStateChecked() const;
+	class ABmrPlayerState& GetCurrentPlayerStateChecked() const;
 
 	/** Checks if player state has authority */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -45,6 +45,14 @@ protected:
 	/** Listen game states to grant revive ability for player character  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
+	
+	/** Is increased when this player kills an opponent */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
+	
+	/** Revives main player character when a ghost eliminates an enemy on level including bots */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void ReviveCharacter();
 
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */

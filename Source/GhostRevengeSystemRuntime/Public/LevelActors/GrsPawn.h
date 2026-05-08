@@ -62,7 +62,6 @@ protected:
 	FGrsPawnPlayerNickNameWidgetComponent PlayerNickName3DWidgetComponent;
 
 	/** 3D Static mesh component that displays the arrow above the local player during match start. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	FGrsPawnArrowStartWidgetComponent ArrowStartWidgetComponent;
 
 	/** A GrsPawnComponent that spawned this pawn */

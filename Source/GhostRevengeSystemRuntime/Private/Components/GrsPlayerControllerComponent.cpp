@@ -123,33 +123,8 @@ void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(i
 		return;
 	}
 
-	ReviveCharacter(); // --- revive main player character
 	DisableGhostInputs(); // --- disables ghost input on local client
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
-}
-
-// Revives main player character when a ghost eliminates an enemy on level including bots
-void UGrsPlayerControllerComponent::ReviveCharacter()
-{
-	// --- unpossess on server when ghost eliminates a player (even if Grs eliminated a bot player)
-	ABmrPlayerController& BmrPlayerController = GetPlayerControllerChecked();
-	if (BmrPlayerController.HasAuthority())
-	{
-		AGrsPawn* GrsPawn = Cast<AGrsPawn>(BmrPlayerController.GetPawn());
-		if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not valid!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-
-		ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
-		if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-
-		UGrsPlayerStateComponent& GrsPlayerStateComponent = GrsPawn->GetGrsPlayerStateComponentChecked();
-		GrsPlayerStateComponent.RevivePlayerCharacter(PlayerCharacter);
-	}
 }
 
 // Unpossess current pawn from ghost to BmwPlayerPawn
