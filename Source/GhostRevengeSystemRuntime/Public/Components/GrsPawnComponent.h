@@ -9,7 +9,10 @@
 #include "GrsPawnComponent.generated.h"
 
 /**
- * Component attached to main BmrPawn to track their state
+ * Component attached to main BmrPawn to spawn ghost player as MGF ready.
+ * Is part of overall MGF loading. If component will not be registered module will not be considered as loaded.
+ * On owning BmrPawn readiness events listens overall GhostRevengeSystem MGF load with primarily goal to spawn, init GrsPawns and place in world.
+ * Initialization sets replicated PlayerID for each spawned pawn.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnComponent : public UActorComponent
@@ -43,22 +46,22 @@ protected:
 
 	/** Clears all transient data created by this component */
 	virtual void OnUnregister() override;
-	
+
 	/** Event that fires when any pawn is spawned, possessed, and replicated, obtain pawn from Payload.Instigator */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void Player_PawnReady(const struct FGameplayEventData& Payload);
-	
+
 	/** A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	/** Add ghost character to the current active game (on level map) */
+	/** Spawn ghost character when a module is initialized */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void AddGhostCharacter();
 
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
-	 * @param CreatedObjects - Handles of objects from Pool Manager
+	 * @param CreatedGhostPawns - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects);
+	void OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns);
 };

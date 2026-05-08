@@ -11,7 +11,8 @@
 enum class EBmrCurrentGameState : uint8;
 
 /**
- * Actor component attached to game state to spawn ghost characters
+ * Actor component attached to game state to load data asset file from disk.
+ * Is part of overall MGF loading. If component will not be registered module will not be considered as loaded.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsCharacterManagerComponent : public UActorComponent

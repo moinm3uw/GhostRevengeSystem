@@ -41,12 +41,6 @@ ABmrPlayerState& UGrsPlayerStateComponent::GetCurrentPlayerStateChecked() const
 	return *InPlayerState;
 }
 
-//  Checks if player state has authority
-bool UGrsPlayerStateComponent::HasAuthority()
-{
-	return GetCurrentPlayerStateChecked().HasAuthority();
-}
-
 // Called when the game starts
 void UGrsPlayerStateComponent::BeginPlay()
 {
@@ -82,8 +76,6 @@ void UGrsPlayerStateComponent::OnUnregister()
 void UGrsPlayerStateComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
-	ApplyBombSpawningGameplayEffect();
 }
 
 // Listen game states to grant revive ability for player character
@@ -94,18 +86,17 @@ void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const struct FG
 		return;
 	}
 
-	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
-	{
-		RemoveAppliedReviveGameplayEffect();
-	}
-
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
-		GrantPlayerReviveEffect();
+		RemoveBombSpawningGameplayEffect();
+		RemoveAppliedReviveGameplayEffect();
 	}
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
+		ApplyBombSpawningGameplayEffect();
+		GrantPlayerReviveEffect();
+
 		ABmrPlayerState& BmrPlayerState = GetCurrentPlayerStateChecked();
 		BmrPlayerState.OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
@@ -120,18 +111,18 @@ void UGrsPlayerStateComponent::OnOpponentsKilledNumChanged_Implementation(int32 
 		return;
 	}
 
-	ReviveCharacter(); // --- revive main player character
+	TryReviveCharacter(); // --- revive main player character
 }
 
-// Revives main player character when a ghost eliminates an enemy on level including bots
-void UGrsPlayerStateComponent::ReviveCharacter()
+// Tries to revive main player character when a ghost eliminates an enemy on level including elimination of bots
+void UGrsPlayerStateComponent::TryReviveCharacter()
 {
-	if (!HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
 	APawn& CurrentPawn = GetCurrentPlayerStateChecked().GetPawnChecked();
-	AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn);
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn); // --- if no grs pawn means elimination was done by a player not ghost
 
 	if (!GrsPawn || GrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
 	{
@@ -161,7 +152,7 @@ UAbilitySystemComponent* UGrsPlayerStateComponent::GetAbilitySystemComponent() c
 // Apply review ability that will restore regular player character
 void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 {
-	if (!HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
@@ -189,7 +180,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 // Grant to a player revive GAS effect
 void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 {
-	if (HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
@@ -210,7 +201,7 @@ void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 // To Remove Revive applied gameplay effect
 void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 {
-	if (HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
@@ -245,7 +236,7 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 //  To apply explosion (bomb spawning) gameplay effect
 void UGrsPlayerStateComponent::ApplyBombSpawningGameplayEffect()
 {
-	if (!HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
@@ -269,7 +260,7 @@ void UGrsPlayerStateComponent::ApplyBombSpawningGameplayEffect()
 // To Remove applied explosion (bomb spawning) gameplay effect
 void UGrsPlayerStateComponent::RemoveBombSpawningGameplayEffect()
 {
-	if (!HasAuthority())
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}

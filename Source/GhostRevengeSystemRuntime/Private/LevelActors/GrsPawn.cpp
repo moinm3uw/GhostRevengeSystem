@@ -27,6 +27,7 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "Utils/GrsPawnHelper.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
@@ -70,11 +71,11 @@ UGrsPlayerStateComponent& AGrsPawn::GetGrsPlayerStateComponentChecked() const
 AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<UBmrSkeletalMeshComponent>(MeshComponentName)) // Init UBmrSkeletalMeshComponent instead of USkeletalMeshComponent
 {
-	// --- Set default character parameters such as bCanEverTick, bStartWithTickEnabled, replication etc.
+	// --- Has movement that requires tick and also a player 3d arrow widget also playing animation in tick.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	// --- Replicate an actor
+	// --- Pawn is required to be replicated as it spawned on server and replicated to the clients
 	bReplicates = true;
 	bAlwaysRelevant = true;
 	SetReplicatingMovement(true);
@@ -91,14 +92,16 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 	// --- Setup capsule component
 	FGrsPawnVisualizer::InitCapsuleComponent(this);
 
+	// --- Setup player nickname 3d Widget (on top of player)
 	PlayerNickName3DWidgetComponent = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
 	PlayerNickName3DWidgetComponent->SetupAttachment(GetRootComponent());
 
-	// --- Initialize 3D player arrow widget component that appears on top of character when player start to control it
+	// --- Initialize 3D player arrow widget component that appears on top of character when a player start to control it
 	PlayerArrowStartComponent = CreateDefaultSubobject<UBmrPlayerArrowStartComponent>(TEXT("PlayerArrowStartWidgetComponent"));
 	PlayerArrowStartComponent->SetupAttachment(GetRootComponent());
 
-	AimingComponent.SetupSplineComponent(this); // --- Initial setup of spline component and aiming sphere
+	// --- Initial setup of spline component and aiming sphere
+	AimingComponent.SetupSplineComponent(this);
 }
 
 // Initialize player name widget (on top of character)
@@ -149,51 +152,36 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 // The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
 void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 {
-	AimingComponent.InitAimingSphere();
-
-	// --- bind to  clear ghost data
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
 	// --- default params required for the fist start to have character prepared
 	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
 	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+
+	AimingComponent.InitAimingSphere();
 	InitializePlayerNameWidget();
+
+	// --- bind to clear ghost data
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
+
+	// --- listens to event when BmrPawn controller by player was eliminated on level
+	ABmrPawn* MyPawn = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
+	if (MyPawn)
+	{
+		UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyPawn);
+		if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+
+		MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+	}
 }
 
 // Listen game states to remove ghost character from level
 void AGrsPawn::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
 {
-	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame) || !Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
-	{
-		HideGhostCharacterFromMap();
-	}
-
-	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
-	{
-	}
-}
-
-//  Register owning pawn component
-void AGrsPawn::RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent)
-{
-	if (NewPawnComponent || OwningPawnComponent != NewPawnComponent)
-	{
-		OwningPawnComponent = NewPawnComponent;
-
-		ABmrPawn* MyPawn = &OwningPawnComponent->GetBmrPawnChecked();
-		if (MyPawn)
-		{
-			UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyPawn);
-			if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
-			{
-				return;
-			}
-
-			MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
-		}
-	}
+	HideGhostCharacterFromMap();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -267,23 +255,6 @@ void AGrsPawn::TryPossessController(AController* PlayerController)
 	PlayerController->Possess(this);
 }
 
-// Overridable function called whenever this actor is being removed from a level
-void AGrsPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-
-	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
-	PerformCleanUp();
-}
-
-// APawn Interface when this pawn was unpossessed
-void AGrsPawn::UnPossessed()
-{
-	Super::UnPossessed();
-
-	HideGhostCharacterFromMap(); // remove on clients and server ghost from map
-}
-
 // APawn Interface when this pawn was possessed by a new controller
 void AGrsPawn::PossessedBy(AController* NewController)
 {
@@ -323,6 +294,23 @@ void AGrsPawn::OnRep_PlayerState()
 	RefreshPawn();
 }
 
+// Overridable function called whenever this actor is being removed from a level
+void AGrsPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
+	PerformCleanUp();
+}
+
+// APawn Interface when this pawn was unpossessed
+void AGrsPawn::UnPossessed()
+{
+	Super::UnPossessed();
+
+	HideGhostCharacterFromMap(); // remove on clients and server ghost from map
+}
+
 // Refresh and enable this pawn
 void AGrsPawn::RefreshPawn()
 {
@@ -357,7 +345,6 @@ void AGrsPawn::PerformCleanUp()
 
 	AimingComponent.PerformCleanUp();
 
-	OwningPawnComponent = nullptr;
 	PlayerID = 0;
 
 	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references

@@ -27,8 +27,17 @@ enum class EGRSCharacterSide : uint8
 };
 
 /**
- * Ghost Players (only for players, no AI) whose goal is to perform revenge as ghost (spawned on side of map).
- * Copy the died player mesh and skin.
+ * Ghost Pawns is a 2nd chance for eliminated player to come back into the game.
+ * They are spawned on the side of the map and can spawn bomb to the main level. By eliminating a player/bot they will be revived back to level.
+ * Ghosts can be only players, no AI\bots.
+ * Holds a replicated PlayerID so that they can copy eliminated player visuals ( mesh,  applied, skin, animation, nickname etc).
+ *
+ * As GrsPawn is spawned it's being initialized with replicated PlayerID and with initial character location.
+ * Initialization with PlayerID means that the pawn is ready for further initiation.
+ * Once pawn is ready subscribes to GhostRevengeSystem readiness event to wait whole MGF to be loaded as it is relying on data from others parts.
+ *
+ * On MGF readiness event is triggered, Pawns starts listening when a corresponding BmrPawn (by playerID) was removed from level and activates ghosts - possess, show visual representation, set location etc).
+ * Pawn automatically hides itself (visually) from level when Unpossess, EndPlay, Destroy happened.
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API AGrsPawn : public ACharacter
@@ -51,15 +60,11 @@ public:
 	/** Sets default values for this character's properties */
 	AGrsPawn(const FObjectInitializer& ObjectInitializer);
 
-	/** Obtain owning pawn component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FORCEINLINE class UGrsPawnComponent* GetOwningPawnComponent() { return OwningPawnComponent; }
-
 protected:
 	/** 3D widget component that displays the player name above the character */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
 	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerNickName3DWidgetComponent = nullptr;
-	
+
 	/** Initialize player name widget (on top of character) */
 	void InitializePlayerNameWidget();
 
@@ -77,11 +82,6 @@ public:
 	/** Returns static mesh component that displays the arrow above the local player during match start. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE class UBmrPlayerArrowStartComponent* GetPlayerArrowStartWidgetComponent() const { return PlayerArrowStartComponent; }
-
-protected:
-	/** A GrsPawnComponent that spawned this pawn */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Owning Grs Pawn Component"))
-	class UGrsPawnComponent* OwningPawnComponent = nullptr;
 
 	/*********************************************************************************************
 	 * Player Character
@@ -110,10 +110,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void InitPawn(int32 NewPlayerId);
 
-	/** Register owning pawn component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent);
-
 protected:
 	/** Returns properties that are replicated for the lifetime of the actor channel. */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -138,12 +134,6 @@ protected:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	void TryPossessController(AController* PlayerController);
 
-	/** Overridable function called whenever this actor is being removed from a level. */
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	/** APawn Interface when this pawn was unpossessed */
-	virtual void UnPossessed() override;
-
 	/** APawn Interface when this pawn was possessed by a new controller */
 	virtual void PossessedBy(AController* NewController) override;
 
@@ -152,6 +142,12 @@ protected:
 
 	/** APawn Interface when this pawn was replicated by a new player state */
 	virtual void OnRep_PlayerState() override;
+
+	/** Overridable function called whenever this actor is being removed from a level. */
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** APawn Interface when this pawn was unpossessed */
+	virtual void UnPossessed() override;
 
 	/** Refresh and enable this pawn */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")

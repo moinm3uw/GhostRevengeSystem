@@ -258,22 +258,6 @@ EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlay
 	return EGRSCharacterSide::None;
 }
 
-// Returns currently available ghost character or nullptr if there is no available ghosts.
-AGrsPawn* UGRSWorldSubSystem::GetAvailableGhostCharacter()
-{
-	if (!GhostCharacterLeftSide->GetController())
-	{
-		return GhostCharacterLeftSide;
-	}
-
-	if (!GhostCharacterRightSide->GetController())
-	{
-		return GhostCharacterRightSide;
-	}
-
-	return nullptr;
-}
-
 // Register a new Pawn component to track the pawn state
 void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent)
 {
@@ -284,32 +268,6 @@ void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnC
 
 	PawnComponents.AddUnique(NewPawnComponent);
 	TryInit();
-}
-
-// Pawn Components attached to BmrPawn to track Pawn's state change
-TArray<class UGrsPawnComponent*> UGRSWorldSubSystem::GetPawnComponents() const
-{
-	return PawnComponents;
-}
-
-// Returns pawn component by player ID that needed for the GrsPawn to initialize
-class UGrsPawnComponent* UGRSWorldSubSystem::GetPawnComponentByPlayerID(int32 PlayerID) const
-{
-	if (!ensureMsgf(PlayerID >= 0, TEXT("ASSERT: [%i] %hs:\n'PlayerID' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
-	{
-		return nullptr;
-	}
-
-	for (TObjectPtr<class UGrsPawnComponent> PawnComponent : PawnComponents)
-	{
-		ABmrPawn* BmrPawn = Cast<ABmrPawn>(PawnComponent->GetOwner());
-
-		if (BmrPawn && BmrPawn->GetPlayerId() == PlayerID)
-		{
-			return PawnComponent;
-		}
-	}
-	return nullptr;
 }
 
 // Clears the registered pawn component once it deleted
@@ -367,19 +325,6 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 	}
 }
 
-// Register a new grs player controller component
-void UGRSWorldSubSystem::RegisterPlayerControllerComponent(class UGrsPlayerControllerComponent* NewPlayerControllerComponent)
-{
-	if (!NewPlayerControllerComponent)
-	{
-		return;
-	}
-	if (PlayerControllerComponent != NewPlayerControllerComponent)
-	{
-		PlayerControllerComponent = NewPlayerControllerComponent;
-	}
-}
-
 // Listen end game states to show/hide HUD temporarry
 void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
 {
@@ -405,9 +350,5 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	{
 		TryInit();
 		ResetRevivedPlayers();
-	}
-
-	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::EndGame))
-	{
 	}
 }

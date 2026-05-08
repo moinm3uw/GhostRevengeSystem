@@ -54,7 +54,7 @@ void UGrsPawnComponent::BeginPlay()
 void UGrsPawnComponent::OnUnregister()
 {
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
-	
+
 	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
@@ -78,7 +78,7 @@ void UGrsPawnComponent::OnUnregister()
 	Super::OnUnregister();
 }
 
-// Event that fires when any pawn is spawned, possessed, and replicated, obtain pawn from Payload.Instigator
+// Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
 void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payload)
 {
 	const ABmrPawn* OwnerBmrPawn = Cast<ABmrPawn>(GetOwner());
@@ -99,9 +99,10 @@ void UGrsPawnComponent::OnInitialize(const struct FGameplayEventData& Payload)
 	}
 }
 
+// Spawn ghost character when a module is initialized
 void UGrsPawnComponent::AddGhostCharacter()
 {
-	// --- Return to Pool Manager the list of handles which is not needed (if there are any)
+	// --- Return to Pool Manager items first as they are no longer needed
 	if (!GrsPawnPoolManagerHandlers.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(GrsPawnPoolManagerHandlers);
@@ -110,28 +111,27 @@ void UGrsPawnComponent::AddGhostCharacter()
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
-	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
+	const FOnSpawnAllCallback OnTakeGrsPawnsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
 	{
 		if (UGrsPawnComponent* This = WeakThis.Get())
 		{
-			This->OnTakeActorsFromPoolCompleted(CreatedObjects);
+			This->OnTakeGrsPawnsFromPoolCompleted(CreatedObjects);
 		}
 	};
 
 	// --- Spawn actor
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(GrsPawnPoolManagerHandlers, UGRSDataAsset::Get().GetGrsActorClass(), 1, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(GrsPawnPoolManagerHandlers, UGRSDataAsset::Get().GetGrsActorClass(), 1, OnTakeGrsPawnsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
 //  Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
-void UGrsPawnComponent::OnTakeActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
+void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
 	// --- Setup spawned characters
-	for (const FPoolObjectData& CreatedObject : CreatedObjects)
+	for (const FPoolObjectData& CreatedGhostPawn : CreatedGhostPawns)
 	{
-		AGrsPawn& GhostCharacter = CreatedObject.GetChecked<AGrsPawn>();
+		AGrsPawn& GhostCharacter = CreatedGhostPawn.GetChecked<AGrsPawn>();
 		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
-		GhostCharacter.RegisterPawnComponent(this);
 		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
 
 		FBmrCell ActorSpawnLocation;

@@ -11,7 +11,12 @@
 #include "GrsPlayerControllerComponent.generated.h"
 
 /**
- *  Attached to the BmrPlayerController to handle player input when a ghost character is possessed
+ *  Attached to the BmrPlayerController to handle player input when a ghost character is possessed.
+ *  Holds logic that listens input for charge to aim, throw projectile and spawn bomb.
+ *
+ *  Once BmrPlayerController (main player controller) possess a Ghost pawn (GrsPawn) component enables Grs inputs (enhanced input).
+ *  For the game state change, ghost eliminates player, unload possesses back to BmrPawn and disables inputs
+ *
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerControllerComponent : public UActorComponent
@@ -47,10 +52,13 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
+	/** Called when player's match result was changed (Win, lose, draw or none applied). */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
+
 	/** Is increased when this player kills an opponent */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
-
 
 public:
 	/** Unpossess current pawn from ghost to BmwPlayerPawn */

@@ -9,7 +9,10 @@
 enum class EGRSCharacterSide : uint8;
 
 /**
- * Implements the world subsystem to access different components in the module
+ * Implements the world subsystem to act as singleton with access to different components in the module.
+ * Manages MGF overall loading status.
+ * Manages also if a player character (BmrPawn) is revivable or not. A player character can be revived only once per game round, resets revived players when game starts (game state changes to InGame)
+ * Manages available spot (left or right side) for GrsPawn on spawn. Only 1 grs allowed per side
  */
 UCLASS(BlueprintType, Blueprintable)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UModularGameFeaturePluginSubsystem
@@ -145,10 +148,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	EGRSCharacterSide RegisterGhostCharacter(class AGrsPawn* GhostPlayerCharacter);
 
-	/** Returns currently available ghost character or nullptr if there is no available ghosts. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class AGrsPawn* GetAvailableGhostCharacter();
-
 	/*********************************************************************************************
 	 * Pawn Component
 	 **********************************************************************************************/
@@ -161,14 +160,6 @@ public:
 	/** Register a new Pawn component to track the pawn state */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent);
-
-	/** Returns all available Pawn */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	TArray<class UGrsPawnComponent*> GetPawnComponents() const;
-	
-	/** Returns pawn component by player ID that needed for the GrsPawn to initialize */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class UGrsPawnComponent* GetPawnComponentByPlayerID(int32 PlayerID) const;
 
 	/** Clears the registered pawn component once it deleted  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -185,23 +176,6 @@ public:
 	/** Clear cached ghost character references */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ClearGhostCharacters();
-
-	/*********************************************************************************************
-	 * Player Controller Component
-	 **********************************************************************************************/
-protected:
-	/** Player Controller Component attached to BmrPlayerController  */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGrsPlayerControllerComponent> PlayerControllerComponent;
-
-public:
-	/** Gets current grs player controller component. It's unique and only 1 */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FORCEINLINE class UGrsPlayerControllerComponent* GetGrsPlayerControllerComponent() const { return PlayerControllerComponent; }
-
-	/** Register a new grs player controller component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterPlayerControllerComponent(class UGrsPlayerControllerComponent* NewPlayerControllerComponent);
 
 	/*********************************************************************************************
 	 * Treasury (temp)

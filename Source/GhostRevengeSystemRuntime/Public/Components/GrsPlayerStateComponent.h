@@ -10,11 +10,15 @@
 #include "GrsPlayerStateComponent.generated.h"
 
 /**
- * The component is attached to BmrPlayerState primarily to take of the GAS abilities
+ * The component is attached to BmrPlayerState primarily to take care of the GAS abilities: revive, bomb spawn ability.
+ *
+ * Grants abilities: review and bomb spawn when game started ( game state changed to InGame)
+ * Remove abilities: review and bomb spawn when game is about to start (game state changed to GameStarting) or MGF is unloaded (Unregistered)
+ * When a ghost player eliminates a player/bot, component applies revive ability to return from a ghost (GrsPawn) to a regular player (BmrPlayer)
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent : public UActorComponent,
-                                                               public IAbilitySystemInterface
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent : public UActorComponent
+    , public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -26,10 +30,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	class ABmrPlayerState* GetCurrentPlayerState() const;
 	class ABmrPlayerState& GetCurrentPlayerStateChecked() const;
-
-	/** Checks if player state has authority */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	bool HasAuthority();
 
 protected:
 	/** Called when the game starts */
@@ -45,14 +45,14 @@ protected:
 	/** Listen game states to grant revive ability for player character  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
-	
+
 	/** Is increased when this player kills an opponent */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);
-	
-	/** Revives main player character when a ghost eliminates an enemy on level including bots */
+
+	/** Tries to revive main player character when a ghost eliminates an enemy on level including elimination of bots */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void ReviveCharacter();
+	void TryReviveCharacter();
 
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
@@ -85,7 +85,6 @@ protected:
 	FActiveGameplayEffectHandle AppliedBombSpawnEffectHandle;
 
 public:
-
 	/** Returns handle of current applied ability effect  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	FORCEINLINE FActiveGameplayEffectHandle GetAppliedBombSpawningEffectHandle() const { return AppliedBombSpawnEffectHandle; }
