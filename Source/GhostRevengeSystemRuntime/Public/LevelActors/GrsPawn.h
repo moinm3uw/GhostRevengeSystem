@@ -6,8 +6,6 @@
 #include "Actors/BmrPawn.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "GrsPawnSubobjects/GrsPawnAimingComponent.h"
-#include "Kismet/GameplayStaticsTypes.h"
 #include "Net/UnrealNetwork.h"
 
 #include "GrsPawn.generated.h"
@@ -164,23 +162,38 @@ protected:
 	 * Aiming functionality
 	 **********************************************************************************************/
 protected:
-	/**  Ghost player Aiming visualization and bomb spawn functionality component */
-	FGrsPawnAimingComponent AimingComponent;
+	/** Mesh of component. */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	TObjectPtr<class UMeshComponent> AimingMeshComponent = nullptr;
+
+	/** Spline component used to visually display a projectile trajectory path */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	class USplineComponent* AimingSplineComponent;
+
+	/** Spline component used to build a projectile trajectory path */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	TArray<class USplineMeshComponent*> AimingSplineMeshArray;
+
+	/** Aiming sphere used when a player aiming */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	class UStaticMeshComponent* AimingSphereComponent;
+
+	/** Initiate and activate aiming point */
+	void InitAimingSphere();
 
 public:
-	/** Add a mesh to the last element of the predict Projectile path results */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void AddMeshToEndProjectilePath(FVector Location);
+	/** Obtain aiming static mesh (currently it's sphere component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
+	FORCEINLINE USplineComponent* GetAimingSplineComponent() { return AimingSplineComponent; }
 
-	/** Add spline points to the spline component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void AddSplinePoints(FPredictProjectilePathResult& Result);
+	/** Obtain aiming static mesh (currently it's sphere component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
+	FORCEINLINE TArray<class USplineMeshComponent*>& GetAimingSplineMeshArrayComponent() { return AimingSplineMeshArray; }
 
-	/** Add spline mesh to spline points */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void AddSplineMesh(FPredictProjectilePathResult& Result);
+	/** Obtain aiming static mesh (currently it's sphere component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
+	FORCEINLINE UStaticMeshComponent* GetAimingSphereComponent() { return AimingSphereComponent; }
 
-	/** Throw projectile event, bound to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void ThrowProjectile();
+	/** Hide spline elements (trajectory) */
+	void ClearTrajectorySplines();
 };

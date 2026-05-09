@@ -2,33 +2,43 @@
 
 #include "LevelActors/GrsPawn.h"
 
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
+// Grs
+#include "Components/GrsCharacterManagerComponent.h"
+#include "Components/GrsPlayerStateComponent.h"
+#include "Data/GRSDataAsset.h"
+#include "GrsGameplayTags.h"
+#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
+#include "SubSystems/GRSWorldSubSystem.h"
+#include "Utils/GrsPawnHelper.h"
+
+// Bmr
 #include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrPlayerArrowStartComponent.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
-#include "Components/GrsCharacterManagerComponent.h"
-#include "Components/GrsPawnComponent.h"
-#include "Components/GrsPlayerStateComponent.h"
-#include "Components/SplineComponent.h"
-#include "Components/SplineMeshComponent.h"
 #include "Controllers/BmrPlayerController.h"
-#include "Engine/StaticMesh.h"
 #include "GameFramework/BmrPlayerState.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GrsGameplayTags.h"
-#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
-#include "PoolManagerSubsystem.h"
-#include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
-#include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/GlobalMessageSubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-#include "Utils/GrsPawnHelper.h"
+
+// PoolManager
+#include "PoolManagerSubsystem.h"
+
+// MyEditorUtils
+#include "Subsystems/GlobalMessageSubsystem.h"
+
+// UE
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+// Aiming
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
 
@@ -94,14 +104,17 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 
 	// --- Setup player nickname 3d Widget (on top of player)
 	PlayerNickName3DWidgetComponent = CreateDefaultSubobject<UBmrPlayerNameWidgetComponent>(TEXT("PlayerName3DWidgetComponent"));
-	PlayerNickName3DWidgetComponent->SetupAttachment(GetRootComponent());
+	PlayerNickName3DWidgetComponent->SetupAttachment(RootComponent);
 
 	// --- Initialize 3D player arrow widget component that appears on top of character when a player start to control it
 	PlayerArrowStartComponent = CreateDefaultSubobject<UBmrPlayerArrowStartComponent>(TEXT("PlayerArrowStartWidgetComponent"));
-	PlayerArrowStartComponent->SetupAttachment(GetRootComponent());
+	PlayerArrowStartComponent->SetupAttachment(RootComponent);
 
 	// --- Initial setup of spline component and aiming sphere
-	AimingComponent.SetupSplineComponent(this);
+	// --- setup spline component
+	AimingSplineComponent = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
+	AimingSplineComponent->AttachToComponent(AimingMeshComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	AimingSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
 }
 
 // Initialize player name widget (on top of character)
@@ -158,7 +171,7 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
-	AimingComponent.InitAimingSphere();
+	InitAimingSphere();
 	InitializePlayerNameWidget();
 
 	// --- bind to clear ghost data
@@ -315,8 +328,8 @@ void AGrsPawn::UnPossessed()
 void AGrsPawn::RefreshPawn()
 {
 	FGrsPawnVisualizer::SetVisibility(this, true);
-	AimingComponent.ClearTrajectorySplines();
-	AimingComponent.AimingSphereComponent->SetVisibility(true);
+	ClearTrajectorySplines();
+	AimingSphereComponent->SetVisibility(true);
 	PlayerArrowStartComponent->SetArrowEnabled(true);
 }
 
@@ -330,8 +343,8 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	// --- update collision mod of this pawn if needed
 
 	FGrsPawnVisualizer::SetVisibility(this, false);
-	AimingComponent.ClearTrajectorySplines();
-	AimingComponent.AimingSphereComponent->SetVisibility(false);
+	ClearTrajectorySplines();
+	AimingSphereComponent->SetVisibility(false);
 	PlayerArrowStartComponent->SetArrowEnabled(false);
 
 	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
@@ -343,7 +356,15 @@ void AGrsPawn::PerformCleanUp()
 	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
 	HideGhostCharacterFromMap();
 
-	AimingComponent.PerformCleanUp();
+	if (AimingSphereComponent)
+	{
+		AimingSphereComponent->EmptyOverrideMaterials();
+	}
+	if (AimingMeshComponent)
+	{
+		AimingMeshComponent->DestroyComponent();
+		AimingMeshComponent = nullptr;
+	}
 
 	PlayerID = 0;
 
@@ -362,26 +383,23 @@ void AGrsPawn::PerformCleanUp()
  * Aiming functionality
  **********************************************************************************************/
 
-// Add a mesh to the last element of the predict Projectile path results
-void AGrsPawn::AddMeshToEndProjectilePath(FVector Location)
+// Initiate and activate aiming point
+void AGrsPawn::InitAimingSphere()
 {
-	AimingComponent.AddMeshToEndOfProjectedPath(Location);
+	AimingSphereComponent->SetStaticMesh(UGRSDataAsset::Get().GetProjectileMesh());
+	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AimingSphereComponent->SetVisibility(false);
 }
 
-// Add spline points to the spline component
-void AGrsPawn::AddSplinePoints(FPredictProjectilePathResult& Result)
+// Hide spline elements (trajectory)
+void AGrsPawn::ClearTrajectorySplines()
 {
-	AimingComponent.AddSplinePoints(Result);
-}
+	for (USplineMeshComponent* SplineMeshComponent : AimingSplineMeshArray)
+	{
+		SplineMeshComponent->DestroyComponent();
+	}
 
-//  Add spline mesh to spline points
-void AGrsPawn::AddSplineMesh(FPredictProjectilePathResult& Result)
-{
-	AimingComponent.AddSplineMesh(Result, this);
-}
-
-// Throw projectile event, bound to onetime button press
-void AGrsPawn::ThrowProjectile()
-{
-	AimingComponent.ThrowProjectile(this);
+	AimingSplineMeshArray.Empty();
+	AimingSplineComponent->ClearSplinePoints();
 }

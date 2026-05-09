@@ -1,8 +1,8 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsCharacterManagerComponent.h"
 
-// GRS
+// Grs
 #include "Data/GRSDataAsset.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 

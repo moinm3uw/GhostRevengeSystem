@@ -1,10 +1,13 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c)  Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// Bmr
+#include "Controllers/BmrPlayerController.h"
+
+// UE
 #include "AbilitySystemComponent.h"
 #include "Components/ActorComponent.h"
-#include "Controllers/BmrPlayerController.h"
 #include "CoreMinimal.h"
 #include "Kismet/GameplayStaticsTypes.h"
 
@@ -110,11 +113,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
 	void ShowVisualTrajectory();
 
+	/** Add spline points to the aiming spline component */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aimning", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void AddSplinePoints(FPredictProjectilePathResult& Result);
+
+	/** Add spline mesh to spline points */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aimning", meta = (BlueprintProtected, AutoCreateRefTerm = "ActionValue"))
+	void AddSplineMesh(FPredictProjectilePathResult& Result);
+
 	/** Configure PredictProjectilePath settings and get result */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aimning", meta = (BlueprintProtected))
 	void PredictProjectilePath(FPredictProjectilePathResult& PredictResult);
 
 	/** Throw projectile event, bound to onetime button press */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aimning", meta = (BlueprintProtected))
 	void ThrowProjectile();
+
+	/** Spawn bomb at aiming mesh location */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aimning", meta = (BlueprintProtected))
+	void SpawnBomb(FBmrCell TargetCell);
 };

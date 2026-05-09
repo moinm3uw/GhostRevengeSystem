@@ -1,26 +1,37 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsPlayerControllerComponent.h"
 
-#include "Components/GrsPlayerStateComponent.h"
-#include "Controllers/BmrPlayerController.h"
-#include "DalSubsystem.h"
+// Grs
 #include "Data/GRSDataAsset.h"
+#include "GrsUtils.h"
+#include "LevelActors/GrsPawn.h"
+
+// Bmr
+#include "Controllers/BmrPlayerController.h"
 #include "DataAssets/BmrInputAction.h"
 #include "DataAssets/BmrInputMappingContext.h"
 #include "DataAssets/BmrPlayerInputDataAsset.h"
+#include "GameFramework/BmrPlayerState.h"
+#include "Structures/BmrGameplayTags.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// MyEditorUtils
+#include "MyUtilsLibraries/InputUtilsLibrary.h"
+#include "Subsystems/GlobalMessageSubsystem.h"
+
+// DataAssetsLoader
+#include "DalSubsystem.h"
+
+// UE
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
-#include "GameFramework/BmrPlayerState.h"
-#include "GrsUtils.h"
 #include "Kismet/GameplayStatics.h"
-#include "LevelActors/GrsPawn.h"
-#include "MyUtilsLibraries/InputUtilsLibrary.h"
-#include "Structures/BmrGameplayTags.h"
-#include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/GlobalMessageSubsystem.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// Aiming
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -267,7 +278,7 @@ void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 }
 
 /*********************************************************************************************
- * Ghost Pawn Controller
+ * Ghost Pawn Controller (Aiming, Throwing, Spawning bomb)
  **********************************************************************************************/
 
 // Move the player character
@@ -292,14 +303,14 @@ void UGrsPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionVa
 	const FVector RightDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
 	// const FVector RightDirection = FVector().ZeroVector;;
 
-	APawn* CurrentPawn = GetPlayerControllerChecked().GetPawn();
-	if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))
+	APawn* GrsPawn = GetPlayerControllerChecked().GetPawn();
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
-	CurrentPawn->AddMovementInput(ForwardDirection, MovementVector.Y);
-	CurrentPawn->AddMovementInput(RightDirection, MovementVector.X);
+	GrsPawn->AddMovementInput(ForwardDirection, MovementVector.Y);
+	GrsPawn->AddMovementInput(RightDirection, MovementVector.X);
 }
 
 // Hold button to increase trajectory on button release trow bomb
@@ -315,12 +326,7 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 	{
 		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
 		{
-			AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
-			if (!GhostCharacter)
-			{
-				return;
-			}
-			GhostCharacter->ThrowProjectile();
+			ThrowProjectile();
 		}
 		CurrentHoldTimeInternal = 0;
 	}
@@ -331,8 +337,8 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 //  Add and update visual representation of charging (aiming) progress as trajectory
 void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 {
-	AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
-	if (!GhostCharacter)
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
+	if (!GrsPawn)
 	{
 		return;
 	}
@@ -343,13 +349,85 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 	PredictProjectilePath(Result);
 
 	// Aiming area - show visual element in the of predicted end
-	GhostCharacter->AddMeshToEndProjectilePath(Result.LastTraceDestination.Location);
+	UStaticMeshComponent* AimingStaticMeshComponent = GrsPawn->GetAimingSphereComponent();
+	if (ensureMsgf(AimingStaticMeshComponent, TEXT("ASSERT: [%i] %hs:\n'AimingStaticMeshComponent' is not present on GrsPawn!"), __LINE__, __FUNCTION__))
+	{
+		AimingStaticMeshComponent->SetVisibility(true);
+		AimingStaticMeshComponent->SetWorldLocation(Result.LastTraceDestination.Location);
+	}
 
 	// show trajectory visual
 	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && Result.PathData.Num() > 0)
 	{
-		GhostCharacter->AddSplinePoints(Result);
-		GhostCharacter->AddSplineMesh(Result);
+		GrsPawn->ClearTrajectorySplines();
+		AddSplinePoints(Result);
+		AddSplineMesh(Result);
+	}
+}
+
+// Add spline points to the aiming spline component
+void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult& Result)
+{
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	USplineComponent* AimingSplineComponent = GrsPawn->GetAimingSplineComponent();
+	if (!ensureMsgf(AimingSplineComponent, TEXT("ASSERT: [%i] %hs:\n'AimingStaticMeshComponent' is not present on GrsPawn!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	for (int32 i = 0; i < Result.PathData.Num(); i++)
+	{
+		FVector SplinePoint = Result.PathData[i].Location;
+		AimingSplineComponent->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
+		AimingSplineComponent->Mobility = EComponentMobility::Static;
+	}
+
+	AimingSplineComponent->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
+	AimingSplineComponent->UpdateSpline();
+}
+
+// Add spline mesh to spline points
+void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& Result)
+{
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	USplineComponent* AimingSplineComponent = GrsPawn->GetAimingSplineComponent();
+	if (!ensureMsgf(AimingSplineComponent, TEXT("ASSERT: [%i] %hs:\n'AimingStaticMeshComponent' is not present on GrsPawn!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	for (int32 i = 0; i < AimingSplineComponent->GetNumberOfSplinePoints() - 2; i++)
+	{
+		// Create and attach the spline mesh component
+		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(GrsPawn);
+		SplineMesh->AttachToComponent(AimingSplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
+		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
+		SplineMesh->Mobility = EComponentMobility::Static;
+		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+
+		// Set mesh and material
+		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
+		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
+		FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
+		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
+
+		// Set start and end
+		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
+		// Register the component so it appears in the game
+		SplineMesh->RegisterComponent();
+
+		GrsPawn->GetAimingSplineMeshArrayComponent().AddUnique(SplineMesh);
 	}
 }
 
@@ -377,10 +455,49 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 // Throw projectile event, bound to onetime button press
 void UGrsPlayerControllerComponent::ThrowProjectile()
 {
-	AGrsPawn* GhostCharacter = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
-	if (!GhostCharacter)
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetPlayerControllerChecked().GetPawn());
+	if (!GrsPawn)
 	{
 		return;
 	}
-	GhostCharacter->ThrowProjectile();
+
+	UStaticMeshComponent* AimingStaticMeshComponent = GrsPawn->GetAimingSphereComponent();
+	if (!ensureMsgf(AimingStaticMeshComponent, TEXT("ASSERT: [%i] %hs:\n'AimingStaticMeshComponent' is not present on GrsPawn!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	//--- Calculate Cell to spawn bomb
+	FBmrCell TargetCell;
+	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
+	SpawnBomb(TargetCell);
+
+	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5, 5, 0.0f);
+	ThrowDirection.Normalize();
+	FVector LaunchVelocity = ThrowDirection * 100;
+
+	GrsPawn->ClearTrajectorySplines();
+
+	//--- hide aiming static mesh
+	AimingStaticMeshComponent->SetVisibility(false);
+	AimingStaticMeshComponent->SetWorldLocation(GrsPawn->GetActorLocation());
+}
+
+// Spawn bomb at aiming mesh location
+void UGrsPlayerControllerComponent::SpawnBomb(FBmrCell TargetCell)
+{
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
+
+	// Activate bomb ability
+	FGameplayEventData EventData;
+	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
+	EventData.Instigator = GrsPawn;
+	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
+	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
 }
