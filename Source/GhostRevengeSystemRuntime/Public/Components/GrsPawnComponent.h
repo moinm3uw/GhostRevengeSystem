@@ -1,10 +1,13 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// PoolManager
+#include "Data/PoolObjectHandle.h"
+
+// UE
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Data/PoolObjectHandle.h"
 
 #include "GrsPawnComponent.generated.h"
 

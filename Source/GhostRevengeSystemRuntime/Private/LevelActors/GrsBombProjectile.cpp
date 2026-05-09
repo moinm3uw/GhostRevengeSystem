@@ -1,13 +1,20 @@
-// Copyright (c) Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "LevelActors/GrsBombProjectile.h"
 
+// Grs
+#include "Data/GRSDataAsset.h"
+
+// Bmr
 #include "Bomber.h"
+
+// DataAssetLoader
+#include "DalSubsystem.h"
+
+// UE
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "DalSubsystem.h"
-#include "Data/GRSDataAsset.h"
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 

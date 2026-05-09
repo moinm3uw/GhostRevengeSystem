@@ -1,28 +1,32 @@
-﻿
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
 
-#include "Abilities/GameplayAbilityTypes.h"
-#include "Animation/AnimInstance.h"
+// Grs
+#include "Components/GrsPawnComponent.h"
+#include "LevelActors/GrsPawn.h"
+#include "Utils/GrsPawnHelper.h"
+
+// Bmr
 #include "Bomber.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/GrsPawnComponent.h"
-#include "Components/GrsPlayerStateComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Components/SplineComponent.h"
-#include "Components/SplineMeshComponent.h"
-#include "Data/GRSDataAsset.h"
 #include "DataAssets/BmrPlayerDataAsset.h"
 #include "DataRegistries/BmrPlayerRow.h"
 #include "DataRegistries/BmrPlayerSkinRow.h"
 #include "GameFramework/BmrPlayerState.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "LevelActors/GrsPawn.h"
+
+// MyEditorUtils
 #include "Subsystems/GlobalMessageSubsystem.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-#include "Utils/GrsPawnHelper.h"
+
+// UE
+#include "Abilities/GameplayAbilityTypes.h"
+#include "Animation/AnimInstance.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)

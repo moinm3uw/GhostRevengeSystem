@@ -1,7 +1,8 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c)  Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// UE
 #include "AbilitySystemInterface.h"
 #include "ActiveGameplayEffectHandle.h"
 #include "Components/ActorComponent.h"
@@ -17,8 +18,9 @@
  * When a ghost player eliminates a player/bot, component applies revive ability to return from a ghost (GrsPawn) to a regular player (BmrPlayer)
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent : public UActorComponent
-    , public IAbilitySystemInterface
+class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent
+	: public UActorComponent
+	  , public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 

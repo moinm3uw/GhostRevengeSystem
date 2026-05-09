@@ -1,4 +1,8 @@
-﻿#pragma once
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
+
+#pragma once
+
+// UE
 #include "Kismet/GameplayStaticsTypes.h"
 
 class AGrsPawn;

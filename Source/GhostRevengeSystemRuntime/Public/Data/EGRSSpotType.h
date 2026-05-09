@@ -1,7 +1,8 @@
-﻿// // Copyright (c) Valerii Rotermel
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// Bmr
 #include "Bomber.h"
 
 /**

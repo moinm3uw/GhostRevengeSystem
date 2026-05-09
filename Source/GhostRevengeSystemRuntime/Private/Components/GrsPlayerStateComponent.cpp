@@ -1,23 +1,29 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsPlayerStateComponent.h"
 
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
-#include "Actors/BmrPawn.h"
-#include "Controllers/BmrPlayerController.h"
+// Grs
 #include "Data/GRSDataAsset.h"
-#include "GameFramework/Actor.h"
-#include "GameFramework/BmrGameState.h"
-#include "GameFramework/BmrPlayerState.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
+#include "SubSystems/GRSWorldSubSystem.h"
+
+// Bmr
+#include "Actors/BmrPawn.h"
+#include "GameFramework/BmrGameState.h"
+#include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
-#include "SubSystems/GRSWorldSubSystem.h"
-#include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// MyEditorUtils
+#include "Subsystems/GlobalMessageSubsystem.h"
+
+// UE
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "GameFramework/Actor.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 

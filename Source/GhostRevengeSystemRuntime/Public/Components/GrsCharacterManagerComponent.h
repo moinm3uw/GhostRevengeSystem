@@ -1,7 +1,8 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// UE
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 #include "Net/UnrealNetwork.h"

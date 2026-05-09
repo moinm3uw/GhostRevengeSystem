@@ -1,12 +1,16 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Abilities/GrsReviveAbility.h"
 
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
+
+// Bmr
 #include "Actors/BmrGeneratedMap.h"
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrMoverComponent.h"
+
+// UE
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)
 

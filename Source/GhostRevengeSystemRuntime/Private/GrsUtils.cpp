@@ -1,10 +1,13 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "GrsUtils.h"
 
+// Grs
 #include "Components/GrsPlayerControllerComponent.h"
-#include "Controllers/BmrPlayerController.h"
 #include "LevelActors/GrsPawn.h"
+
+// Bmr
+#include "Controllers/BmrPlayerController.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 

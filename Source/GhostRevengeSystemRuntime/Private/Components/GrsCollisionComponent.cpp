@@ -1,19 +1,23 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsCollisionComponent.h"
 
 // GRS
 #include "Data/GRSDataAsset.h"
-#include "PoolManagerSubsystem.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
 #include "Controllers/BmrPlayerController.h"
 #include "GameFramework/BmrGameState.h"
 #include "Structures/BmrGameplayTags.h"
-#include "Subsystems/GlobalMessageSubsystem.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// PoolManager
+#include "PoolManagerSubsystem.h"
+
+// MyEditorUtils
+#include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
 #include "GrsGameplayTags.h"

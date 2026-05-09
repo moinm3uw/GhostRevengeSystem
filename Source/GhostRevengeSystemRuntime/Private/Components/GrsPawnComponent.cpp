@@ -1,19 +1,28 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsPawnComponent.h"
 
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
-#include "Actors/BmrPawn.h"
+// Grs
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
+#include "SubSystems/GRSWorldSubSystem.h"
+
+// Bmr
+#include "Actors/BmrPawn.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// PoolManager
 #include "PoolManagerSubsystem.h"
 #include "Structures/BmrGameplayTags.h"
-#include "SubSystems/GRSWorldSubSystem.h"
+
+// MyEditorUtils
 #include "Subsystems/GlobalMessageSubsystem.h"
-#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+
+// UE
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
 

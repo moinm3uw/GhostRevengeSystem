@@ -1,10 +1,13 @@
-﻿// Copyright (c) Yevhenii Selivanov
+﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #pragma once
 
+// Grs
+#include "LevelActors/GrsPawn.h"
+
+// UE
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "LevelActors/GrsPawn.h"
 
 #include "GrsUtils.generated.h"
 
