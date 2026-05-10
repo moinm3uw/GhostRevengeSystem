@@ -20,7 +20,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsUtils : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
-	/** It is farthest possible location where deactivated actors are placed, is the maximum integer-like coordinates supported by UE network (for standard ReplicatedMovement actors) with 20 bits per axis for */
+	/** It is farthest possible location where deactivated actors are placed, is the maximum integer-like coordinates supported by UE network (for standard ReplicatedMovement actors) with 20 bits per axis */
 	inline static const FVector MaxPos = {1048576.0f, 1048576.0f, 1048576.0f};
 
 	/** Returns the ghost character */
