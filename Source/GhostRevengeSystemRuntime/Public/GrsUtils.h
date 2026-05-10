@@ -20,6 +20,10 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsUtils : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
+	
+	/** It is farthest possible location where deactivated actors are placed, is the same as UWorldLocationsConfig::MaxPos for the Iris replication support. */
+	inline static const FVector MaxPos = {+0.5f * 2097152.0f, +0.5f * 2097152.0f, +0.5f * 2097152.0f};
+	
 	/** Returns the ghost character */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get Ghost Player Character", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class AGrsPawn* GetGhostPlayerCharacter(const UObject* OptionalWorldContext = nullptr);

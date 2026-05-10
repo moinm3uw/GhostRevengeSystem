@@ -23,6 +23,7 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "GrsUtils.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
 
@@ -142,15 +143,6 @@ void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObject
 		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
-
-		FBmrCell ActorSpawnLocation;
-		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
-
-		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
-		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
-		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
-		ActorSpawnLocation.Location.Z = GetBmrPawn()->GetActorLocation().Z; // temporary, debug row
-
-		GhostCharacter.SetActorLocation(ActorSpawnLocation);
+		GhostCharacter.SetActorLocation(UGrsUtils::MaxPos);
 	}
 }

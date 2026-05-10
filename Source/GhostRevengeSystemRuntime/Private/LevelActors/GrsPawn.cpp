@@ -39,6 +39,7 @@
 // Aiming
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "GrsUtils.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
 
@@ -343,11 +344,16 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	// --- update collision mod of this pawn if needed
 
 	FGrsPawnVisualizer::SetVisibility(this, false);
-	ClearTrajectorySplines();
 	AimingSphereComponent->SetVisibility(false);
 	PlayerArrowStartComponent->SetArrowEnabled(false);
+	ClearTrajectorySplines();
 
 	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
+
+	if (HasAuthority())
+	{
+		SetActorLocation(UGrsUtils::MaxPos);
+	}
 }
 
 //  Clean up the character for the MGF unload

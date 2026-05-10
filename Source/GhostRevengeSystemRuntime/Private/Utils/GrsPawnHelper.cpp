@@ -5,7 +5,6 @@
 #include "Animation/AnimInstance.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
-#include "Components/GrsPawnComponent.h"
 #include "Components/SplineComponent.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
