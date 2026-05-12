@@ -28,7 +28,6 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnInitialize);
 
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
-	static UGRSWorldSubSystem& Get();
 	static UGRSWorldSubSystem& Get(const UObject* WorldContextObject);
 
 protected:

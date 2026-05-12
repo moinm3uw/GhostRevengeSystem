@@ -24,6 +24,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "GameFramework/Actor.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
@@ -52,7 +53,8 @@ void UGrsPlayerStateComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Log, TEXT("UGrsPlayerStateComponent::BeginPlay  --- %s - %s"), *this->GetName(), GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
@@ -180,7 +182,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
 
-	UGRSWorldSubSystem::Get().SetRevivedPlayer(PlayerCharacter);
+	UGRSWorldSubSystem::Get(this).SetRevivedPlayer(PlayerCharacter);
 }
 
 // Grant to a player revive GAS effect

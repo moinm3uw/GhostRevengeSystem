@@ -32,6 +32,7 @@
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -179,10 +180,8 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 			PlayerController->Possess(MainBmrPlayerPawn);
 		}
 	}
-
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerController is %s"), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"));
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- MainPlayerPawn is %s"), __LINE__, __FUNCTION__, MainBmrPlayerPawn ? TEXT("TRUE") : TEXT("FALSE"));
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PlayerCharacter: %s"), __LINE__, __FUNCTION__, *GetNameSafe(MainBmrPlayerPawn));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- PlayerController is %s,  "), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"), *GetNameSafe(MainBmrPlayerPawn));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- MainPlayerPawn is %s "), __LINE__, __FUNCTION__, MainBmrPlayerPawn ? TEXT("TRUE") : TEXT("FALSE"));
 
 	MainBmrPlayerPawn = nullptr; // --- reset player character reference
 }
@@ -230,7 +229,8 @@ void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s"), __LINE__, __FUNCTION__, PlayerController->IsLocalController() ? TEXT("TRUE") : TEXT("FALSE"));
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s "), __LINE__, __FUNCTION__, PlayerController->IsLocalController() ? TEXT("TRUE") : TEXT("FALSE"));
 	ABmrPlayerController* MyPlayerController = Cast<ABmrPlayerController>(PlayerController);
 	if (!MyPlayerController)
 	{
@@ -331,7 +331,7 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 		CurrentHoldTimeInternal = 0;
 	}
 
-	// UE_LOG(LogTemp, Log, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
+	// UE_LOG(LogGrs, Verbose, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
 }
 
 //  Add and update visual representation of charging (aiming) progress as trajectory

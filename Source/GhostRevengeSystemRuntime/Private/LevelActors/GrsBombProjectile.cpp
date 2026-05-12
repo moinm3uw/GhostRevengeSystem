@@ -12,6 +12,7 @@
 #include "DalSubsystem.h"
 
 // UE
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -80,7 +81,7 @@ void AGrsBombProjectile::OnDataAssetLoaded_Implementation(const UGRSDataAsset* D
 
 void AGrsBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	UE_LOG(LogTemp, Log, TEXT("GRS Projectile HIT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 }
 
 // Called every frame

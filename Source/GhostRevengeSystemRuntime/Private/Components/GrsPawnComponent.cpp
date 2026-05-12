@@ -23,6 +23,7 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsUtils.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
@@ -53,8 +54,8 @@ void UGrsPawnComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Log, TEXT("UGrsPawnComponent::BeginPlay  --- %s - %s"), *this->GetName(), GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get(this);
 	WorldSubsystem.RegisterPawnComponent(this);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::Player_PawnReady);
@@ -63,9 +64,11 @@ void UGrsPawnComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPawnComponent::OnUnregister()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
-	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get(this).UnRegisterPawnComponent(this);
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
 	if (PoolManager
@@ -83,7 +86,7 @@ void UGrsPawnComponent::OnUnregister()
 		GrsPawnPoolManagerHandlers.Empty();
 	}
 
-	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get(this).UnRegisterPawnComponent(this);
 
 	Super::OnUnregister();
 }
@@ -91,6 +94,8 @@ void UGrsPawnComponent::OnUnregister()
 // Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
 void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
 	const ABmrPawn* OwnerBmrPawn = Cast<ABmrPawn>(GetOwner());
 	const ABmrPawn* InstigatorPawn = Cast<ABmrPawn>(Payload.Instigator);
 
@@ -103,6 +108,8 @@ void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payloa
 // A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required
 void UGrsPawnComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (GetOwner()->HasAuthority())
 	{
 		AddGhostCharacter();
@@ -112,6 +119,8 @@ void UGrsPawnComponent::OnInitialize(const struct FGameplayEventData& Payload)
 // Spawn ghost character when a module is initialized
 void UGrsPawnComponent::AddGhostCharacter()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
 	// --- Return to Pool Manager items first as they are no longer needed
 	if (!GrsPawnPoolManagerHandlers.IsEmpty())
 	{
@@ -136,11 +145,11 @@ void UGrsPawnComponent::AddGhostCharacter()
 //  Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	// --- Setup spawned characters
 	for (const FPoolObjectData& CreatedGhostPawn : CreatedGhostPawns)
 	{
 		AGrsPawn& GhostCharacter = CreatedGhostPawn.GetChecked<AGrsPawn>();
-		UE_LOG(LogTemp, Log, TEXT("Spawned ghost character --- %s - %s"), *GhostCharacter.GetName(), GhostCharacter.HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
 		GhostCharacter.SetActorLocation(UGrsUtils::MaxPos);

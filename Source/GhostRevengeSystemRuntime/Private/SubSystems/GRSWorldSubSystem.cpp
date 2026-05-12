@@ -23,6 +23,7 @@
 // UE
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "Kismet/GameplayStatics.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
@@ -32,36 +33,26 @@
  **********************************************************************************************/
 
 // Returns this Subsystem, is checked and will crash if it can't be obtained
-UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
-{
-	const UWorld* World = UUtilsLibrary::GetPlayWorld();
-	checkf(World, TEXT("%s: 'World' is null"), *FString(__FUNCTION__));
-	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
-	checkf(ThisSubsystem, TEXT("%s: 'ProgressionSubsystem' is null"), *FString(__FUNCTION__));
-	return *ThisSubsystem;
-}
-
-// Returns this Subsystem, is checked and will crash if it can't be obtained
 UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject* WorldContextObject)
 {
 	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(WorldContextObject);
 	checkf(World, TEXT("%s: 'World' is null"), *FString(__FUNCTION__));
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
-	checkf(ThisSubsystem, TEXT("%s: 'ProgressionSubsystem' is null"), *FString(__FUNCTION__));
+	checkf(ThisSubsystem, TEXT("%s: 'GRSWorldSubSystem' is null"), *FString(__FUNCTION__));
 	return *ThisSubsystem;
 }
 
 // Subscribes to local pawn ready event
 void UGRSWorldSubSystem::OnGameFeatureInitialize_Implementation()
 {
-	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem OnGameFeatureActivated --- %s"), *this->GetName());
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_LocalPawnReady, this, &ThisClass::OnLocalPawnReady);
 }
 
 // Called when the local player character is spawned, possessed, and replicated
 void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogTemp, Log, TEXT("UGRSWorldSubSystem::OnLocalCharacterReady_Implementation  --- %s"), *this->GetName());
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
 	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
 	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
@@ -94,7 +85,7 @@ bool UGRSWorldSubSystem::IsReady()
 	               && CollisionMangerComponent
 	               && PawnComponents.Num() == MaxPlayers
 	               && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: IsReady --- %s"), __LINE__, __FUNCTION__, isReady ? TEXT("READY") : TEXT("NOT READY"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, isReady ? TEXT("READY") : TEXT("NOT READY"));
 	return isReady;
 }
 
@@ -131,6 +122,12 @@ void UGRSWorldSubSystem::PerformCleanUp()
 // Register collision manager component used to track if all components loaded and MGF ready to initialize
 void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+	if (!ensureMsgf(NewCollisionManagerComponent != CollisionMangerComponent, TEXT("ASSERT: [%i] %hs:\n'CollisionMangerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
 	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
 	{
 		CollisionMangerComponent = NewCollisionManagerComponent;
@@ -142,6 +139,8 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponen
 // Add spawned collision actors to be cached
 void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (!Actor)
 	{
 		return;
@@ -160,25 +159,28 @@ void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
 // Returns TRUE if collision are spawned
 bool UGRSWorldSubSystem::IsCollisionsSpawned()
 {
+	bool bIsSpawned = false;
+
 	if (LeftSideCollision && RightSideCollision)
 	{
-		return true;
+		bIsSpawned = true;
 	}
 
-	return false;
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsSpawned ? TEXT("TRUE") : TEXT("FALSE"));
+	return bIsSpawned;
 }
 
 // Clears cached collision manager component
 void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- UnregisterCollisionManagerComponent"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	CollisionMangerComponent = nullptr;
 }
 
 // Clear cached collisions
 void UGRSWorldSubSystem::ClearCollisions()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- ClearCollisions"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	if (LeftSideCollision)
 	{
 		LeftSideCollision->Destroy();
@@ -196,17 +198,22 @@ void UGRSWorldSubSystem::ClearCollisions()
 // Checks if the target Player was already revived. Player can be revived only once
 bool UGRSWorldSubSystem::IsRevivable(const ABmrPawn* PlayerToRevive)
 {
+	bool bIsRevivable = true;
+
 	if (!PlayerToRevive || RevivedPlayerCharacters.Contains(PlayerToRevive))
 	{
-		return false;
+		bIsRevivable = false;
 	}
 
-	return true;
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsRevivable ? TEXT("Revivable") : TEXT("NOT Revivable"));
+	return bIsRevivable;
 }
 
 // Set a player character as it was revived once
 void UGRSWorldSubSystem::SetRevivedPlayer(ABmrPawn* PlayerToRevive)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (!PlayerToRevive)
 	{
 		return;
@@ -227,7 +234,12 @@ void UGRSWorldSubSystem::ResetRevivedPlayers()
 // Register character manager component
 void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerComponent* NewCharacterManagerComponent)
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- RegisterCharacterManagerComponent"), __LINE__, __FUNCTION__);
+	if (!ensureMsgf(NewCharacterManagerComponent != CharacterManagerComponent, TEXT("ASSERT: [%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__);
+		return;
+	}
+
 	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
 	{
 		CharacterManagerComponent = NewCharacterManagerComponent;
@@ -243,6 +255,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
 // Register ghost character
 EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__)
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
 	if (!GhostCharacterLeftSide)
@@ -263,7 +276,15 @@ EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlay
 // Register a new Pawn component to track the pawn state
 void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'"), __LINE__, __FUNCTION__);
 	if (!NewPawnComponent)
+	{
+		return;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s %i"), __LINE__, __FUNCTION__, NewPawnComponent->GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), PawnComponents.Num());
+
+	if (!ensureMsgf(PawnComponents.Num() < 4, TEXT("ASSERT: [%i] %hs:\n'PawnComponents' is more than expected!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
@@ -286,13 +307,15 @@ void UGRSWorldSubSystem::UnRegisterPawnComponent(class UGrsPawnComponent* PawnCo
 // Clears cached character manager component
 void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- UnregisterCharacterManagerComponent"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	CharacterManagerComponent = nullptr;
 }
 
 // Clear cached ghost character by reference
 void UGRSWorldSubSystem::UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (!GhostPlayerCharacter)
 	{
 		return;
@@ -314,6 +337,8 @@ void UGRSWorldSubSystem::UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter
 // Clear cached ghost character references
 void UGRSWorldSubSystem::ClearGhostCharacters()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (GhostCharacterLeftSide)
 	{
 		GhostCharacterLeftSide->Destroy();
@@ -330,6 +355,8 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 // Listen end game states to show/hide HUD temporarry
 void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (EndGameState == EBmrEndGameState::Lose)
 	{
 		UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
@@ -348,6 +375,8 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 // Listen game states to switch character skin.
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		TryInit();

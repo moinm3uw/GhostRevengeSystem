@@ -2,7 +2,6 @@
 
 #include "Abilities/GrsReviveAbility.h"
 
-
 // Bmr
 #include "Actors/BmrGeneratedMap.h"
 #include "Components/BmrMapComponent.h"
@@ -11,6 +10,7 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)
 
@@ -18,7 +18,7 @@
 void UGrsReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- GRS Activate triggered"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	check(ActorInfo && TriggerEventData);
 	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
 	ABmrGeneratedMap::Get().AddToGrid(UBmrMapComponent::GetMapComponent(AvatarActor));

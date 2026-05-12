@@ -20,6 +20,7 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
@@ -83,7 +84,7 @@ void FGrsPawnVisualizer::InitCapsuleComponent(AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	if (UCapsuleComponent* RootCapsuleComponent = GrsPawn->GetCapsuleComponent())
 	{
 		// Setup collision to allow overlap players with each other, but block all other actors

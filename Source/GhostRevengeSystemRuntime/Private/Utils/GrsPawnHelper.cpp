@@ -3,6 +3,7 @@
 #include "Utils/GrsPawnHelper.h"
 
 #include "Animation/AnimInstance.h"
+#include "Components/BmrCameraComponent.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "Components/SplineComponent.h"
@@ -24,7 +25,7 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 	{
 		return;
 	}
-	EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get().RegisterGhostCharacter(GrsPawn);
+	EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get(GrsPawn).RegisterGhostCharacter(GrsPawn);
 
 	checkf(!(CharacterSide == EGRSCharacterSide::None), TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
 
@@ -45,7 +46,7 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 	}
 
 	// Match the Z axis to what we have on the level
-	ActorSpawnLocation.Location.Z = 100.0f;
+	ActorSpawnLocation.Location.Z = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID())->GetActorLocation().Z;
 	GrsPawn->SetActorLocation(ActorSpawnLocation);
 }
 

@@ -8,6 +8,7 @@
 
 // Bmr
 #include "Controllers/BmrPlayerController.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
@@ -15,12 +16,12 @@ AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext
 {
 	class ABmrPlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
 	AGrsPawn* PlayerCharacter = nullptr;
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- Utils requested return of ghost character"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
 	if (PlayerController)
 	{
 		PlayerCharacter = Cast<AGrsPawn>(PlayerController->GetPawn());
-		UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- GhostCharacter is %s"), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- GhostCharacter is %s "), __LINE__, __FUNCTION__, PlayerCharacter ? TEXT("TRUE") : TEXT("FALSE"));
 	}
 
 	return PlayerCharacter ? PlayerCharacter : nullptr;

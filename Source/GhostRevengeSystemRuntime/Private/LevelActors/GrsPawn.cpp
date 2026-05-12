@@ -39,6 +39,7 @@
 // Aiming
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsUtils.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
@@ -142,6 +143,8 @@ void AGrsPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 // Called on client when player ID is changed
 void AGrsPawn::OnRep_PlayerID()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	// --- Init Grs Pawn logic
 	InitPawn(PlayerID);
 }
@@ -149,6 +152,7 @@ void AGrsPawn::OnRep_PlayerID()
 // Basic initialization of the Pawn
 void AGrsPawn::InitPawn(int32 NewPlayerId)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (!ensureMsgf(NewPlayerId >= 0, TEXT("ASSERT: [%i] %hs:\n'NewPlayerId' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
 	{
 		return;
@@ -159,13 +163,14 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 		PlayerID = NewPlayerId;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("AGRSPlayerCharacter::OnInitialize ghost character  --- %s - %s"), *this->GetName(), this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
 // The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
 void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
 	// --- default params required for the fist start to have character prepared
 	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
@@ -221,7 +226,7 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* Fro
 {
 	if (!GhostCharacter
 	    || !FromPlayerCharacter
-	    || !UGRSWorldSubSystem::Get().IsRevivable(FromPlayerCharacter))
+	    || !UGRSWorldSubSystem::Get(this).IsRevivable(FromPlayerCharacter))
 	{
 		return;
 	}
@@ -337,7 +342,7 @@ void AGrsPawn::RefreshPawn()
 // Remove ghost character from the level
 void AGrsPawn::HideGhostCharacterFromMap()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- HideGhostCharacterFromMap Started"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
@@ -348,7 +353,7 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	PlayerArrowStartComponent->SetArrowEnabled(false);
 	ClearTrajectorySplines();
 
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
+	UGRSWorldSubSystem::Get(this).UnregisterGhostCharacter(this);
 
 	if (HasAuthority())
 	{
@@ -359,7 +364,7 @@ void AGrsPawn::HideGhostCharacterFromMap()
 //  Clean up the character for the MGF unload
 void AGrsPawn::PerformCleanUp()
 {
-	UE_LOG(LogTemp, Log, TEXT("[%i] %hs: --- PerformCleanUp Started"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	HideGhostCharacterFromMap();
 
 	if (AimingSphereComponent)
@@ -375,8 +380,8 @@ void AGrsPawn::PerformCleanUp()
 	PlayerID = 0;
 
 	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
-	UGRSWorldSubSystem::Get().ResetRevivedPlayers();
+	UGRSWorldSubSystem::Get(this).UnregisterGhostCharacter(this);
+	UGRSWorldSubSystem::Get(this).ResetRevivedPlayers();
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
 	if (PoolManager)
