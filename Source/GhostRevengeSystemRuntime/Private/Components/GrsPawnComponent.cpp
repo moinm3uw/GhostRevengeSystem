@@ -145,7 +145,7 @@ void UGrsPawnComponent::AddGhostCharacter()
 //  Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), GetBmrPawn()->GetPlayerId());
 	// --- Setup spawned characters
 	for (const FPoolObjectData& CreatedGhostPawn : CreatedGhostPawns)
 	{

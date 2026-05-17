@@ -78,17 +78,21 @@ void UGrsPlayerStateComponent::OnUnregister()
 	{
 		BmrPlayerState->OnOpponentsKilledNumChanged.RemoveDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
+
+	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 }
 
 // Starting point once whole module is ready(loaded) to be initialized
 void UGrsPlayerStateComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Listen game states to grant revive ability for player character
 void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (GetCurrentPlayerState()->IsABot())
 	{
 		return;
@@ -104,6 +108,7 @@ void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const struct FG
 	{
 		ApplyBombSpawningGameplayEffect();
 		GrantPlayerReviveEffect();
+		PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 
 		ABmrPlayerState& BmrPlayerState = GetCurrentPlayerStateChecked();
 		BmrPlayerState.OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
@@ -125,19 +130,16 @@ void UGrsPlayerStateComponent::OnOpponentsKilledNumChanged_Implementation(int32 
 // Tries to revive main player character when a ghost eliminates an enemy on level including elimination of bots
 void UGrsPlayerStateComponent::TryReviveCharacter()
 {
-	if (!GetCurrentPlayerStateChecked().HasAuthority())
-	{
-		return;
-	}
-	APawn& CurrentPawn = GetCurrentPlayerStateChecked().GetPawnChecked();
-	AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn); // --- if no grs pawn means elimination was done by a player not ghost
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
-	if (!GrsPawn || GrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
+	if (!GetCurrentPlayerStateChecked().HasAuthority()
+	    || !ensureMsgf(PreviousGrsPawn, TEXT("ASSERT: [%i] %hs:\n'PreviousGrsPawn' is not set!"), __LINE__, __FUNCTION__)
+	    || PreviousGrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
 	{
 		return;
 	}
 
-	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PreviousGrsPawn->GetPlayerID());
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
@@ -157,13 +159,29 @@ UAbilitySystemComponent* UGrsPlayerStateComponent::GetAbilitySystemComponent() c
  * Revive ability
  **********************************************************************************************/
 
-// Apply review ability that will restore regular player character
+//  Assign previous GrsPawn reference to track an elimination done by GrsPawn
+void UGrsPlayerStateComponent::AssignPreviousGrsPawn(class AGrsPawn* NewGrsPawn)
+{
+	if (!ensureMsgf(NewGrsPawn, TEXT("ASSERT: [%i] %hs:\n 'NewGrsPawn' is not set!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	if (PreviousGrsPawn != NewGrsPawn)
+	{
+		PreviousGrsPawn = NewGrsPawn;
+	}
+}
+
+// Apply a revive ability that will restore regular player character
 void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 {
 	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
 	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Activate to: %s"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *GetNameSafe(PlayerCharacter));
 
 	const ABmrGameState& GameState = ABmrGameState::Get();
 	if (!PlayerCharacter || !GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
@@ -181,7 +199,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
-
+	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 	UGRSWorldSubSystem::Get(this).SetRevivedPlayer(PlayerCharacter);
 }
 

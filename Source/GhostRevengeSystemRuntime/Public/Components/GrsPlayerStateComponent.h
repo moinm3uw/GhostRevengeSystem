@@ -64,8 +64,18 @@ protected:
 	/*********************************************************************************************
 	 * Revive ability
 	 **********************************************************************************************/
+protected:
+	/** Cached reference to a previous GrsPawn that was possessing this PlayerState. Used to indicate that an elimination done by this PlayerState was from previously possessed GrsPawn.
+	 * At apply a revive ability current possessed pawn could be different from GrsPawn. */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Possessed GrsPawn"))
+	TObjectPtr<class AGrsPawn> PreviousGrsPawn = nullptr; 
+	
 public:
-	/** Apply review ability that will restore regular player character
+	/** Assign previous GrsPawn reference to track an elimination done by GrsPawn  */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void AssignPreviousGrsPawn(class AGrsPawn* NewGrsPawn);
+	
+	/** Apply a revive ability that will restore regular player character
 	 * @param PlayerCharacter a target player character to revive required to obtain location
 	 */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")

@@ -29,10 +29,12 @@
 #include "Kismet/GameplayStatics.h"
 
 // Aiming
+#include "Components/GrsPlayerStateComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GhostRevengeSystemRuntimeModule.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -155,6 +157,8 @@ void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(i
 // Unpossess current pawn from ghost to BmwPlayerPawn
 void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) Started \n "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
 	ABmrPlayerController* PlayerController = GetPlayerController();
 	if (!MainBmrPlayerPawn
 	    || !PlayerController
@@ -169,6 +173,9 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 	{
 		// --- Always possess to player character when ghost character is no longer in control
 		PlayerController->Possess(MainBmrPlayerPawn);
+		ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
+		checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs pawn is empty. Possessed back to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
 	}
 	else
 	{
@@ -176,12 +183,17 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 		AGrsPawn* GhostPawn = Cast<AGrsPawn>(CurrentPossessedPawn);
 		if (GhostPawn)
 		{
+			UGrsPlayerStateComponent* GrsPlayerStateComponent = GhostPawn->GetPlayerState()->FindComponentByClass<UGrsPlayerStateComponent>();
+			checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' failed to check obtain component"), *FString(__FUNCTION__));
+			GrsPlayerStateComponent->AssignPreviousGrsPawn(GhostPawn);
+			
 			PlayerController->UnPossess();
 			PlayerController->Possess(MainBmrPlayerPawn);
+			ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
+			checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
+			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs  Possessed to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
 		}
 	}
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- PlayerController is %s,  "), __LINE__, __FUNCTION__, PlayerController ? TEXT("TRUE") : TEXT("FALSE"), *GetNameSafe(MainBmrPlayerPawn));
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- MainPlayerPawn is %s "), __LINE__, __FUNCTION__, MainBmrPlayerPawn ? TEXT("TRUE") : TEXT("FALSE"));
 
 	MainBmrPlayerPawn = nullptr; // --- reset player character reference
 }

@@ -152,7 +152,7 @@ void AGrsPawn::OnRep_PlayerID()
 // Basic initialization of the Pawn
 void AGrsPawn::InitPawn(int32 NewPlayerId)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) PlayerID: %i  "), __LINE__, __FUNCTION__, this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), NewPlayerId);
 	if (!ensureMsgf(NewPlayerId >= 0, TEXT("ASSERT: [%i] %hs:\n'NewPlayerId' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
 	{
 		return;
