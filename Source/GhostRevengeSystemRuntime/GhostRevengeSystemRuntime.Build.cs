@@ -18,6 +18,7 @@ public class GhostRevengeSystemRuntime : ModuleRules
 				, "GameplayAbilities" // Created UGRSReviveAbility
 				// Bomber
 				, "Bomber"
+				, "GameFeaturePluginsManager" // Inherited UGfpmWorldSubsystem
 				, "DataAssetsLoader" // Created UGRSDataAsset
 			}
 		);

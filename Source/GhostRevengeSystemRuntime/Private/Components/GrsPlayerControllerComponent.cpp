@@ -23,6 +23,9 @@
 // DataAssetsLoader
 #include "DalSubsystem.h"
 
+// GameFeaturePluginsManager
+#include "GfpmUtils.h"
+
 // UE
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
@@ -211,8 +214,12 @@ void UGrsPlayerControllerComponent::DisableGhostInputs()
 	if (const UGRSDataAsset* DataAsset = UDalSubsystem::GetDataAsset<UGRSDataAsset>())
 	{
 		const UBmrInputMappingContext* InputContext = DataAsset->GetInputContext();
+
+		TArray<UInputAction*> ContextInputActions;
+		UInputUtilsLibrary::GetAllActionsInContext(PlayerController, InputContext, EInputActionInContextState::Any, /*out*/ ContextInputActions);
 		UInputUtilsLibrary::UnbindInputActionsInContext(PlayerController, InputContext);
 		UInputUtilsLibrary::SetInputContextEnabled(PlayerController, false, InputContext);
+		UGfpmUtils::UnloadAssets(ContextInputActions);
 	}
 }
 

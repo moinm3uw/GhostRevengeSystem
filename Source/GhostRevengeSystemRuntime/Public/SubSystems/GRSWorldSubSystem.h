@@ -2,8 +2,8 @@
 
 #pragma once
 
-// MyEditorUtils
-#include "Subsystems/ModularGameFeaturePluginSubsystem.h"
+// GFPM
+#include "Subsystems/GfpmWorldSubsystem.h"
 
 #include "GRSWorldSubSystem.generated.h"
 
@@ -16,7 +16,7 @@ enum class EGRSCharacterSide : uint8;
  * Manages available spot (left or right side) for GrsPawn on spawn. Only 1 grs allowed per side
  */
 UCLASS(BlueprintType, Blueprintable)
-class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UModularGameFeaturePluginSubsystem
+class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UGfpmWorldSubsystem
 {
 	GENERATED_BODY()
 

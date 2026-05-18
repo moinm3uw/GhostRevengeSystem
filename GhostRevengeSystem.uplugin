@@ -30,6 +30,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "GameFeaturePluginsManager",
+			"Enabled": true
+		},
+		{
 			"Name": "PoolManager",
 			"Enabled": true
 		},
