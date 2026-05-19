@@ -58,7 +58,7 @@ void UGrsPlayerStateComponent::BeginPlay()
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
-//  Called as part of MGF(GFP) lifecycle when unload happens
+//  Called as part of GFP lifecycle when unload happens
 void UGrsPlayerStateComponent::OnUnregister()
 {
 	Super::OnUnregister();

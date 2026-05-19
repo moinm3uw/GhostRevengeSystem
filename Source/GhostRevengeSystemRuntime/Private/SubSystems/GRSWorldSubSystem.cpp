@@ -119,7 +119,7 @@ void UGRSWorldSubSystem::PerformCleanUp()
  * Side Collisions actors
  **********************************************************************************************/
 
-// Register collision manager component used to track if all components loaded and MGF ready to initialize
+// Register collision manager component used to track if all components loaded and GFP ready to initialize
 void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);

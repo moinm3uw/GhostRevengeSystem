@@ -166,7 +166,7 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
-// The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
+// The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
 void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -361,7 +361,7 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	}
 }
 
-//  Clean up the character for the MGF unload
+//  Clean up the character for the GFP unload
 void AGrsPawn::PerformCleanUp()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -379,7 +379,7 @@ void AGrsPawn::PerformCleanUp()
 
 	PlayerID = 0;
 
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
 	UGRSWorldSubSystem::Get(this).UnregisterGhostCharacter(this);
 	UGRSWorldSubSystem::Get(this).ResetRevivedPlayers();
 

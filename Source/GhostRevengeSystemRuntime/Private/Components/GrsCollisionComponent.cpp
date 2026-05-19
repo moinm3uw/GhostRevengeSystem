@@ -67,7 +67,7 @@ void UGrsCollisionComponent::OnUnregister()
 		CollisionPoolActorHandlersInternal.Empty();
 	}
 
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
+	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
 	UGRSWorldSubSystem::Get(this).ClearCollisions();
 	UGRSWorldSubSystem::Get(this).UnregisterCollisionManagerComponent();
 }

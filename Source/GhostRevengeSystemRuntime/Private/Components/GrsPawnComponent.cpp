@@ -105,7 +105,7 @@ void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payloa
 	}
 }
 
-// A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required
+// A pawn could be loaded/replicated faster than GFP is fully loaded therefore waiting for whole module to be initialized is required
 void UGrsPawnComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);

@@ -5,6 +5,6 @@ namespace GrsGameplayTags
 
 	namespace Event
 	{
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(GameFeaturePluginReady, "Event.GhostRevengeSystem.GameFeaturePluginReady", "Event that fires when MGF(GFP) is loaded and/or ready");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(GameFeaturePluginReady, "Event.GhostRevengeSystem.GameFeaturePluginReady", "Event that fires when GFP is loaded and/or ready");
 	} // namespace Event
 } // namespace GrsGameplayTags

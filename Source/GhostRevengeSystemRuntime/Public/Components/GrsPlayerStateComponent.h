@@ -14,7 +14,7 @@
  * The component is attached to BmrPlayerState primarily to take care of the GAS abilities: revive, bomb spawn ability.
  *
  * Grants abilities: review and bomb spawn when game started ( game state changed to InGame)
- * Remove abilities: review and bomb spawn when game is about to start (game state changed to GameStarting) or MGF is unloaded (Unregistered)
+ * Remove abilities: review and bomb spawn when game is about to start (game state changed to GameStarting) or GFP is unloaded (Unregistered)
  * When a ghost player eliminates a player/bot, component applies revive ability to return from a ghost (GrsPawn) to a regular player (BmrPlayer)
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -37,7 +37,7 @@ protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
-	/** Called as part of MGF(GFP) lifecycle when unload happens */
+	/** Called as part of GFP lifecycle when unload happens */
 	virtual void OnUnregister() override;
 
 	/** Starting point once whole module is ready(loaded) to be initialized */

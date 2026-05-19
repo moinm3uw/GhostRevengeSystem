@@ -11,7 +11,7 @@ enum class EGRSCharacterSide : uint8;
 
 /**
  * Implements the world subsystem to act as singleton with access to different components in the module.
- * Manages MGF overall loading status.
+ * Manages GFP overall loading status.
  * Manages also if a player character (BmrPawn) is revivable or not. A player character can be revived only once per game round, resets revived players when game starts (game state changes to InGame)
  * Manages available spot (left or right side) for GrsPawn on spawn. Only 1 grs allowed per side
  */
@@ -58,7 +58,7 @@ public:
 	 * Side Collisions actors
 	 **********************************************************************************************/
 protected:
-	/** Current Collision Manager Component used to identify if MGF is ready to be loaded */
+	/** Current Collision Manager Component used to identify if GFP is ready to be loaded */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
 	TObjectPtr<class UGrsCollisionComponent> CollisionMangerComponent;
 
@@ -71,7 +71,7 @@ protected:
 	TObjectPtr<class AActor> RightSideCollision;
 
 public:
-	/** Register collision manager component used to track if all components loaded and MGF ready to initialize */
+	/** Register collision manager component used to track if all components loaded and GFP ready to initialize */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RegisterCollisionManagerComponent(class UGrsCollisionComponent* NewCollisionManagerComponent);
 

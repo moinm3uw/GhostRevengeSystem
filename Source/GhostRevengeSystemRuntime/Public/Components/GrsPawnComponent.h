@@ -12,9 +12,9 @@
 #include "GrsPawnComponent.generated.h"
 
 /**
- * Component attached to main BmrPawn to spawn ghost player as MGF ready.
- * Is part of overall MGF loading. If component will not be registered module will not be considered as loaded.
- * On owning BmrPawn readiness events listens overall GhostRevengeSystem MGF load with primarily goal to spawn, init GrsPawns and place in world.
+ * Component attached to main BmrPawn to spawn ghost player as GFP ready.
+ * Is part of overall GFP loading. If component will not be registered module will not be considered as loaded.
+ * On owning BmrPawn readiness events listens overall GhostRevengeSystem GFP load with primarily goal to spawn, init GrsPawns and place in world.
  * Initialization sets replicated PlayerID for each spawned pawn.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -54,7 +54,7 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void Player_PawnReady(const struct FGameplayEventData& Payload);
 
-	/** A pawn could be loaded/replicated faster than MGF(GFP) is fully loaded therefore waiting for whole module to be initialized is required */
+	/** A pawn could be loaded/replicated faster than GFP is fully loaded therefore waiting for whole module to be initialized is required */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 

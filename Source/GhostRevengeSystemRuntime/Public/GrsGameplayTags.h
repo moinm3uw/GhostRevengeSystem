@@ -10,7 +10,7 @@ namespace GrsGameplayTags
 
 	namespace Event
 	{
-		/** Event that fires when MGF(GFP) is loaded and/or ready */
+		/** Event that fires when GFP is loaded and/or ready */
 		GHOSTREVENGESYSTEMRUNTIME_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameFeaturePluginReady);
 	} // namespace Event
 } // namespace GrsGameplayTags
