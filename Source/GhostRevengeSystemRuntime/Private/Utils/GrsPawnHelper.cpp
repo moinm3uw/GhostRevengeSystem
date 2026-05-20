@@ -25,7 +25,7 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 	{
 		return;
 	}
-	EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get(GrsPawn).RegisterGhostCharacter(GrsPawn);
+	const EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get().RegisterGhostCharacter(GrsPawn);
 
 	checkf(!(CharacterSide == EGRSCharacterSide::None), TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
 

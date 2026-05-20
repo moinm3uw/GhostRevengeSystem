@@ -226,7 +226,7 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* Fro
 {
 	if (!GhostCharacter
 	    || !FromPlayerCharacter
-	    || !UGRSWorldSubSystem::Get(this).IsRevivable(FromPlayerCharacter))
+	    || !UGRSWorldSubSystem::Get().IsRevivable(FromPlayerCharacter))
 	{
 		return;
 	}
@@ -353,7 +353,7 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	PlayerArrowStartComponent->SetArrowEnabled(false);
 	ClearTrajectorySplines();
 
-	UGRSWorldSubSystem::Get(this).UnregisterGhostCharacter(this);
+	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 
 	if (HasAuthority())
 	{
@@ -380,8 +380,9 @@ void AGrsPawn::PerformCleanUp()
 	PlayerID = 0;
 
 	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get(this).UnregisterGhostCharacter(this);
-	UGRSWorldSubSystem::Get(this).ResetRevivedPlayers();
+	UGRSWorldSubSystem& WorldSubSystem = UGRSWorldSubSystem::Get();
+	WorldSubSystem.UnregisterGhostCharacter(this);
+	WorldSubSystem.ResetRevivedPlayers();
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
 	if (PoolManager)

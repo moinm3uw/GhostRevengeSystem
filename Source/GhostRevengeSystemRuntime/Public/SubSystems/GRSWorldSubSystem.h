@@ -28,7 +28,7 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnInitialize);
 
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
-	static UGRSWorldSubSystem& Get(const UObject* WorldContextObject);
+	static UGRSWorldSubSystem& Get();
 
 protected:
 	/** Subscribes to local pawn ready event */

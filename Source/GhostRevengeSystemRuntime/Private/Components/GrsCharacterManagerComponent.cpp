@@ -42,6 +42,5 @@ void UGrsCharacterManagerComponent::BeginPlay()
 void UGrsCharacterManagerComponent::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get(this);
-	WorldSubsystem.RegisterCharacterManagerComponent(this);
+	UGRSWorldSubSystem::Get().RegisterCharacterManagerComponent(this);
 }

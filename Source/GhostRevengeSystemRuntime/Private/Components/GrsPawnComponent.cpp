@@ -1,4 +1,4 @@
-﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsPawnComponent.h"
 
@@ -55,8 +55,7 @@ void UGrsPawnComponent::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get(this);
-	WorldSubsystem.RegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get().RegisterPawnComponent(this);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::Player_PawnReady);
 }
@@ -68,7 +67,7 @@ void UGrsPawnComponent::OnUnregister()
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
-	UGRSWorldSubSystem::Get(this).UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
 	if (PoolManager
@@ -86,7 +85,7 @@ void UGrsPawnComponent::OnUnregister()
 		GrsPawnPoolManagerHandlers.Empty();
 	}
 
-	UGRSWorldSubSystem::Get(this).UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
 
 	Super::OnUnregister();
 }

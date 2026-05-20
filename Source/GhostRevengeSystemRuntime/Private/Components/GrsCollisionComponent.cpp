@@ -1,4 +1,4 @@
-﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsCollisionComponent.h"
 
@@ -68,8 +68,9 @@ void UGrsCollisionComponent::OnUnregister()
 	}
 
 	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get(this).ClearCollisions();
-	UGRSWorldSubSystem::Get(this).UnregisterCollisionManagerComponent();
+	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
+	WorldSubsystem.ClearCollisions();
+	WorldSubsystem.UnregisterCollisionManagerComponent();
 }
 
 /*********************************************************************************************
@@ -80,8 +81,7 @@ void UGrsCollisionComponent::OnUnregister()
 void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get(this);
-	WorldSubsystem.RegisterCollisionManagerComponent(this);
+	UGRSWorldSubSystem::Get().RegisterCollisionManagerComponent(this);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
@@ -91,7 +91,7 @@ void UGrsCollisionComponent::OnInitialize(const struct FGameplayEventData& Paylo
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	// spawn collisions only once
-	if (!UGRSWorldSubSystem::Get(this).IsCollisionsSpawned())
+	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 	{
 		SpawnMapCollisionOnSide();
 	}
@@ -138,18 +138,18 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray
 		// calculate the distance from the center of current cell
 		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
 
-		if (!UGRSWorldSubSystem::Get(this).GetLeftCollisionActor())
+		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
 		{
 			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
 			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
 		}
-		else if (!UGRSWorldSubSystem::Get(this).GetRightCollisionActor())
+		else if (!UGRSWorldSubSystem::Get().GetRightCollisionActor())
 		{
 			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
 			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
 		}
 
-		UGRSWorldSubSystem::Get(this).AddCollisionActor(&SpawnedCollision);
+		UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 
 		FTransform CollisionTransfrom = UGRSDataAsset::Get().GetCollisionTransform();
 		CollisionTransfrom.SetLocation(FVector(SpawnLocation.Location.X, 0, 0));

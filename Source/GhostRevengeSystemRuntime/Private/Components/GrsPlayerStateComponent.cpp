@@ -1,4 +1,4 @@
-﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
+// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
 #include "Components/GrsPlayerStateComponent.h"
 
@@ -200,7 +200,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
-	UGRSWorldSubSystem::Get(this).SetRevivedPlayer(PlayerCharacter);
+	UGRSWorldSubSystem::Get().SetRevivedPlayer(PlayerCharacter);
 }
 
 // Grant to a player revive GAS effect

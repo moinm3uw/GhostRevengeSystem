@@ -33,9 +33,9 @@
  **********************************************************************************************/
 
 // Returns this Subsystem, is checked and will crash if it can't be obtained
-UGRSWorldSubSystem& UGRSWorldSubSystem::Get(const UObject* WorldContextObject)
+UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 {
-	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(WorldContextObject);
+	const UWorld* World = UUtilsLibrary::GetPlayWorld();
 	checkf(World, TEXT("%s: 'World' is null"), *FString(__FUNCTION__));
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
 	checkf(ThisSubsystem, TEXT("%s: 'GRSWorldSubSystem' is null"), *FString(__FUNCTION__));
