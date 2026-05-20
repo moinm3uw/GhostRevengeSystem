@@ -42,20 +42,5 @@ void UGrsCharacterManagerComponent::BeginPlay()
 void UGrsCharacterManagerComponent::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get(this);
-	WorldSubsystem.RegisterCharacterManagerComponent(this);
+	UGRSWorldSubSystem::Get().RegisterCharacterManagerComponent(this);
 }
-
-// Clears all transient data created by this component.
-void UGrsCharacterManagerComponent::OnUnregister()
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	Super::OnUnregister();
-
-	// --- perform clean up from subsystem MGF is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem::Get(this).UnregisterCharacterManagerComponent();
-}
-
-/*********************************************************************************************
- * Main functionality
- **********************************************************************************************/

@@ -32,9 +32,9 @@ enum class EGRSCharacterSide : uint8
  *
  * As GrsPawn is spawned it's being initialized with replicated PlayerID and with initial character location.
  * Initialization with PlayerID means that the pawn is ready for further initiation.
- * Once pawn is ready subscribes to GhostRevengeSystem readiness event to wait whole MGF to be loaded as it is relying on data from others parts.
+ * Once pawn is ready subscribes to GhostRevengeSystem readiness event to wait whole GFP to be loaded as it is relying on data from others parts.
  *
- * On MGF readiness event is triggered, Pawns starts listening when a corresponding BmrPawn (by playerID) was removed from level and activates ghosts - possess, show visual representation, set location etc).
+ * On GFP readiness event is triggered, Pawns starts listening when a corresponding BmrPawn (by playerID) was removed from level and activates ghosts - possess, show visual representation, set location etc).
  * Pawn automatically hides itself (visually) from level when Unpossess, EndPlay, Destroy happened.
  */
 UCLASS()
@@ -112,7 +112,7 @@ protected:
 	/** Returns properties that are replicated for the lifetime of the actor channel. */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** The player character could be replicated faster than MGF(GFP) is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
+	/** The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
@@ -155,7 +155,7 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void HideGhostCharacterFromMap();
 
-	/** Clean up the character for the MGF unload */
+	/** Clean up the character for the GFP unload */
 	void PerformCleanUp();
 
 	/*********************************************************************************************
