@@ -384,10 +384,18 @@ void AGrsPawn::PerformCleanUp()
 	WorldSubSystem.UnregisterGhostCharacter(this);
 	WorldSubSystem.ResetRevivedPlayers();
 
-	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
-	if (PoolManager)
+	if (HasAuthority())
 	{
-		PoolManager->ReturnToPool(this);
+		UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
+		if (PoolManager)
+		{
+			FPoolObjectHandle SpawnObjectHandle = PoolManager->FindPoolHandleByObject(this);
+			if (SpawnObjectHandle.IsValid())
+			{
+				PoolManager->ReturnToPool(SpawnObjectHandle);
+				SpawnObjectHandle.Invalidate();
+			}
+		}
 	}
 }
 

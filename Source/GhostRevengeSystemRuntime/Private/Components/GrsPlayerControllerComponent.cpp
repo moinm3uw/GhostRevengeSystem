@@ -175,10 +175,14 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 	if (!CurrentPossessedPawn)
 	{
 		// --- Always possess to player character when ghost character is no longer in control
-		PlayerController->Possess(MainBmrPlayerPawn);
-		ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
-		checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs pawn is empty. Possessed back to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
+		bool bInDestroy = PlayerController->IsActorBeingDestroyed();
+		if (!bInDestroy)
+		{
+			PlayerController->Possess(MainBmrPlayerPawn);
+			ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
+			checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
+			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs pawn is empty. Possessed back to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
+		}
 	}
 	else
 	{
@@ -189,7 +193,7 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 			UGrsPlayerStateComponent* GrsPlayerStateComponent = GhostPawn->GetPlayerState()->FindComponentByClass<UGrsPlayerStateComponent>();
 			checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' failed to check obtain component"), *FString(__FUNCTION__));
 			GrsPlayerStateComponent->AssignPreviousGrsPawn(GhostPawn);
-			
+
 			PlayerController->UnPossess();
 			PlayerController->Possess(MainBmrPlayerPawn);
 			ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());

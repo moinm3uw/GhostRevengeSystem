@@ -133,7 +133,7 @@ void UGrsPlayerStateComponent::TryReviveCharacter()
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	if (!GetCurrentPlayerStateChecked().HasAuthority()
-	    || !ensureMsgf(PreviousGrsPawn, TEXT("ASSERT: [%i] %hs:\n'PreviousGrsPawn' is not set!"), __LINE__, __FUNCTION__)
+	    || !PreviousGrsPawn // pawn could be not set (killing a bot) 
 	    || PreviousGrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
 	{
 		return;
@@ -206,6 +206,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 // Grant to a player revive GAS effect
 void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
@@ -222,11 +223,14 @@ void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 	{
 		ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
 	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Applied revive gameplay effect to self  "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 }
 
 // To Remove Revive applied gameplay effect
 void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED  "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
@@ -253,6 +257,8 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 		ASC->RemoveActiveGameplayEffect(Handle);
 		Handle.Invalidate();
 	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Removed revive gameplay effect "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 }
 
 /*********************************************************************************************
