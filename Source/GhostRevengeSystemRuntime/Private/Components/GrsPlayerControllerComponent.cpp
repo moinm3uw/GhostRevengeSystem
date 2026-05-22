@@ -87,10 +87,12 @@ void UGrsPlayerControllerComponent::BeginPlay()
 	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 
-	APawn& CurrentPawn = GetCurrentPawnChecked();
-	ABmrPlayerState* BmrPlayerState = Cast<ABmrPlayerState>(CurrentPawn.GetPlayerState());
-	checkf(BmrPlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
-	BmrPlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
+	ABmrPlayerState* BmrPlayerState = GetPlayerControllerChecked().GetPlayerState<ABmrPlayerState>();
+	UE_CLOG(!BmrPlayerState, LogGrs, Verbose, TEXT("[%i] %hs (%s) 'BmrPlayerState' is null, which is expected (BeginPlay is too early)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	if (BmrPlayerState)
+	{
+		BmrPlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
+	}
 }
 
 // Clears all transient data created by this component
