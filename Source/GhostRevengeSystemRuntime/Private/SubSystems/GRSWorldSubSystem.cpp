@@ -22,6 +22,8 @@
 
 // UE
 #include "Abilities/GameplayAbilityTypes.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "GhostRevengeSystemRuntimeModule.h"
 #include "Kismet/GameplayStatics.h"
@@ -352,19 +354,49 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 	}
 }
 
+//  Changes the Bmr HUD visibility
+void UGRSWorldSubSystem::ChangeHUDVisibility(bool bVisibility)
+{
+	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
+	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	UTextBlock* ResultTextBlock = nullptr;
+	FName ResultTextBlockName = FName(TEXT("RESULT"));
+
+	TArray<UWidget*> AllWidgets;
+	BmrHUD->WidgetTree->GetAllWidgets(AllWidgets);
+
+	for (UWidget* Widget : AllWidgets)
+	{
+		if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+		{
+			if (TextBlock->GetName() == ResultTextBlockName)
+			{
+				ResultTextBlock = TextBlock;
+			}
+		}
+	}
+
+	if (!ensureMsgf(ResultTextBlock, TEXT("ASSERT: [%i] %hs:\n'ResultTextBlock' with name %s is not found in the BmrHUD !"), __LINE__, __FUNCTION__, *ResultTextBlockName.ToString()))
+	{
+		return;
+	}
+
+	ESlateVisibility ESlateVisibility = bVisibility ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+	ResultTextBlock->SetVisibility(ESlateVisibility);
+}
+
 // Listen end game states to show/hide HUD temporarry
 void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
-	if (EndGameState == EBmrEndGameState::Lose)
+	if (EndGameState == EBmrEndGameState::Lose || EndGameState == EBmrEndGameState::HonorLoss)
 	{
-		UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
-		if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-		BmrHUD->SetVisibility(ESlateVisibility::Collapsed);
+		bool bShowHUD = false;
+		ChangeHUDVisibility(bShowHUD);
 	}
 }
 
@@ -381,5 +413,11 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	{
 		TryInit();
 		ResetRevivedPlayers();
+	}
+
+	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	{
+		bool bShowHUD = true;
+		ChangeHUDVisibility(bShowHUD);
 	}
 }

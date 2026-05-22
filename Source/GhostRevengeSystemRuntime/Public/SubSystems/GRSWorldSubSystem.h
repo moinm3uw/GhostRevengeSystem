@@ -188,4 +188,8 @@ protected:
 	/** Listen end game states to show/hide HUD temporarry */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
+	
+	/** Changes the Bmr HUD visibility */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void ChangeHUDVisibility(bool bVisibility);
 };
