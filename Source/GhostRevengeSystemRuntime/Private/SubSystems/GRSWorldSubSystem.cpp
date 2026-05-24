@@ -355,7 +355,7 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 }
 
 //  Changes the Bmr HUD visibility
-void UGRSWorldSubSystem::ChangeHUDVisibility(bool bVisibility)
+void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 {
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
@@ -396,7 +396,7 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 	if (EndGameState == EBmrEndGameState::Lose || EndGameState == EBmrEndGameState::HonorLoss)
 	{
 		bool bShowHUD = false;
-		ChangeHUDVisibility(bShowHUD);
+		ChangeHUDEndResultVisibility(bShowHUD);
 	}
 }
 
@@ -418,6 +418,6 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		bool bShowHUD = true;
-		ChangeHUDVisibility(bShowHUD);
+		ChangeHUDEndResultVisibility(bShowHUD);
 	}
 }

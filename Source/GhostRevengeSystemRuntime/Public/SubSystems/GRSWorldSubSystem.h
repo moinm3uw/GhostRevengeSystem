@@ -191,5 +191,5 @@ protected:
 	
 	/** Changes the Bmr HUD visibility */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void ChangeHUDVisibility(bool bVisibility);
+	void ChangeHUDEndResultVisibility(bool bVisibility);
 };
