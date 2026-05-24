@@ -395,8 +395,8 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 
 	if (EndGameState == EBmrEndGameState::Lose || EndGameState == EBmrEndGameState::HonorLoss)
 	{
-		bool bShowHUD = false;
-		ChangeHUDEndResultVisibility(bShowHUD);
+		bool bShowHUDEndResult = false;
+		ChangeHUDEndResultVisibility(bShowHUDEndResult);
 	}
 }
 
@@ -417,7 +417,7 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 
 	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
-		bool bShowHUD = true;
-		ChangeHUDEndResultVisibility(bShowHUD);
+		bool bShowHUDEndResult = true;
+		ChangeHUDEndResultVisibility(bShowHUDEndResult);
 	}
 }
