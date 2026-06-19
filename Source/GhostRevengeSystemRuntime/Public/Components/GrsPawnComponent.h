@@ -11,6 +11,8 @@
 
 #include "GrsPawnComponent.generated.h"
 
+class ABmrPawn;
+
 /**
  * Component attached to main BmrPawn to spawn ghost player as GFP ready.
  * Is part of overall GFP loading. If component will not be registered module will not be considered as loaded.
@@ -29,8 +31,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnComponent : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	UGrsPawnComponent();
-
-	// @PR JanSeliv [Coding Standards] - ABmrPawn undeclared in this header, add forward decl `class ABmrPawn;` at top, signature-only return type, never rely on transitive/unity include
+	
 	// @PR JanSeliv [Coding Standards] - redundant specifier pair, BlueprintPure already implies callable, drop BlueprintCallable, use BlueprintPure alone like neighbor GetGhostPlayerCharacter
 	/** Returns BmrPawn of this component */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
@@ -46,7 +47,7 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "GrsPawn Pool Manager Handlers"))
 	TArray<FPoolObjectHandle> GrsPawnPoolManagerHandlers;
 
-// @PR JanSeliv [Coding Standards] - redundant `protected:`, same section already protected from line above, no section banner between, remove duplicate specifier
+	// @PR JanSeliv [Coding Standards] - redundant `protected:`, same section already protected from line above, no section banner between, remove duplicate specifier
 protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;

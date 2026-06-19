@@ -36,6 +36,7 @@
 #include "Components/SplineMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)

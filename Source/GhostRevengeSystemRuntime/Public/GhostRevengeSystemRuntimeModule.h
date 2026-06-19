@@ -3,8 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-// @PR JanSeliv [Coding Standards] - header only inherits IModuleInterface, include minimal `Modules/ModuleInterface.h` like neighbor ProgressionSystemRuntimeModule.h, ModuleManager.h belongs in cpp for IMPLEMENT_MODULE
-#include "Modules/ModuleManager.h"
+#include "Modules/ModuleInterface.h"
 
 /** Define Grs log category. */
 DECLARE_LOG_CATEGORY_EXTERN(LogGrs, Log, All);

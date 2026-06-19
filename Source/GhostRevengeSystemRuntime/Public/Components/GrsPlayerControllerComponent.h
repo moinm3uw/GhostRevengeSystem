@@ -3,18 +3,17 @@
 #pragma once
 
 // Bmr
-// @PR JanSeliv [Coding Standards] - ABmrPlayerController and ABmrPawn used by pointer only, forward-declare instead of include heavy header
 #include "Controllers/BmrPlayerController.h"
 
 // UE
-// @PR JanSeliv [Coding Standards] - AbilitySystemComponent.h unused in header, FGameplayEventData already elaborated as struct in signature, remove include
-#include "AbilitySystemComponent.h"
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "Kismet/GameplayStaticsTypes.h"
 
 #include "GrsPlayerControllerComponent.generated.h"
 
+class ABmrPlayerController;
+class ABmrPawn;
 /**
  *  Attached to the BmrPlayerController to handle player input when a ghost character is possessed.
  *  Holds logic that listens input for charge to aim, throw projectile and spawn bomb.

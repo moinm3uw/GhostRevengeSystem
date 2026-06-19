@@ -3,8 +3,6 @@
 #pragma once
 
 // UE
-// @PR JanSeliv [Coding Standards] - unused include, no GameplayStaticsTypes type in header, remove
-#include "Kismet/GameplayStaticsTypes.h"
 
 class AGrsPawn;
 

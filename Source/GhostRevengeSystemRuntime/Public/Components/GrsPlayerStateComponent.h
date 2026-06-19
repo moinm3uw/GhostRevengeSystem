@@ -10,6 +10,7 @@
 
 #include "GrsPlayerStateComponent.generated.h"
 
+class ABmrPlayerState;
 /**
  * The component is attached to BmrPlayerState primarily to take care of the GAS abilities: revive, bomb spawn ability.
  *
@@ -19,8 +20,8 @@
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent
-	: public UActorComponent
-	  , public IAbilitySystemInterface
+    : public UActorComponent
+    , public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -33,8 +34,8 @@ public:
 	// @PR JanSeliv [Coding Standards] - const getter missing BlueprintPure, pair BlueprintCallable with BlueprintPure like GetPlayerController in neighbor component. Applies across file: GetAppliedBombSpawningEffectHandle
 	/** Returns the player state from attached BmrPlayerState component */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class ABmrPlayerState* GetCurrentPlayerState() const;
-	class ABmrPlayerState& GetCurrentPlayerStateChecked() const;
+	ABmrPlayerState* GetCurrentPlayerState() const;
+	ABmrPlayerState& GetCurrentPlayerStateChecked() const;
 
 protected:
 	/** Called when the game starts */
@@ -76,13 +77,13 @@ protected:
 	/** Cached reference to a previous GrsPawn that was possessing this PlayerState. Used to indicate that an elimination done by this PlayerState was from previously possessed GrsPawn.
 	 * At apply a revive ability current possessed pawn could be different from GrsPawn. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Possessed GrsPawn"))
-	TObjectPtr<class AGrsPawn> PreviousGrsPawn = nullptr; 
-	
+	TObjectPtr<class AGrsPawn> PreviousGrsPawn = nullptr;
+
 public:
 	/** Assign previous GrsPawn reference to track an elimination done by GrsPawn  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void AssignPreviousGrsPawn(class AGrsPawn* NewGrsPawn);
-	
+
 	/** Apply a revive ability that will restore regular player character
 	 * @param PlayerCharacter a target player character to revive required to obtain location
 	 */

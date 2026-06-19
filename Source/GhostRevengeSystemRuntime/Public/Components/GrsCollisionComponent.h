@@ -8,8 +8,6 @@
 // UE
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-// @PR JanSeliv [Coding Standards] - unused header in .h, no Replicated prop nor GetLifetimeReplicatedProps override, drop include
-#include "Net/UnrealNetwork.h"
 
 #include "GrsCollisionComponent.generated.h"
 
@@ -36,8 +34,6 @@ protected:
 	/*********************************************************************************************
 	 * Main functionality
 	 **********************************************************************************************/
-	// @PR JanSeliv [Coding Standards] - empty `public:` specifier with no members, remove it
-public:
 protected:
 	/** Array of pool actors handlers of collisions that should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Pool Collisions Actors Handlers"))

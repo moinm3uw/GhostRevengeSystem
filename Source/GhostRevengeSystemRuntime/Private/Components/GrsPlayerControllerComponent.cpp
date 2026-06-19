@@ -16,6 +16,7 @@
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+#include "Actors/BmrPawn.h"
 
 // MyEditorUtils
 #include "MyUtilsLibraries/InputUtilsLibrary.h"

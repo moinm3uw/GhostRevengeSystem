@@ -4,8 +4,6 @@
 
 // UE
 #include "Abilities/GameplayAbility.h"
-// @PR JanSeliv [Coding Standards] - unused include, GameplayAbility.h already provides core types, remove. Sibling BmrPlayerDeathAbility.h omits CoreMinimal.h
-#include "CoreMinimal.h"
 
 #include "GrsReviveAbility.generated.h"
 

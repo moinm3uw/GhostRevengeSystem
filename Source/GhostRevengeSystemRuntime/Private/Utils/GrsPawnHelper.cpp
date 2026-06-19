@@ -1,24 +1,21 @@
 ﻿// Copyright (c) Valerii Roteremel & Yevhenii Selivanov
 
+// Grs
 #include "Utils/GrsPawnHelper.h"
 
-// @PR JanSeliv [Coding Standards] - includes mix own-plugin, project, UE in one block, split into groups by blank line plus marker comment per module convention
-// @PR JanSeliv [Coding Standards] - AnimInstance, BmrCameraComponent, BmrPlayerNameWidgetComponent, BmrSkeletalMeshComponent, SplineComponent, CharacterMovementComponent never referenced in cpp, remove unused includes, applies across include block
-#include "Animation/AnimInstance.h"
-#include "Components/BmrCameraComponent.h"
-#include "Components/BmrPlayerNameWidgetComponent.h"
-#include "Components/BmrSkeletalMeshComponent.h"
-#include "Components/SplineComponent.h"
-// @PR JanSeliv [Coding Standards] - ABmrPlayerState never referenced in cpp, remove unused include, not covered by list above
-#include "GameFramework/BmrPlayerState.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
+
+// Bmr
+#include "GameFramework/BmrPlayerState.h"
+#include "Actors/BmrPawn.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-// @PR JanSeliv [Coding Standards] - cpp has reflection in own .h, uncomment UE_INLINE_GENERATED_CPP_BY_NAME, commented-out form disables it. Applies across module
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnHelper)
+// UE
+#include "GameFramework/PlayerState.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnHelper)
 
 // Set pawn location to available side (left or right)
 void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
@@ -85,7 +82,7 @@ bool UGrsPawnHelper::bIsReady(AGrsPawn* GrsPawn)
 // @PR JanSeliv [Coding Standards] - GrsPawn derefed via GetPlayerID without null-check, guard like check(GrsPawn) in sibling funcs, applies across file
 APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* GrsPawn)
 {
-	APlayerState* FoundPlayerState = UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID());
+	APlayerState* FoundPlayerState = Cast<APlayerState>(UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID()));
 	// @PR JanSeliv [Coding Standards] - no ensureMsgf in Get-func, on null FoundPlayerState silent return nullptr or LogGrs Verbose, never assert in getter
 	if (!ensureMsgf(FoundPlayerState, TEXT("ASSERT: [%i] %hs:\n'FoundPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
 	{

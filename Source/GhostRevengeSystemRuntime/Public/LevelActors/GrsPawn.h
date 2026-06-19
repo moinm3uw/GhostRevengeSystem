@@ -3,12 +3,8 @@
 #pragma once
 
 #include "AbilitySystemInterface.h"
-// @PR JanSeliv [Coding Standards] - ABmrPawn used only as pointer param, forward declare instead of include in header
-#include "Actors/BmrPawn.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-// @PR JanSeliv [Coding Standards] - only DOREPLIFETIME macros in cpp need this, move include to cpp
-#include "Net/UnrealNetwork.h"
 
 #include "GrsPawn.generated.h"
 
@@ -139,7 +135,7 @@ protected:
 
 	/** Activates ghost with required initiation  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* FromPlayerCharacter);
+	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, class ABmrPawn* FromPlayerCharacter);
 
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")

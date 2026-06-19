@@ -2,18 +2,16 @@
 
 #pragma once
 
-// Grs
-// @PR JanSeliv [Coding Standards] - heavy header include for AGrsPawn used only as class AGrsPawn* and EGRSCharacterSide return type, forward declare enum class EGRSCharacterSide : uint8 like neighbor GRSWorldSubSystem.h, remove include
-#include "LevelActors/GrsPawn.h"
-
 // UE
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "GrsUtils.generated.h"
 
+enum class EGRSCharacterSide : uint8;
+
 /**
- *
+ * 
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsUtils : public UBlueprintFunctionLibrary
