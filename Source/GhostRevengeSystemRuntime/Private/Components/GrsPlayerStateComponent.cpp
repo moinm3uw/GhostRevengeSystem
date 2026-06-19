@@ -3,7 +3,9 @@
 #include "Components/GrsPlayerStateComponent.h"
 
 // Grs
+// @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
@@ -25,8 +27,6 @@
 // @PR JanSeliv [Coding Standards] - unused include, UAbilitySystemGlobals never referenced, only transitively pulls FGameplayEventData, include GameplayEffectTypes.h instead
 #include "AbilitySystemGlobals.h"
 #include "GameFramework/Actor.h"
-// @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
-#include "GhostRevengeSystemRuntimeModule.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
@@ -141,7 +141,7 @@ void UGrsPlayerStateComponent::TryReviveCharacter()
 
 	// @PR JanSeliv [Coding Standards] - GetCurrentPlayerStateChecked() called twice, cache to ref var reuse it
 	if (!GetCurrentPlayerStateChecked().HasAuthority()
-	    || !PreviousGrsPawn // pawn could be not set (killing a bot) 
+	    || !PreviousGrsPawn // pawn could be not set (killing a bot)
 	    || PreviousGrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
 	{
 		return;

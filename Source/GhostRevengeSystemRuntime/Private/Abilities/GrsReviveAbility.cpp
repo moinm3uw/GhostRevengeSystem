@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
+// Grs
 #include "Abilities/GrsReviveAbility.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // Bmr
 #include "Actors/BmrGeneratedMap.h"
@@ -11,8 +13,6 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
-// @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
-#include "GhostRevengeSystemRuntimeModule.h"
 
 // @PR JanSeliv [Coding Standards] - uncomment, reflection cpp requires active UE_INLINE_GENERATED_CPP_BY_NAME after includes, no commented-out code. Ref active in neighbor BmrPlayerDeathAbility.cpp
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)

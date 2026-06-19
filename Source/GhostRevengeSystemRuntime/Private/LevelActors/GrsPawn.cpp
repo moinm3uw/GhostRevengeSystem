@@ -7,7 +7,9 @@
 #include "Components/GrsCharacterManagerComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
+#include "GrsUtils.h"
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 #include "Utils/GrsPawnHelper.h"
@@ -35,16 +37,10 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 // @PR JanSeliv [Coding Standards] - cpp uses UStaticMeshComponent directly but only asset header present, include Components/StaticMeshComponent.h, no transitive reliance
-#include "Engine/StaticMesh.h"
-#include "GameFramework/CharacterMovementComponent.h"
-
-// Aiming
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
-/* @PR JanSeliv [Coding Standards] - own-module headers sit after UE group, breaks include order own .h, own plugin, project, UE.
- * Move GhostRevengeSystemRuntimeModule.h and GrsUtils.h up into Grs group at top */
-#include "GhostRevengeSystemRuntimeModule.h"
-#include "GrsUtils.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)

@@ -3,17 +3,21 @@
 #include "Components/GrsPlayerControllerComponent.h"
 
 // Grs
+#include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsUtils.h"
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
+
 #include "Controllers/BmrPlayerController.h"
 #include "DataAssets/BmrInputAction.h"
 #include "DataAssets/BmrInputMappingContext.h"
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameplayTags.h"
+#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // MyEditorUtils
@@ -27,18 +31,12 @@
 #include "GfpmUtils.h"
 
 // UE
-#include "Engine/World.h"
-#include "EnhancedInputComponent.h"
-#include "Kismet/GameplayStatics.h"
-
-// @PR JanSeliv [Coding Standards] - Aiming include group placed after UE group and mixes UE + project + plugin headers, fold into ordered groups (own plugin, project, UE last)
-// Aiming
-#include "Components/GrsPlayerStateComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "GhostRevengeSystemRuntimeModule.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
+#include "Engine/World.h"
+#include "EnhancedInputComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment after all includes + 1 blank line
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)

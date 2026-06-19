@@ -4,6 +4,8 @@
 
 // GRS
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
+#include "GrsGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
@@ -22,15 +24,11 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-// @PR JanSeliv [Coding Standards] - own GRS headers GhostRevengeSystemRuntimeModule.h and GrsGameplayTags.h misgrouped under `// UE`, move to `// GRS` group, own plugin includes come before UE group
-#include "GhostRevengeSystemRuntimeModule.h"
-#include "GrsGameplayTags.h"
 // @PR JanSeliv [Coding Standards] - unused include, no UGameplayStatics use in this .cpp, drop it
 #include "Kismet/GameplayStatics.h"
 // @PR JanSeliv [Coding Standards] - unused include, no DOREPLIFETIME in this .cpp, drop it
 #include "Net/UnrealNetwork.h"
 
-// @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment, no commented-out code
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
 
 /*********************************************************************************************

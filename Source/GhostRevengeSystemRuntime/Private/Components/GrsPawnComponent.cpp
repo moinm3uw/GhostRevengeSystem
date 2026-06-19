@@ -3,22 +3,22 @@
 #include "Components/GrsPawnComponent.h"
 
 // Grs
+#include "GhostRevengeSystemRuntimeModule.h"
 /* @PR JanSeliv [Coding Standards] - unused includes, remove, type never referenced in cpp: GrsPlayerStateComponent, BmrCellUtilsLibrary,
  * AbilitySystemComponent, AbilitySystemGlobals. Latter two only transitively pull FGameplayEventData, include GameplayEffectTypes.h instead. Applies across file */
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GrsGameplayTags.h"
+#include "GrsUtils.h"
 #include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
 #include "Actors/BmrPawn.h"
-#include "UtilityLibraries/BmrCellUtilsLibrary.h"
+#include "Structures/BmrGameplayTags.h"
 
 // PoolManager
 #include "PoolManagerSubsystem.h"
-// @PR JanSeliv [Coding Standards] - BmrGameplayTags.h is Bmr project header, misgrouped under PoolManager marker, move into `// Bmr` group above
-#include "Structures/BmrGameplayTags.h"
 
 // MyEditorUtils
 #include "Subsystems/GlobalMessageSubsystem.h"
@@ -26,9 +26,6 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
-// @PR JanSeliv [Coding Standards] - own GRS headers GhostRevengeSystemRuntimeModule.h and GrsUtils.h misgrouped under `// UE`, move to `// GRS` group, own plugin includes come before UE group, applies across file
-#include "GhostRevengeSystemRuntimeModule.h"
-#include "GrsUtils.h"
 
 // @PR JanSeliv [Coding Standards] - own .h has reflection, UE_INLINE_GENERATED_CPP_BY_NAME must be active after includes + 1 empty line, currently commented out
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)

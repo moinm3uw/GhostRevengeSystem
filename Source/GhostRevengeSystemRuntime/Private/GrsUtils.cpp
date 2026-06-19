@@ -4,12 +4,11 @@
 
 // Grs
 #include "Components/GrsPlayerControllerComponent.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
 #include "Controllers/BmrPlayerController.h"
-// @PR JanSeliv [Coding Standards] - GhostRevengeSystemRuntimeModule.h is own module header, move up into Grs group, Bmr group is project includes only
-#include "GhostRevengeSystemRuntimeModule.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 

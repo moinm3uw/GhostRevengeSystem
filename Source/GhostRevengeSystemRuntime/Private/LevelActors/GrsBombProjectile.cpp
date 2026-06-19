@@ -1,9 +1,9 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-#include "LevelActors/GrsBombProjectile.h"
-
 // Grs
+#include "LevelActors/GrsBombProjectile.h"
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // Bmr
 #include "Bomber.h"
@@ -11,9 +11,8 @@
 // DataAssetLoader
 #include "DalSubsystem.h"
 
-// @PR JanSeliv [Coding Standards] - own plugin module header misgrouped under UE, move to Grs group right after own .h, before Bmr project group
 // UE
-#include "GhostRevengeSystemRuntimeModule.h"
+
 // @PR JanSeliv [Coding Standards] - unused include, no CapsuleComponent referenced, remove
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"

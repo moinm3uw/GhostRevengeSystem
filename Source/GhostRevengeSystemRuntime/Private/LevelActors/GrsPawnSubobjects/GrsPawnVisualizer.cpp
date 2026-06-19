@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
-
 // Grs
+#include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
 // @PR JanSeliv [Coding Standards] - unused include, GrsPawnComponent not used in cpp, remove
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Components/GrsPawnComponent.h"
 #include "LevelActors/GrsPawn.h"
 #include "Utils/GrsPawnHelper.h"
@@ -26,15 +26,13 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-// @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
-#include "GhostRevengeSystemRuntimeModule.h"
-#include "Abilities/GameplayAbilityTypes.h"
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)

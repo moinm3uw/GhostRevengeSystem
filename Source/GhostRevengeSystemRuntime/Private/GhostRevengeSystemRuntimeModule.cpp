@@ -1,5 +1,6 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
+// Grs
 // @PR JanSeliv [Coding Standards] - cpp uses IMPLEMENT_MODULE but relies on transitive include for it, add own `#include "Modules/ModuleManager.h"` like neighbor ProgressionSystemRuntimeModule.cpp
 #include "GhostRevengeSystemRuntimeModule.h"
 
