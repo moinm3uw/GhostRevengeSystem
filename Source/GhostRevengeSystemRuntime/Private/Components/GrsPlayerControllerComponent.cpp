@@ -206,6 +206,7 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 		AGrsPawn* GhostPawn = Cast<AGrsPawn>(CurrentPossessedPawn);
 		if (GhostPawn)
 		{
+			// @PR JanSeliv [Potential Bug] - GetPlayerState() can be null during unpossess/teardown, deref via ->FindComponentByClass crashes, cache to local and null-guard first
 			UGrsPlayerStateComponent* GrsPlayerStateComponent = GhostPawn->GetPlayerState()->FindComponentByClass<UGrsPlayerStateComponent>();
 			checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' failed to check obtain component"), *FString(__FUNCTION__));
 			GrsPlayerStateComponent->AssignPreviousGrsPawn(GhostPawn);
@@ -531,6 +532,7 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	// @PR JanSeliv [Coding Standards] - LaunchVelocity never read, dead local, remove it and ThrowDirection compute that only feeds it
 	FVector LaunchVelocity = ThrowDirection * 100;
 
+	// @PR JanSeliv [Potential Bug] - CurrentHoldTimeInternal not reset on release-throw path, only ChargeBomb max-charge branch resets, charges silently leak across throws, reset it here
 	GrsPawn->ClearTrajectorySplines();
 
 	//--- hide aiming static mesh

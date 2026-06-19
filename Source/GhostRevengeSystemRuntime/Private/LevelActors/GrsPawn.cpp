@@ -67,6 +67,7 @@ class UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 		return nullptr;
 	}
 	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
+	// @PR JanSeliv [Potential Bug] - inverted ensure polarity, success path returns nullptr while null path returns null component, add `!` like MyPlayerState guard above
 	if (ensureMsgf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is not found on APlayerState (not attached, initialized or no longer exists"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
@@ -122,6 +123,8 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 	// --- Initial setup of spline component and aiming sphere
 	// --- setup spline component
 	AimingSplineComponent = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
+	/* @PR JanSeliv [Potential Bug] - AimingMeshComponent never assigned (always nullptr), AttachToComponent to null parent silently no-ops, spline never attached.
+	 * Attach to RootComponent or existing mesh, or create AimingMeshComponent via CreateDefaultSubobject first */
 	AimingSplineComponent->AttachToComponent(AimingMeshComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	AimingSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
 }

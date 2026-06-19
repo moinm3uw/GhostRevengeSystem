@@ -152,7 +152,7 @@ void FGrsPawnVisualizer::InitCharacterVisual(AGrsPawn* GrsPawn)
 
 	// @PR JanSeliv [Coding Standards] - address-of ref-returning GetMeshComponentChecked into pointer, bind as ref `UBmrSkeletalMeshComponent&` with Ref suffix, not pointer
 	const UBmrSkeletalMeshComponent* MainCharacterMeshComponent = &PlayerCharacter->GetMeshComponentChecked();
-	// @PR JanSeliv [Coding Standards] - redundant ensureMsgf, address-of GetMeshComponentChecked ref never null, drop guard. Same for GetMeshChecked result below, applies across file
+	// @PR JanSeliv [Conding Standards] - redundant ensureMsgf, address-of GetMeshComponentChecked ref never null, drop guard. Same for GetMeshChecked result below, applies across file. Keep local var referenced as `UBmrSkeletalMeshComponent& MainCharacterMeshCompRef = ...`
 	if (!ensureMsgf(MainCharacterMeshComponent, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;

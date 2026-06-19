@@ -53,6 +53,8 @@ EGRSCharacterSide UGrsUtils::GetCharacterSideFromActor(AActor* Actor)
 
 	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
 	// @PR JanSeliv [Coding Standards] - Actor->GetActorLocation dereferences AActor, include "GameFramework/Actor.h" in cpp, never rely on transitive include
+	/* @PR JanSeliv [Potential Bug] - GetSafeNormal binds to GetActorLocation only, normalizes actor position not direction, side collapses to sign(ArenaCenter.X), same for left and right ghost, both throw same way.
+	 * Parenthesize before normalize: (ArenaCenter.Location - Actor->GetActorLocation()).GetSafeNormal() */
 	const FVector ToArenaDirection = ArenaCenter.Location - Actor->GetActorLocation().GetSafeNormal();
 	// @PR JanSeliv [Coding Standards] - float compared to bare int literal, write `> 0.0f` use `.f` for floats
 	return ToArenaDirection.X > 0 ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
