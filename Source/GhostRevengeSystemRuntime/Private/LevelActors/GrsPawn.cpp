@@ -3,6 +3,7 @@
 #include "LevelActors/GrsPawn.h"
 
 // Grs
+// @PR JanSeliv [Coding Standards] - unused include, GrsCharacterManagerComponent type never referenced in cpp, remove (applies across file: BmrBombAbilityActor.h, AbilitySystemGlobals.h, CharacterMovementComponent.h)
 #include "Components/GrsCharacterManagerComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
@@ -33,15 +34,19 @@
 // UE
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+// @PR JanSeliv [Coding Standards] - cpp uses UStaticMeshComponent directly but only asset header present, include Components/StaticMeshComponent.h, no transitive reliance
 #include "Engine/StaticMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Aiming
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
+/* @PR JanSeliv [Coding Standards] - own-module headers sit after UE group, breaks include order own .h, own plugin, project, UE.
+ * Move GhostRevengeSystemRuntimeModule.h and GrsUtils.h up into Grs group at top */
 #include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsUtils.h"
 
+// @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
 
 // Returns the Ability System Component from the Player State
@@ -51,9 +56,11 @@ UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const
 	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
+// @PR JanSeliv [Coding Standards] - drop elaborated specifier in cpp, header included so use plain type (applies across file: class UGrsPlayerStateComponent, struct FGameplayEventData, class UBmrMapComponent, class UObject)
 // Obtains players state from the cached and replicated PlayerID
 class UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 {
+	// @PR JanSeliv [Coding Standards] - read-only local must be const-pointee const APlayerState* (applies across file to read-only locals: MyPlayerState, PlayerCharacter, CurrentGhostCharacter)
 	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
 	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UGrsPawnHelper::GetPlayerStateForPlayerID!"), __LINE__, __FUNCTION__))
 	{
@@ -152,12 +159,14 @@ void AGrsPawn::OnRep_PlayerID()
 // Basic initialization of the Pawn
 void AGrsPawn::InitPawn(int32 NewPlayerId)
 {
+	// @PR JanSeliv [Coding Standards] - drop redundant `this->`, call bare HasAuthority() like rest of file and module
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) PlayerID: %i  "), __LINE__, __FUNCTION__, this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), NewPlayerId);
 	if (!ensureMsgf(NewPlayerId >= 0, TEXT("ASSERT: [%i] %hs:\n'NewPlayerId' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
+	// @PR JanSeliv [Coding Standards] - redundant guard around plain assignment, self-assign harmless, drop if and assign PlayerID directly
 	if (PlayerID != NewPlayerId)
 	{
 		PlayerID = NewPlayerId;
@@ -184,6 +193,7 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 
 	// --- listens to event when BmrPawn controller by player was eliminated on level
+	// @PR JanSeliv [Coding Standards] - read-only local must be const-pointee const ABmrPawn*, only passed to GetMapComponent(const AActor*), never mutated
 	ABmrPawn* MyPawn = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
 	if (MyPawn)
 	{
@@ -193,6 +203,7 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 			return;
 		}
 
+		// @PR JanSeliv [Coding Standards] - OnPreRemovedFromLevel listener never removed, add matching RemoveDynamic in cleanup (EndPlay/PerformCleanUp) like StopListeningForAllGlobalMessages handles global listeners
 		MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
 	}
 }
@@ -262,6 +273,7 @@ void AGrsPawn::TryPossessController(AController* PlayerController)
 		return;
 	}
 
+	// @PR JanSeliv [Coding Standards] - redundant null re-check, early return above already guarantees PlayerController valid, drop nested if and reduce nesting
 	if (PlayerController)
 	{
 		// Unpossess current pawn first
@@ -406,6 +418,7 @@ void AGrsPawn::PerformCleanUp()
 // Initiate and activate aiming point
 void AGrsPawn::InitAimingSphere()
 {
+	// @PR JanSeliv [Coding Standards] - UGRSDataAsset::Get() called twice, cache once into const ref like WorldSubSystem above, reuse var
 	AimingSphereComponent->SetStaticMesh(UGRSDataAsset::Get().GetProjectileMesh());
 	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);

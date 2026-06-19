@@ -1,4 +1,5 @@
-﻿#include "GrsGameplayTags.h"
+﻿// @PR JanSeliv [Coding Standards] - missing copyright header, every module file starts with copyright line, match own .h header
+#include "GrsGameplayTags.h"
 
 namespace GrsGameplayTags
 {

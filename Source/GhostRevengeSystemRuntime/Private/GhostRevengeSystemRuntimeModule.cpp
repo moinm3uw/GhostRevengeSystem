@@ -1,9 +1,12 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
+// @PR JanSeliv [Coding Standards] - cpp uses IMPLEMENT_MODULE but relies on transitive include for it, add own `#include "Modules/ModuleManager.h"` like neighbor ProgressionSystemRuntimeModule.cpp
 #include "GhostRevengeSystemRuntimeModule.h"
 
+// @PR JanSeliv [Coding Standards] - unused include, GRSWorldSubSystem not referenced in cpp, remove it
 #include "SubSystems/GRSWorldSubSystem.h"
 
+// @PR JanSeliv [Coding Standards] - no LOCTEXT used in cpp, remove dead LOCTEXT_NAMESPACE define and matching undef below
 #define LOCTEXT_NAMESPACE "FGhostRevengeSystemRuntimeModule"
 
 DEFINE_LOG_CATEGORY(LogGrs);

@@ -2,9 +2,11 @@
 
 #pragma once
 
+// @PR JanSeliv [Coding Standards] - Bomber.h unused by this enum, drop heavy include. UENUM needs own EGRSSpotType.generated.h instead
 // Bmr
 #include "Bomber.h"
 
+// @PR JanSeliv [Coding Standards] - EGRSSpotType has zero consumers across module, dead code, remove enum
 /**
  * Represents type of the spot on the level
  */

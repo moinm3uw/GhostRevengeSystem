@@ -7,7 +7,9 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
+// @PR JanSeliv [Coding Standards] - unused include, .cpp uses plain APlayerController not ABmrPlayerController, drop it
 #include "Controllers/BmrPlayerController.h"
+// @PR JanSeliv [Coding Standards] - unused include, no ABmrGameState reference in this .cpp, drop it
 #include "GameFramework/BmrGameState.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
@@ -20,11 +22,15 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
+// @PR JanSeliv [Coding Standards] - own GRS headers GhostRevengeSystemRuntimeModule.h and GrsGameplayTags.h misgrouped under `// UE`, move to `// GRS` group, own plugin includes come before UE group
 #include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
+// @PR JanSeliv [Coding Standards] - unused include, no UGameplayStatics use in this .cpp, drop it
 #include "Kismet/GameplayStatics.h"
+// @PR JanSeliv [Coding Standards] - unused include, no DOREPLIFETIME in this .cpp, drop it
 #include "Net/UnrealNetwork.h"
 
+// @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment, no commented-out code
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
 
 /*********************************************************************************************
@@ -44,7 +50,8 @@ UGrsCollisionComponent::UGrsCollisionComponent()
 void UGrsCollisionComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// @PR JanSeliv [Coding Standards] - GetOwner() deref without null check, applies across file log lines, cache owner and guard
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// Binds to local character ready to guarantee that the player controller is initialized
@@ -61,6 +68,7 @@ void UGrsCollisionComponent::OnUnregister()
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
+	// @PR JanSeliv [Coding Standards] - use !IsEmpty() not Num() > 0
 	if (CollisionPoolActorHandlersInternal.Num() > 0)
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
@@ -78,6 +86,7 @@ void UGrsCollisionComponent::OnUnregister()
  **********************************************************************************************/
 
 // Is called when local player character is ready to guarantee that they player controller is initialized
+// @PR JanSeliv [Coding Standards] - include `Abilities/GameplayAbilityTypes.h` in UE group, never rely on transitive from GlobalMessageSubsystem.h
 void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
@@ -87,6 +96,7 @@ void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEven
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded
+// @PR JanSeliv [Coding Standards] - drop elaborated `struct` specifier in .cpp, use plain FGameplayEventData like OnLocalPawnReady_Implementation
 void UGrsCollisionComponent::OnInitialize(const struct FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
@@ -112,6 +122,7 @@ void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 	};
 
 	// --- Spawn actor
+	// @PR JanSeliv [Coding Standards] - magic literal 2 (left + right sides), extract to constexpr var
 	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGRSDataAsset::Get().GetCollisionsAssetClass(), 2, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
@@ -136,8 +147,10 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray
 		FBmrCell SpawnLocation;
 
 		// calculate the distance from the center of current cell
+		// @PR JanSeliv [Coding Standards] - mark const, use float literal 2.f not int 2 in float math
 		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
 
+		// @PR JanSeliv [Coding Standards] - UGRSWorldSubSystem::Get() called repeatedly per loop iteration, cache to local ref once like OnUnregister `WorldSubsystem`
 		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
 		{
 			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
@@ -151,7 +164,9 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray
 
 		UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
 
+		// @PR JanSeliv [Coding Standards] - typo `CollisionTransfrom` local, rename to CollisionTransform across all 3 uses
 		FTransform CollisionTransfrom = UGRSDataAsset::Get().GetCollisionTransform();
+		// @PR JanSeliv [Coding Standards] - int literals in FVector ctor, use float literals 0.f not 0
 		CollisionTransfrom.SetLocation(FVector(SpawnLocation.Location.X, 0, 0));
 		SpawnedCollision.SetActorTransform(CollisionTransfrom);
 	}

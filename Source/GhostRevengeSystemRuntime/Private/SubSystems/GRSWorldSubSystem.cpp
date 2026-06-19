@@ -3,6 +3,7 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // GRS
+// @PR JanSeliv [Coding Standards] - .cpp uses UGrsCollisionComponent and UGrsCharacterManagerComponent (header forward-declares only), include "Components/GrsCollisionComponent.h" and "Components/GrsCharacterManagerComponent.h" like GrsPawnComponent.h, never rely on transitive/unity
 #include "Components/GrsPawnComponent.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
@@ -26,8 +27,10 @@
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "GhostRevengeSystemRuntimeModule.h"
+// @PR JanSeliv [Coding Standards] - unused include, no UGameplayStatics symbol referenced in file, remove it
 #include "Kismet/GameplayStatics.h"
 
+// @PR JanSeliv [Coding Standards] - reflection .cpp must have active UE_INLINE_GENERATED_CPP_BY_NAME after includes, uncomment it, drop commented-out form
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
 /*********************************************************************************************
@@ -38,6 +41,7 @@
 UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 {
 	const UWorld* World = UUtilsLibrary::GetPlayWorld();
+	// @PR JanSeliv [Coding Standards] - use %hs with __FUNCTION__, not %s with *FString(). Applies to ThisSubsystem checkf below
 	checkf(World, TEXT("%s: 'World' is null"), *FString(__FUNCTION__));
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
 	checkf(ThisSubsystem, TEXT("%s: 'GRSWorldSubSystem' is null"), *FString(__FUNCTION__));
@@ -59,6 +63,7 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventDat
 	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
 	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
+	// @PR JanSeliv [Coding Standards] - AddUniqueDynamic with no matching RemoveDynamic in PerformCleanUp, every Add listener needs paired Remove on cleanup
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
@@ -79,10 +84,12 @@ void UGRSWorldSubSystem::TryInit()
 // Checks if the system is ready to load
 bool UGRSWorldSubSystem::IsReady()
 {
+	// @PR JanSeliv [Coding Standards] - extract magic 4 to shared constexpr max players, same literal hardcoded at PawnComponents.Num() < 4 in RegisterPawnComponent
 	// todo: obtain max player param from Bmr core
 	int32 MaxPlayers = 4;
 
 	const ABmrGameState& GameState = ABmrGameState::Get();
+	// @PR JanSeliv [Coding Standards] - bool must start with b and CamelCase, rename isReady to bIsReady
 	bool isReady = CharacterManagerComponent
 	               && CollisionMangerComponent
 	               && PawnComponents.Num() == MaxPlayers
@@ -130,6 +137,7 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponen
 		return;
 	}
 
+	// @PR JanSeliv [Coding Standards] - `!= CollisionMangerComponent` already guaranteed by ensureMsgf above, drop redundant clause, keep null-check `if (NewCollisionManagerComponent)`. Applies across file: RegisterCharacterManagerComponent
 	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
 	{
 		CollisionMangerComponent = NewCollisionManagerComponent;
@@ -161,6 +169,7 @@ void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
 // Returns TRUE if collision are spawned
 bool UGRSWorldSubSystem::IsCollisionsSpawned()
 {
+	// @PR JanSeliv [Coding Standards] - if only assigns bool literal, collapse to const bool bIsSpawned = LeftSideCollision && RightSideCollision. Applies across file: IsRevivable below
 	bool bIsSpawned = false;
 
 	if (LeftSideCollision && RightSideCollision)
@@ -238,6 +247,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
 {
 	if (!ensureMsgf(NewCharacterManagerComponent != CharacterManagerComponent, TEXT("ASSERT: [%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
 	{
+		// @PR JanSeliv [Coding Standards] - redundant UE_LOG, ensureMsgf already surfaces same message, drop it like RegisterCollisionManagerComponent
 		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__);
 		return;
 	}
@@ -257,6 +267,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
 // Register ghost character
 EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
+	// @PR JanSeliv [Coding Standards] - missing terminating `;` after UE_LOG, every other call site ends with `;`
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__)
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
@@ -276,6 +287,7 @@ EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlay
 }
 
 // Register a new Pawn component to track the pawn state
+// @PR JanSeliv [Coding Standards] - drop `class` elaborated specifier in .cpp, GrsPawnComponent.h already included, use plain UGrsPawnComponent*. Applies across file: UnRegisterPawnComponent below
 void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'"), __LINE__, __FUNCTION__);
@@ -298,6 +310,7 @@ void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnC
 // Clears the registered pawn component once it deleted
 void UGRSWorldSubSystem::UnRegisterPawnComponent(class UGrsPawnComponent* PawnComponentToUnregister)
 {
+	// @PR JanSeliv [Coding Standards] - Contains then Remove double lookup, Remove already no-op on absent element, drop Contains and null-guard only
 	if (!PawnComponentToUnregister || PawnComponents.IsEmpty() || !PawnComponents.Contains(PawnComponentToUnregister))
 	{
 		return;
@@ -363,11 +376,13 @@ void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 		return;
 	}
 	UTextBlock* ResultTextBlock = nullptr;
+	// @PR JanSeliv [Coding Standards] - compile-time name, extract to static const FName, drop redundant FName() wrap
 	FName ResultTextBlockName = FName(TEXT("RESULT"));
 
 	TArray<UWidget*> AllWidgets;
 	BmrHUD->WidgetTree->GetAllWidgets(AllWidgets);
 
+	// @PR JanSeliv [Coding Standards] - Widget only read, make const-pointee `const UWidget*` like neighbor loop in GrsPlayerControllerComponent
 	for (UWidget* Widget : AllWidgets)
 	{
 		if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
@@ -384,6 +399,7 @@ void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 		return;
 	}
 
+	// @PR JanSeliv [Coding Standards] - local named same as type ESlateVisibility shadows enum, rename to NewVisibility
 	ESlateVisibility ESlateVisibility = bVisibility ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 	ResultTextBlock->SetVisibility(ESlateVisibility);
 }
@@ -409,6 +425,7 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
+	// @PR JanSeliv [Coding Standards] - HasTag(InGame) retrieved twice, cache to local bool and use if\else
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		TryInit();

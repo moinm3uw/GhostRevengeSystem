@@ -11,14 +11,17 @@
 // DataAssetLoader
 #include "DalSubsystem.h"
 
+// @PR JanSeliv [Coding Standards] - own plugin module header misgrouped under UE, move to Grs group right after own .h, before Bmr project group
 // UE
 #include "GhostRevengeSystemRuntimeModule.h"
+// @PR JanSeliv [Coding Standards] - unused include, no CapsuleComponent referenced, remove
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+// @PR JanSeliv [Coding Standards] - cpp has reflection in own header, uncomment UE_INLINE_GENERATED_CPP_BY_NAME after includes, drop commented-out form
 // #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsBombProjectile)
 
 // Sets default values
@@ -44,6 +47,8 @@ AGrsBombProjectile::AGrsBombProjectile()
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
 
+	// @PR JanSeliv [Coding Standards] - dont bind in Constructor, but in OnRegister\BeginPlay
+	// @PR JanSeliv [Coding Standards] - bind via `&ThisClass::OnHit`, module uses ThisClass everywhere not explicit class name
 	CollisionSphere->OnComponentHit.AddDynamic(this, &AGrsBombProjectile::OnHit);
 
 	// Mesh
@@ -76,6 +81,8 @@ void AGrsBombProjectile::BeginPlay()
 // Called when the GRS data asset is loaded and available
 void AGrsBombProjectile::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
+	// @PR JanSeliv [Coding Standards] - DataAsset can be null - add ensureMsgf
+	// @PR JanSeliv [Coding Standards] - SetStaticMesh uses UStaticMesh type, include Engine/StaticMesh.h, no transitive reliance, match sibling GrsPawn cpp at same call
 	BombMesh->SetStaticMesh(DataAsset->GetProjectileMesh());
 }
 
@@ -84,6 +91,7 @@ void AGrsBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 }
 
+// @PR JanSeliv [Coding Standards] - empty Tick override with bCanEverTick=false, remove dead override in both cpp and header
 // Called every frame
 void AGrsBombProjectile::Tick(float DeltaTime)
 {
