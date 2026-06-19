@@ -47,7 +47,7 @@
 #include "GrsUtils.h"
 
 // @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
 
 // Returns the Ability System Component from the Player State
 UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const

@@ -31,7 +31,7 @@
 #include "Kismet/GameplayStatics.h"
 
 // @PR JanSeliv [Coding Standards] - reflection .cpp must have active UE_INLINE_GENERATED_CPP_BY_NAME after includes, uncomment it, drop commented-out form
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
 /*********************************************************************************************
  * Subsystem's Lifecycle

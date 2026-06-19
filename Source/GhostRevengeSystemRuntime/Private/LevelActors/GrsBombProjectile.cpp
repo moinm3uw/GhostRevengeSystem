@@ -21,8 +21,7 @@
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
-// @PR JanSeliv [Coding Standards] - cpp has reflection in own header, uncomment UE_INLINE_GENERATED_CPP_BY_NAME after includes, drop commented-out form
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsBombProjectile)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsBombProjectile)
 
 // Sets default values
 AGrsBombProjectile::AGrsBombProjectile()

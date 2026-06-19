@@ -18,8 +18,7 @@
 // @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
 #include "GhostRevengeSystemRuntimeModule.h"
 
-// @PR JanSeliv [Coding Standards] - cpp has reflection in own .h, uncomment UE_INLINE_GENERATED_CPP_BY_NAME, commented-out form disables it. Applies across module
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCharacterManagerComponent)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCharacterManagerComponent)
 
 /*********************************************************************************************
  * Lifecycle

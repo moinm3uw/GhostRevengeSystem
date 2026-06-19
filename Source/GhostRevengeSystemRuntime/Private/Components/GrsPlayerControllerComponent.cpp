@@ -41,7 +41,7 @@
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 // @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment after all includes + 1 blank line
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
 /*********************************************************************************************
  * Lifecycle

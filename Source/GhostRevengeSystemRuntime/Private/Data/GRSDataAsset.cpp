@@ -5,8 +5,7 @@
 //  DataAssetsLoader
 #include "DalSubsystem.h"
 
-// @PR JanSeliv [Coding Standards] - uncomment, reflection cpp requires active UE_INLINE_GENERATED_CPP_BY_NAME after includes, no commented-out code
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSDataAsset)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GRSDataAsset)
 
 const UGRSDataAsset& UGRSDataAsset::Get()
 {

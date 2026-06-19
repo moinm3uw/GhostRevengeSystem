@@ -15,7 +15,7 @@
 #include "GhostRevengeSystemRuntimeModule.h"
 
 // @PR JanSeliv [Coding Standards] - uncomment, reflection cpp requires active UE_INLINE_GENERATED_CPP_BY_NAME after includes, no commented-out code. Ref active in neighbor BmrPlayerDeathAbility.cpp
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)
 
 // Actually activate ability, do not call this directly
 void UGrsReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

@@ -31,7 +31,7 @@
 #include "Net/UnrealNetwork.h"
 
 // @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment, no commented-out code
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
 
 /*********************************************************************************************
  * Lifecycle

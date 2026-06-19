@@ -13,7 +13,8 @@
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-// @PR JanSeliv [Coding Standards] - cpp has reflection in own .h, add UE_INLINE_GENERATED_CPP_BY_NAME(GrsUtils) here after includes + 1 empty line, currently absent
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsUtils)
+
 AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext)
 {
 	// @PR JanSeliv [Coding Standards] - drop class elaborated specifier in cpp, header already included, use plain type, applies across file. Add const, PlayerController only read like LocalController below

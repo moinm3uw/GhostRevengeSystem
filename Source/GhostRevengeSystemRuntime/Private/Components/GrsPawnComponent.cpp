@@ -31,7 +31,7 @@
 #include "GrsUtils.h"
 
 // @PR JanSeliv [Coding Standards] - own .h has reflection, UE_INLINE_GENERATED_CPP_BY_NAME must be active after includes + 1 empty line, currently commented out
-// #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
 
 // @PR JanSeliv [Coding Standards] - no forward-declare in .cpp, GRSWorldSubSystem.h already included, remove redundant decl
 class UGRSWorldSubSystem;
