@@ -1,21 +1,18 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
+// GRS
 #include "Components/GrsCollisionComponent.h"
 
-// GRS
 #include "Data/GRSDataAsset.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
-// @PR JanSeliv [Coding Standards] - unused include, .cpp uses plain APlayerController not ABmrPlayerController, drop it
-#include "Controllers/BmrPlayerController.h"
-// @PR JanSeliv [Coding Standards] - unused include, no ABmrGameState reference in this .cpp, drop it
-#include "GameFramework/BmrGameState.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
+#include "Controllers/BmrPlayerController.h"
 
 // PoolManager
 #include "PoolManagerSubsystem.h"
@@ -23,11 +20,9 @@
 // MyEditorUtils
 #include "Subsystems/GlobalMessageSubsystem.h"
 
-// UE
-// @PR JanSeliv [Coding Standards] - unused include, no UGameplayStatics use in this .cpp, drop it
-#include "Kismet/GameplayStatics.h"
-// @PR JanSeliv [Coding Standards] - unused include, no DOREPLIFETIME in this .cpp, drop it
-#include "Net/UnrealNetwork.h"
+// UE 
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
+#include "GameFramework/PlayerController.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
 
@@ -94,8 +89,7 @@ void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEven
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded
-// @PR JanSeliv [Coding Standards] - drop elaborated `struct` specifier in .cpp, use plain FGameplayEventData like OnLocalPawnReady_Implementation
-void UGrsCollisionComponent::OnInitialize(const struct FGameplayEventData& Payload)
+void UGrsCollisionComponent::OnInitialize(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	// spawn collisions only once
@@ -129,7 +123,7 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
-	APlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this);
+	APlayerController* PlayerController = Cast<APlayerController>(UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this));
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;

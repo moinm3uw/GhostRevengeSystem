@@ -3,11 +3,8 @@
 #include "Components/GrsPawnComponent.h"
 
 // Grs
-#include "GhostRevengeSystemRuntimeModule.h"
-/* @PR JanSeliv [Coding Standards] - unused includes, remove, type never referenced in cpp: GrsPlayerStateComponent, BmrCellUtilsLibrary,
- * AbilitySystemComponent, AbilitySystemGlobals. Latter two only transitively pull FGameplayEventData, include GameplayEffectTypes.h instead. Applies across file */
-#include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
 #include "GrsUtils.h"
 #include "LevelActors/GrsPawn.h"
@@ -24,8 +21,7 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
+#include "GameplayEffectTypes.h"
 
 // @PR JanSeliv [Coding Standards] - own .h has reflection, UE_INLINE_GENERATED_CPP_BY_NAME must be active after includes + 1 empty line, currently commented out
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
@@ -100,7 +96,7 @@ void UGrsPawnComponent::OnUnregister()
 
 // Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
 // @PR JanSeliv [Coding Standards] - drop elaborated specifier `struct` in .cpp def, include FGameplayEventData header use plain type, applies across file to OnInitialize
-void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payload)
+void UGrsPawnComponent::Player_PawnReady(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
@@ -115,7 +111,7 @@ void UGrsPawnComponent::Player_PawnReady(const struct FGameplayEventData& Payloa
 }
 
 // A pawn could be loaded/replicated faster than GFP is fully loaded therefore waiting for whole module to be initialized is required
-void UGrsPawnComponent::OnInitialize(const struct FGameplayEventData& Payload)
+void UGrsPawnComponent::OnInitialize(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 

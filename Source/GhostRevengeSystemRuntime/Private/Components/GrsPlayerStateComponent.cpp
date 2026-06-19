@@ -1,11 +1,12 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-#include "Components/GrsPlayerStateComponent.h"
+
 
 // Grs
+#include "Components/GrsPlayerStateComponent.h"
 // @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
 #include "Data/GRSDataAsset.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
@@ -24,9 +25,7 @@
 
 // UE
 #include "AbilitySystemComponent.h"
-// @PR JanSeliv [Coding Standards] - unused include, UAbilitySystemGlobals never referenced, only transitively pulls FGameplayEventData, include GameplayEffectTypes.h instead
-#include "AbilitySystemGlobals.h"
-#include "GameFramework/Actor.h"
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
@@ -88,14 +87,14 @@ void UGrsPlayerStateComponent::OnUnregister()
 
 // @PR JanSeliv [Coding Standards] - no elaborated type specifier in .cpp, include header use plain FGameplayEventData\AGrsPawn, applies across file
 // Starting point once whole module is ready(loaded) to be initialized
-void UGrsPlayerStateComponent::OnInitialize(const struct FGameplayEventData& Payload)
+void UGrsPlayerStateComponent::OnInitialize(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Listen game states to grant revive ability for player character
-void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
+void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const  FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	// @PR JanSeliv [Coding Standards] - GetCurrentPlayerState() returns nullable Cast, deref without null-check, use GetCurrentPlayerStateChecked()
@@ -169,7 +168,7 @@ UAbilitySystemComponent* UGrsPlayerStateComponent::GetAbilitySystemComponent() c
  **********************************************************************************************/
 
 //  Assign previous GrsPawn reference to track an elimination done by GrsPawn
-void UGrsPlayerStateComponent::AssignPreviousGrsPawn(class AGrsPawn* NewGrsPawn)
+void UGrsPlayerStateComponent::AssignPreviousGrsPawn(AGrsPawn* NewGrsPawn)
 {
 	if (!ensureMsgf(NewGrsPawn, TEXT("ASSERT: [%i] %hs:\n 'NewGrsPawn' is not set!"), __LINE__, __FUNCTION__))
 	{

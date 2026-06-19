@@ -1,20 +1,15 @@
 ﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-#include "Components/GrsCharacterManagerComponent.h"
+
 
 // Grs
+#include "Components/GrsCharacterManagerComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "SubSystems/GRSWorldSubSystem.h"
-// @PR JanSeliv [Coding Standards] - unused include, GrsPawnComponent not referenced in cpp, remove it.
-#include "Components/GrsPawnComponent.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 
 // DataAssetsLoader
 #include "DalSubsystem.h"
-
-// UE
-// @PR JanSeliv [Coding Standards] - unused include, World nor GetWorld referenced in cpp, remove it
-#include "Engine/World.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCharacterManagerComponent)
 

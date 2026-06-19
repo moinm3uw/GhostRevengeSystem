@@ -2,37 +2,25 @@
 
 // Grs
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
-// @PR JanSeliv [Coding Standards] - unused include, GrsPawnComponent not used in cpp, remove
-#include "Abilities/GameplayAbilityTypes.h"
-#include "Components/GrsPawnComponent.h"
+
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "LevelActors/GrsPawn.h"
 #include "Utils/GrsPawnHelper.h"
 
 // Bmr
-/* @PR JanSeliv [Coding Standards] - ABmrPawn used directly here, missing `#include "Actors/BmrPawn.h"`, relies on transitive
- * via GrsPawn.h which is itself flagged to drop that include. Same for FBmrMeshData, add `#include "Structures/BmrMeshData.h"`
- * to this Bmr group, applies across file */
+#include "Actors/BmrPawn.h"
 #include "Bomber.h"
-// @PR JanSeliv [Coding Standards] - unused include, UBmrPlayerNameWidgetComponent not used in cpp, remove. Same for BmrPlayerState.h below, applies across file
-#include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
 #include "DataAssets/BmrPlayerDataAsset.h"
 #include "DataRegistries/BmrPlayerRow.h"
 #include "DataRegistries/BmrPlayerSkinRow.h"
-#include "GameFramework/BmrPlayerState.h"
-
-// MyEditorUtils
-// @PR JanSeliv [Coding Standards] - unused include, GlobalMessageSubsystem not used in cpp, remove. Same for GameplayAbilityTypes, SplineComponent, SplineMeshComponent below, applies across file
-#include "Subsystems/GlobalMessageSubsystem.h"
+#include "Structures/BmrMeshData.h"
 
 // UE
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Components/SplineComponent.h"
-#include "Components/SplineMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GhostRevengeSystemRuntimeModule.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)

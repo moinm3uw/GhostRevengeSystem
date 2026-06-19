@@ -4,7 +4,7 @@
 
 // Grs
 #include "Components/GrsPlayerControllerComponent.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
@@ -16,8 +16,7 @@
 
 AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext)
 {
-	// @PR JanSeliv [Coding Standards] - drop class elaborated specifier in cpp, header already included, use plain type, applies across file. Add const, PlayerController only read like LocalController below
-	class ABmrPlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
+	ABmrPlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
 	AGrsPawn* PlayerCharacter = nullptr;
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
@@ -32,9 +31,9 @@ AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext
 }
 
 // Returns the ghost controller component, nullptr otherwise.
-class UGrsPlayerControllerComponent* UGrsUtils::GetControllerComponent(const UObject* OptionalWorldContext)
+UGrsPlayerControllerComponent* UGrsUtils::GetControllerComponent(const UObject* OptionalWorldContext)
 {
-	const class ABmrPlayerController* LocalController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
+	const ABmrPlayerController* LocalController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
 	if (!LocalController)
 	{
 		return nullptr;

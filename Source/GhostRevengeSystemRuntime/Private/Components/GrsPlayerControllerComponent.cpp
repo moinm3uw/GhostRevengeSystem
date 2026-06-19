@@ -5,19 +5,16 @@
 // Grs
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsUtils.h"
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
-
 #include "Controllers/BmrPlayerController.h"
-#include "DataAssets/BmrInputAction.h"
 #include "DataAssets/BmrInputMappingContext.h"
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameplayTags.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // MyEditorUtils
@@ -31,11 +28,11 @@
 #include "GfpmUtils.h"
 
 // UE
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
-#include "EnhancedInputComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment after all includes + 1 blank line
@@ -117,9 +114,8 @@ void UGrsPlayerControllerComponent::OnEndGameStateChanged_Implementation(EBmrEnd
 	}
 }
 
-// @PR JanSeliv [Coding Standards] - drop elaborated `struct` specifier in .cpp, type already included (used plain below as FGameplayEventData EventData), use plain const FGameplayEventData&
 // Listen game states to reset player controller state
-void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
+void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	// --- for cases when game is restarted or freshly started
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))

@@ -3,11 +3,9 @@
 #include "LevelActors/GrsPawn.h"
 
 // Grs
-// @PR JanSeliv [Coding Standards] - unused include, GrsCharacterManagerComponent type never referenced in cpp, remove (applies across file: BmrBombAbilityActor.h, AbilitySystemGlobals.h, CharacterMovementComponent.h)
-#include "Components/GrsCharacterManagerComponent.h"
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
 #include "GrsUtils.h"
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
@@ -15,13 +13,11 @@
 #include "Utils/GrsPawnHelper.h"
 
 // Bmr
-#include "Actors/BmrBombAbilityActor.h"
 #include "Actors/BmrPawn.h"
 #include "Components/BmrMapComponent.h"
 #include "Components/BmrPlayerArrowStartComponent.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
-#include "Controllers/BmrPlayerController.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
@@ -35,12 +31,11 @@
 
 // UE
 #include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
-// @PR JanSeliv [Coding Standards] - cpp uses UStaticMeshComponent directly but only asset header present, include Components/StaticMeshComponent.h, no transitive reliance
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Engine/StaticMesh.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 // @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
@@ -52,9 +47,8 @@ UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const
 	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
-// @PR JanSeliv [Coding Standards] - drop elaborated specifier in cpp, header included so use plain type (applies across file: class UGrsPlayerStateComponent, struct FGameplayEventData, class UBmrMapComponent, class UObject)
 // Obtains players state from the cached and replicated PlayerID
-class UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
+UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 {
 	// @PR JanSeliv [Coding Standards] - read-only local must be const-pointee const APlayerState* (applies across file to read-only locals: MyPlayerState, PlayerCharacter, CurrentGhostCharacter)
 	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
@@ -175,7 +169,7 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 }
 
 // The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
-void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
+void AGrsPawn::OnInitialize(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
@@ -208,13 +202,13 @@ void AGrsPawn::OnInitialize(const struct FGameplayEventData& Payload)
 }
 
 // Listen game states to remove ghost character from level
-void AGrsPawn::OnGameStateChanged_Implementation(const struct FGameplayEventData& Payload)
+void AGrsPawn::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	HideGhostCharacterFromMap();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
-void AGrsPawn::OnPreRemovedFromLevel_Implementation(class UBmrMapComponent* PlayerMapComponent, class UObject* DestroyCauser)
+void AGrsPawn::OnPreRemovedFromLevel_Implementation(UBmrMapComponent* PlayerMapComponent, UObject* DestroyCauser)
 {
 	ABmrPawn* PlayerCharacter = PlayerMapComponent->GetOwner<ABmrPawn>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)

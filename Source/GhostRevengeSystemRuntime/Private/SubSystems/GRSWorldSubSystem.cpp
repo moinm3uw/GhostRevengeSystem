@@ -3,8 +3,9 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // GRS
-// @PR JanSeliv [Coding Standards] - .cpp uses UGrsCollisionComponent and UGrsCharacterManagerComponent (header forward-declares only), include "Components/GrsCollisionComponent.h" and "Components/GrsCharacterManagerComponent.h" like GrsPawnComponent.h, never rely on transitive/unity
+#include "Components/GrsCollisionComponent.h"
 #include "Components/GrsPawnComponent.h"
+#include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
 
@@ -22,13 +23,10 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-#include "Abilities/GameplayAbilityTypes.h"
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
-#include "GhostRevengeSystemRuntimeModule.h"
-// @PR JanSeliv [Coding Standards] - unused include, no UGameplayStatics symbol referenced in file, remove it
-#include "Kismet/GameplayStatics.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
 
@@ -288,8 +286,7 @@ EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlay
 }
 
 // Register a new Pawn component to track the pawn state
-// @PR JanSeliv [Coding Standards] - drop `class` elaborated specifier in .cpp, GrsPawnComponent.h already included, use plain UGrsPawnComponent*. Applies across file: UnRegisterPawnComponent below
-void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent)
+void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'"), __LINE__, __FUNCTION__);
 	if (!NewPawnComponent)
@@ -309,7 +306,7 @@ void UGRSWorldSubSystem::RegisterPawnComponent(class UGrsPawnComponent* NewPawnC
 }
 
 // Clears the registered pawn component once it deleted
-void UGRSWorldSubSystem::UnRegisterPawnComponent(class UGrsPawnComponent* PawnComponentToUnregister)
+void UGRSWorldSubSystem::UnRegisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister)
 {
 	// @PR JanSeliv [Coding Standards] - Contains then Remove double lookup, Remove already no-op on absent element, drop Contains and null-guard only
 	if (!PawnComponentToUnregister || PawnComponents.IsEmpty() || !PawnComponents.Contains(PawnComponentToUnregister))

@@ -2,17 +2,11 @@
 
 // Grs
 #include "Abilities/GrsReviveAbility.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 
 // Bmr
 #include "Actors/BmrGeneratedMap.h"
 #include "Components/BmrMapComponent.h"
-// @PR JanSeliv [Coding Standards] - unused include, BmrMoverComponent never referenced, remove. Applies across file: AbilitySystemComponent.h and AbilitySystemGlobals.h also unused
-#include "Components/BmrMoverComponent.h"
-
-// UE
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemGlobals.h"
 
 // @PR JanSeliv [Coding Standards] - uncomment, reflection cpp requires active UE_INLINE_GENERATED_CPP_BY_NAME after includes, no commented-out code. Ref active in neighbor BmrPlayerDeathAbility.cpp
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsReviveAbility)

@@ -2,19 +2,17 @@
 
 // Grs
 #include "LevelActors/GrsBombProjectile.h"
+
 #include "Data/GRSDataAsset.h"
-#include "GhostRevengeSystemRuntimeModule.h"
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 
 // Bmr
-#include "Bomber.h"
+#include "Bomber.h" // collision channels
 
 // DataAssetLoader
 #include "DalSubsystem.h"
 
 // UE
-
-// @PR JanSeliv [Coding Standards] - unused include, no CapsuleComponent referenced, remove
-#include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
