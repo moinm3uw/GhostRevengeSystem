@@ -209,6 +209,8 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 			// @PR JanSeliv [Potential Bug] - GetPlayerState() can be null during unpossess/teardown, deref via ->FindComponentByClass crashes, cache to local and null-guard first
 			UGrsPlayerStateComponent* GrsPlayerStateComponent = GhostPawn->GetPlayerState()->FindComponentByClass<UGrsPlayerStateComponent>();
 			checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' failed to check obtain component"), *FString(__FUNCTION__));
+			/* @PR JanSeliv [Architecture] - UnpossessGhostPawn reaches into sibling actor GrsPlayerStateComponent and writes its non-replicated PreviousGrsPawn, revive decision then depends on externally accessed member (reset in 3 places) not actual kill signal.
+			 * GrsPlayerStateComponent derives killer-ghost itself in OnOpponentsKilledNumChanged from own PlayerId, drop AssignPreviousGrsPawn and this cross-actor write */
 			GrsPlayerStateComponent->AssignPreviousGrsPawn(GhostPawn);
 
 			PlayerController->UnPossess();
@@ -458,6 +460,8 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 	// @PR JanSeliv [Coding Standards] - GetNumberOfSplinePoints() re-evaluated every iteration, count invariant in loop, cache once to local before loop and reuse
 	for (int32 i = 0; i < AimingSplineComponent->GetNumberOfSplinePoints() - 2; i++)
 	{
+		/* @PR JanSeliv [Architecture] - ChargeBomb runs every aim-held frame, each frame ClearTrajectorySplines destroys then this loop NewObject + RegisterComponent N spline components, defeats PoolManager this GFP depends on.
+		 * Keep grow-only pool of spline meshes sized to max points, per frame only update existing (SetStartAndEnd, visibility), set Mobility once outside loop */
 		// Create and attach the spline mesh component
 		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(GrsPawn);
 		SplineMesh->AttachToComponent(AimingSplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
@@ -498,6 +502,8 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 
 	// --- pick a direction based on the side of the map (left or right)
 	// @PR JanSeliv [Coding Standards] - redundant Cast<AActor>, APawn already IS-A AActor, pass &GetCurrentPawnChecked() directly as implicit upcast
+	/* @PR JanSeliv [Architecture] - ghost side defined twice, RegisterGhostCharacter stores it by slot and PredictProjectilePath here re-derives from world position via GetCharacterSideFromActor, both can disagree since slot allocation independent of post-spawn X.
+	 * Store allocated side on AGrsPawn (replicate enum), aiming reads stored side, drop positional re-derivation and unused EGRSSpotType enum */
 	const float SideSign = UGrsUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
 	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
