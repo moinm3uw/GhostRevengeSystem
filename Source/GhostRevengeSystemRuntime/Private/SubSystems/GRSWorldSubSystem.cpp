@@ -79,7 +79,7 @@ void UGRSWorldSubSystem::TryInit()
 }
 
 // Checks if the system is ready to load
-bool UGRSWorldSubSystem::IsReady()
+bool UGRSWorldSubSystem::IsReady() const
 {
 	// @PR JanSeliv [Coding Standards] - extract magic 4 to shared constexpr max players, same literal hardcoded at PawnComponents.Num() < 4 in RegisterPawnComponent
 	// todo: obtain max player param from Bmr core
@@ -90,7 +90,7 @@ bool UGRSWorldSubSystem::IsReady()
 	const ABmrGameState& GameState = ABmrGameState::Get();
 	// @PR JanSeliv [Coding Standards] - bool must start with b and CamelCase, rename isReady to bIsReady
 	bool isReady = CharacterManagerComponent
-	               && CollisionMangerComponent
+	               && CollisionManagerComponent
 	               && PawnComponents.Num() == MaxPlayers
 	               && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, isReady ? TEXT("READY") : TEXT("NOT READY"));
@@ -131,15 +131,15 @@ void UGRSWorldSubSystem::PerformCleanUp()
 void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	if (!ensureMsgf(NewCollisionManagerComponent != CollisionMangerComponent, TEXT("ASSERT: [%i] %hs:\n'CollisionMangerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(NewCollisionManagerComponent != CollisionManagerComponent, TEXT("ASSERT: [%i] %hs:\n'CollisionMangerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
 	// @PR JanSeliv [Coding Standards] - `!= CollisionMangerComponent` already guaranteed by ensureMsgf above, drop redundant clause, keep null-check `if (NewCollisionManagerComponent)`. Applies across file: RegisterCharacterManagerComponent
-	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionMangerComponent)
+	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionManagerComponent)
 	{
-		CollisionMangerComponent = NewCollisionManagerComponent;
+		CollisionManagerComponent = NewCollisionManagerComponent;
 	}
 
 	TryInit(); // try to initialize
@@ -166,7 +166,7 @@ void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
 }
 
 // Returns TRUE if collision are spawned
-bool UGRSWorldSubSystem::IsCollisionsSpawned()
+bool UGRSWorldSubSystem::IsCollisionsSpawned() const
 {
 	// @PR JanSeliv [Coding Standards] - if only assigns bool literal, collapse to const bool bIsSpawned = LeftSideCollision && RightSideCollision. Applies across file: IsRevivable below
 	bool bIsSpawned = false;
@@ -184,7 +184,7 @@ bool UGRSWorldSubSystem::IsCollisionsSpawned()
 void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	CollisionMangerComponent = nullptr;
+	CollisionManagerComponent = nullptr;
 }
 
 // Clear cached collisions
@@ -206,7 +206,7 @@ void UGRSWorldSubSystem::ClearCollisions()
 }
 
 // Checks if the target Player was already revived. Player can be revived only once
-bool UGRSWorldSubSystem::IsRevivable(const ABmrPawn* PlayerToRevive)
+bool UGRSWorldSubSystem::IsRevivable(const ABmrPawn* PlayerToRevive) const
 {
 	bool bIsRevivable = true;
 
@@ -306,7 +306,7 @@ void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnCompone
 }
 
 // Clears the registered pawn component once it deleted
-void UGRSWorldSubSystem::UnRegisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister)
+void UGRSWorldSubSystem::UnregisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister)
 {
 	// @PR JanSeliv [Coding Standards] - Contains then Remove double lookup, Remove already no-op on absent element, drop Contains and null-guard only
 	if (!PawnComponentToUnregister || PawnComponents.IsEmpty() || !PawnComponents.Contains(PawnComponentToUnregister))

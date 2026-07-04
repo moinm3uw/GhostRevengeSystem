@@ -8,6 +8,13 @@
 #include "GRSWorldSubSystem.generated.h"
 
 enum class EGRSCharacterSide : uint8;
+enum class EBmrEndGameState : uint8;
+class AActor;
+class ABmrPawn;
+class AGrsPawn;
+class UGrsCharacterManagerComponent;
+class UGrsPawnComponent;
+class UGrsCollisionComponent;
 
 /**
  * Implements the world subsystem to act as singleton with access to different components in the module.
@@ -27,9 +34,6 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UGfpmWorldSubsys
 	 **********************************************************************************************/
 
 public:
-	// @PR JanSeliv [Coding Standards] - FGRSOnInitialize declared but never bound or broadcast anywhere, remove unused delegate
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGRSOnInitialize);
-
 	/** Returns this Subsystem, is checked and will crash if it can't be obtained.*/
 	static UGRSWorldSubSystem& Get();
 
@@ -53,57 +57,49 @@ protected:
 	void PerformCleanUp();
 
 public:
-	/* @PR JanSeliv [Coding Standards] - Is\Get func must be const at end, mutates nothing. Applies across file: IsCollisionsSpawned, IsRevivable */
-	/* @PR JanSeliv [Coding Standards] - BlueprintProtected on public member, meta must mirror C++ access, drop it here since public. Applies across file: RegisterCollisionManagerComponent, UnregisterCollisionManagerComponent, RegisterCharacterManagerComponent, GetGRSCharacterManagerComponent, RegisterGhostCharacter, RegisterPawnComponent, UnRegisterPawnComponent, UnregisterCharacterManagerComponent */
 	/** Checks if the system is ready to load */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	bool IsReady();
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	bool IsReady() const;
 
 	/*********************************************************************************************
 	 * Side Collisions actors
 	 **********************************************************************************************/
 protected:
-	// @PR JanSeliv [Coding Standards] - protected BP-exposed member missing BlueprintProtected meta, must mirror C++ access like RevivedPlayerCharacters. Applies across file: CharacterManagerComponent
-	// @PR JanSeliv [Coding Standards] - misspelled CollisionMangerComponent, rename to CollisionManagerComponent to match RegisterCollisionManagerComponent naming
 	/** Current Collision Manager Component used to identify if GFP is ready to be loaded */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGrsCollisionComponent> CollisionMangerComponent;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Collision Manager Component"))
+	TObjectPtr<UGrsCollisionComponent> CollisionManagerComponent;
 
-	/* @PR JanSeliv [Coding Standards] - runtime-cached spawned actor needs Transient like CollisionMangerComponent above. Applies across file: RightSideCollision, GhostCharacterLeftSide, GhostCharacterRightSide, PawnComponents */
-	// @PR JanSeliv [Coding Standards] - AActor used 3+ times with inline `class` specifier, forward declare once `class AActor;` at top like EGRSCharacterSide. Applies across file: RightSideCollision, AddCollisionActor, GetLeftCollisionActor, GetRightCollisionActor
 	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<class AActor> LeftSideCollision;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
+	TObjectPtr<AActor> LeftSideCollision;
 
 	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<class AActor> RightSideCollision;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
+	TObjectPtr<AActor> RightSideCollision;
 
 public:
 	/** Register collision manager component used to track if all components loaded and GFP ready to initialize */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterCollisionManagerComponent(class UGrsCollisionComponent* NewCollisionManagerComponent);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent);
 
 	/** Add spawned collision actors to be cached */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void AddCollisionActor(class AActor* Actor);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void AddCollisionActor(AActor* Actor);
 
 	/** Returns TRUE if collision are spawned */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	bool IsCollisionsSpawned();
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	bool IsCollisionsSpawned() const;
 
-	// @PR JanSeliv [Coding Standards] - redundant ternary, TObjectPtr already returns nullptr when unset, return LeftSideCollision direct. Applies to GetRightCollisionActor below
-	// @PR JanSeliv [Coding Standards] - const getter missing BlueprintPure, pair BlueprintCallable with BlueprintPure like GetPlayerController in neighbor component. Applies across file: GetRightCollisionActor, GetGRSCharacterManagerComponent
 	/** Returns left side spawned collision or nullptr */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class AActor* GetLeftCollisionActor() const { return LeftSideCollision ? LeftSideCollision : nullptr; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE AActor* GetLeftCollisionActor() const { return LeftSideCollision; }
 
 	/** Returns right side spawned collision or nullptr */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class AActor* GetRightCollisionActor() const { return RightSideCollision ? RightSideCollision : nullptr; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE AActor* GetRightCollisionActor() const { return RightSideCollision; }
 
 	/** Clears cached collision manager component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterCollisionManagerComponent();
 
 	/** Clear cached collisions */
@@ -111,89 +107,81 @@ public:
 	void ClearCollisions();
 
 protected:
-	// @PR JanSeliv [Coding Standards] - ABmrPawn used 3+ times here and in IsRevivable, SetRevivedPlayer with inconsistent `class` specifier, forward declare once `class ABmrPawn;` at top like EGRSCharacterSide
-	// @PR JanSeliv [Coding Standards] - wrap UObject array element by TObjectPtr like PawnComponents below, TArray<TObjectPtr<ABmrPawn>>
-	// @PR JanSeliv [Coding Standards] - DisplayName "Dead Player Characters" contradicts RevivedPlayerCharacters naming, rename label to match Revived terms used by SetRevivedPlayer, IsRevivable
 	/** Contains list of player characters that were eliminated at least once per game(round) and character can't be a ghost anymore */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Dead Player Characters"))
-	TArray<class ABmrPawn*> RevivedPlayerCharacters;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Revied Player Character"))
+	TArray<TObjectPtr<ABmrPawn>> RevivedPlayerCharacters;
 
 public:
 	/** Checks if the target Player was already revived. Player can be revived only once
 	 * @param PlayerToRevive The BmrPawn to revive
 	 * @return false if player was revived once in game */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	bool IsRevivable(const ABmrPawn* PlayerToRevive);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	bool IsRevivable(const ABmrPawn* PlayerToRevive) const;
 
 	/** Set a player character as it was revived once */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void SetRevivedPlayer(ABmrPawn* PlayerToRevive);
 
 	/** Reset revived players so they can be ghosts again */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void ResetRevivedPlayers();
 
 	/*********************************************************************************************
 	 * Ghost Characters
 	 **********************************************************************************************/
 protected:
-	// @PR JanSeliv [Coding Standards] - UGrsCharacterManagerComponent, AGrsPawn, UGrsPawnComponent each used 3+ times with inline `class` specifier, forward declare once at top like EGRSCharacterSide. Applies across file
 	/** Current Character Manager Component */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class UGrsCharacterManagerComponent> CharacterManagerComponent;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
+	TObjectPtr<UGrsCharacterManagerComponent> CharacterManagerComponent;
 
-	// @PR JanSeliv [Coding Standards] - runtime-cached member uses VisibleDefaultsOnly, use VisibleInstanceOnly like CollisionMangerComponent for instance data. Applies across file: GhostCharacterRightSide, PawnComponents
-	// @PR JanSeliv [Coding Standards] - BP-expose every UPROPERTY, add BlueprintReadWrite like CharacterManagerComponent. Applies across file: GhostCharacterRightSide, PawnComponents
 	/** Ghost character spawned on left side of the map */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGrsPawn> GhostCharacterLeftSide;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
+	TObjectPtr<AGrsPawn> GhostCharacterLeftSide;
 
 	/** Ghost character spawned on right side of the map */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<class AGrsPawn> GhostCharacterRightSide;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
+	TObjectPtr<AGrsPawn> GhostCharacterRightSide;
 
 public:
 	/** Register character manager component. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterCharacterManagerComponent(class UGrsCharacterManagerComponent* NewCharacterManagerComponent);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void RegisterCharacterManagerComponent(UGrsCharacterManagerComponent* NewCharacterManagerComponent);
 
-	// @PR JanSeliv [Coding Standards] - inconsistent GRS infix, rename to GetCharacterManagerComponent to match RegisterCharacterManagerComponent, UnregisterCharacterManagerComponent siblings
 	/** Register character manager component. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FORCEINLINE class UGrsCharacterManagerComponent* GetGRSCharacterManagerComponent() const { return CharacterManagerComponent; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE UGrsCharacterManagerComponent* GetCharacterManagerComponent() const { return CharacterManagerComponent; }
 
 	/** Register ghost character to obtain it's side NONE if all sides occupied  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	EGRSCharacterSide RegisterGhostCharacter(class AGrsPawn* GhostPlayerCharacter);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	EGRSCharacterSide RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter);
 
 	/*********************************************************************************************
 	 * Pawn Component
 	 **********************************************************************************************/
 protected:
 	/** Pawn Components attached to BmrPawn to track Pawn's state change */
-	UPROPERTY(VisibleDefaultsOnly, Category = "[GhostRevengeSystem]")
-	TArray<TObjectPtr<class UGrsPawnComponent>> PawnComponents;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TArray<TObjectPtr<UGrsPawnComponent>> PawnComponents;
 
 public:
 	/** Register a new Pawn component to track the pawn state */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void RegisterPawnComponent(class UGrsPawnComponent* NewPawnComponent);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent);
 
-	// @PR JanSeliv [Coding Standards] - inconsistent casing UnRegister, rename to UnregisterPawnComponent to match sibling Unregister* methods
 	/** Clears the registered pawn component once it deleted  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void UnRegisterPawnComponent(class UGrsPawnComponent* PawnComponentToUnregister);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void UnregisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister);
 
 	/** Clears cached character manager component. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterCharacterManagerComponent();
 
 	/** Clear cached ghost character by reference */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void UnregisterGhostCharacter(class AGrsPawn* GhostPlayerCharacter);
+	UFUNCTION(Category = "[GhostRevengeSystem]")
+	void UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter);
 
 	/** Clear cached ghost character references */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void ClearGhostCharacters();
 
 	/*********************************************************************************************
@@ -204,11 +192,10 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
-	// @PR JanSeliv [Coding Standards] - EBmrEndGameState used inline with no forward declaration, add `enum class EBmrEndGameState : uint8;` at top like EGRSCharacterSide
 	/** Listen end game states to show/hide HUD temporarry */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
-	
+
 	/** Changes the Bmr HUD visibility */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void ChangeHUDEndResultVisibility(bool bVisibility);

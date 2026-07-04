@@ -69,7 +69,7 @@ void UGrsPawnComponent::OnUnregister()
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
-	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get().UnregisterPawnComponent(this);
 
 	UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
 	if (PoolManager
@@ -89,7 +89,7 @@ void UGrsPawnComponent::OnUnregister()
 	}
 
 	// @PR JanSeliv [Coding Standards] - duplicate UnRegisterPawnComponent call, already invoked above this func, remove redundant call
-	UGRSWorldSubSystem::Get().UnRegisterPawnComponent(this);
+	UGRSWorldSubSystem::Get().UnregisterPawnComponent(this);
 
 	Super::OnUnregister();
 }

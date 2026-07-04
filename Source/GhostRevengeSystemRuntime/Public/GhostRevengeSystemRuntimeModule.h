@@ -11,8 +11,6 @@ DECLARE_LOG_CATEGORY_EXTERN(LogGrs, Log, All);
 class FGhostRevengeSystemRuntimeModule : public IModuleInterface
 {
 public:
-	// @PR JanSeliv [Coding Standards] - GRSModuleName unused, no reference across module, remove dead member
-	inline static const FName GRSModuleName = TEXT("GhostRevengeSystem");
 	//~IModuleInterface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
