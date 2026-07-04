@@ -57,7 +57,7 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 }
 
 // Checks if Pawn is replicated fully (player state and controller present
-bool UGrsPawnHelper::bIsReady(AGrsPawn* GrsPawn)
+bool UGrsPawnHelper::IsReady(const AGrsPawn* GrsPawn)
 {
 	// @PR JanSeliv [Coding Standards] - bIsReady is Is-func, drop check on GrsPawn, silent return false on null input, never assert in Is-func
 	check(GrsPawn);

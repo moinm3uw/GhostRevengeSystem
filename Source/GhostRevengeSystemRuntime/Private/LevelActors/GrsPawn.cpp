@@ -285,7 +285,7 @@ void AGrsPawn::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (!UGrsPawnHelper::bIsReady(this))
+	if (!UGrsPawnHelper::IsReady(this))
 	{
 		return;
 	}
@@ -298,7 +298,7 @@ void AGrsPawn::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-	if (!UGrsPawnHelper::bIsReady(this))
+	if (!UGrsPawnHelper::IsReady(this))
 	{
 		return;
 	}
@@ -311,7 +311,7 @@ void AGrsPawn::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	if (!UGrsPawnHelper::bIsReady(this))
+	if (!UGrsPawnHelper::IsReady(this))
 	{
 		return;
 	}
