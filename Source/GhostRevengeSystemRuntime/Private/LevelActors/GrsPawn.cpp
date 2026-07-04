@@ -30,12 +30,12 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-#include "AbilitySystemComponent.h"
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
+#include "AbilitySystemComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
-#include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Net/UnrealNetwork.h"
 
 // @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
@@ -170,7 +170,7 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 }
 
 // The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point
-void AGrsPawn::OnInitialize(const FGameplayEventData& Payload)
+void AGrsPawn::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
@@ -417,6 +417,12 @@ void AGrsPawn::InitAimingSphere()
 	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AimingSphereComponent->SetVisibility(false);
+}
+
+// Add a new spline mesh component
+void AGrsPawn::AddAimingSplineMeshComponent(USplineMeshComponent* SplineMeshComponent)
+{
+	AimingSplineMeshArray.AddUnique(SplineMeshComponent);
 }
 
 // Hide spline elements (trajectory)

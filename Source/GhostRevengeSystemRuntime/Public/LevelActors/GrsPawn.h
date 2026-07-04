@@ -8,6 +8,12 @@
 
 #include "GrsPawn.generated.h"
 
+class UGrsPlayerStateComponent;
+class UBmrPlayerNameWidgetComponent;
+class UBmrPlayerArrowStartComponent;
+class UStaticMeshComponent;
+class USplineMeshComponent;
+
 /**
  * Represents the side of ghost character
  */
@@ -41,56 +47,48 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGrsPawn : public ACharacter
 {
 	GENERATED_BODY()
 public:
-	// @PR JanSeliv [Coding Standards] - pure const getter missing BlueprintPure, pair it with BlueprintCallable like GetPlayerNameNick3DWidgetComponent and GetPlayerArrowStartWidgetComponent below
 	/** Obtains players state from the cached and replicated PlayerID  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	class UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
-	class UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
+	UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
 
-protected:
-	/* @PR JanSeliv [Coding Standards] - interface override re-adds redundant per-class UFUNCTION(BlueprintCallable), parent IAbilitySystemInterface stays CannotImplementInterfaceInBlueprint.
-	 * Doc already says call as interface function, declare bare under public like sibling ABmrPawn and ABmrGameState GetAbilitySystemComponent, drop UFUNCTION */
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-public:
 	/** Sets default values for this character's properties */
 	AGrsPawn(const FObjectInitializer& ObjectInitializer);
 
 protected:
-	// @PR JanSeliv [Coding Standards] - Transient wrong on constructor-allocated CreateDefaultSubobject member, drop it like sibling PlayerArrowStartComponent and BombMesh (applies across file: AimingSplineComponent, AimingSphereComponent)
 	/** 3D widget component that displays the player name above the character */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
-	TObjectPtr<class UBmrPlayerNameWidgetComponent> PlayerNickName3DWidgetComponent = nullptr;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Player Name 3D Widget Component"))
+	TObjectPtr<UBmrPlayerNameWidgetComponent> PlayerNickName3DWidgetComponent = nullptr;
 
-	// @PR JanSeliv [Coding Standards] - BP-reflectable helper has no UFUNCTION, BP-expose per project mandate (applies across file: InitializePlayerNameWidget, PerformCleanUp, InitAimingSphere, ClearTrajectorySplines)
 	/** Initialize player name widget (on top of character) */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void InitializePlayerNameWidget();
 
 public:
-	// @PR JanSeliv [Coding Standards] - getter name transposes member term, `NameNick` should be `NickName`, rename to GetPlayerNickName3DWidgetComponent to match PlayerNickName3DWidgetComponent
 	/** Returns the 3D widget component that displays the player name above the character. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UBmrPlayerNameWidgetComponent* GetPlayerNameNick3DWidgetComponent() const { return PlayerNickName3DWidgetComponent; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE UBmrPlayerNameWidgetComponent* GetPlayerNickName3DWidgetComponent() const { return PlayerNickName3DWidgetComponent; }
 
 protected:
 	/** 3D Static mesh component that displays the arrow above the local player during match start. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	TObjectPtr<class UBmrPlayerArrowStartComponent> PlayerArrowStartComponent = nullptr;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TObjectPtr<UBmrPlayerArrowStartComponent> PlayerArrowStartComponent = nullptr;
 
 public:
 	/** Returns static mesh component that displays the arrow above the local player during match start. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UBmrPlayerArrowStartComponent* GetPlayerArrowStartWidgetComponent() const { return PlayerArrowStartComponent; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE UBmrPlayerArrowStartComponent* GetPlayerArrowStartWidgetComponent() const { return PlayerArrowStartComponent; }
 
 	/*********************************************************************************************
 	 * Player Character
 	 **********************************************************************************************/
 protected:
 	/** Player id of related BmrPlayerCharacter */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_PlayerID", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Id of Bmr Player Character"))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_PlayerID", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Id of Bmr Player Character"))
 	int32 PlayerID = 0;
 
 public:
@@ -98,31 +96,24 @@ public:
 	UFUNCTION()
 	void OnRep_PlayerID();
 
-	// @PR JanSeliv [Coding Standards] - getter has bare UFUNCTION, BP-expose with BlueprintPure like other getters
 	/**Returns current replicated player ID */
-	UFUNCTION()
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE int32 GetPlayerID() const { return PlayerID; }
 
 	/*********************************************************************************************
 	 * Main functionality (core loop)
 	 **********************************************************************************************/
-public:
-	// @PR JanSeliv [Coding Standards] - never `friend` to bypass access specifiers, allowed only for hash funcs and operators, expose needed members via BlueprintAuthorityOnly UFUNCTION instead
-	friend class UBmrCheatManager;
 
-	/* @PR JanSeliv [Coding Standards] - BlueprintProtected meta must mirror C++ access, InitPawn sits under public so meta wrong here, while protected TryPossessController and RefreshPawn carry BlueprintCallable but miss meta.
-	 * Align each, drop meta on public, add meta on protected (applies across file) */
 	/** Basic initialization of the Pawn */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void InitPawn(int32 NewPlayerId);
 
 protected:
 	/** Returns properties that are replicated for the lifetime of the actor channel. */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// @PR JanSeliv [Coding Standards] - On-prefixed delegate-bound callback must be BlueprintNativeEvent, match OnGameStateChanged and OnPreRemovedFromLevel siblings
 	/** The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
 	/** Listen game states to remove ghost character from level */
@@ -138,7 +129,7 @@ protected:
 	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, class ABmrPawn* FromPlayerCharacter);
 
 	/** Possess a player controller */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void TryPossessController(AController* PlayerController);
 
 	/** APawn Interface when this pawn was possessed by a new controller */
@@ -157,7 +148,7 @@ protected:
 	virtual void UnPossessed() override;
 
 	/** Refresh and enable this pawn */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RefreshPawn();
 
 	/** Remove ghost character from the level when clean up or ghost kills a player */
@@ -165,6 +156,7 @@ protected:
 	void HideGhostCharacterFromMap();
 
 	/** Clean up the character for the GFP unload */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void PerformCleanUp();
 
 	/*********************************************************************************************
@@ -175,38 +167,37 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
 	TObjectPtr<class UMeshComponent> AimingMeshComponent = nullptr;
 
-	// @PR JanSeliv [Coding Standards] - wrap UObject member in TObjectPtr and init nullptr (applies across file: AimingSplineComponent, AimingSplineMeshArray, AimingSphereComponent)
 	/** Spline component used to visually display a projectile trajectory path */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
-	class USplineComponent* AimingSplineComponent;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	TObjectPtr<class USplineComponent> AimingSplineComponent = nullptr;
 
 	/** Spline component used to build a projectile trajectory path */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
-	TArray<class USplineMeshComponent*> AimingSplineMeshArray;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	TArray<TObjectPtr<USplineMeshComponent>> AimingSplineMeshArray;
 
 	/** Aiming sphere used when a player aiming */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
-	class UStaticMeshComponent* AimingSphereComponent;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	TObjectPtr<UStaticMeshComponent> AimingSphereComponent = nullptr;
 
 	/** Initiate and activate aiming point */
+	UFUNCTION(Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void InitAimingSphere();
 
 public:
-	// @PR JanSeliv [Coding Standards] - Get func needs const at end (applies across file: GetAimingSplineComponent, GetAimingSplineMeshArrayComponent, GetAimingSphereComponent)
+	// @PR JanSeliv [Coding Standards] - Get func needs const at end (applies across file: GetAimingSplineMeshArrayComponent, GetAimingSphereComponent)
 	/** Obtain aiming static mesh (currently it's sphere component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	FORCEINLINE USplineComponent* GetAimingSplineComponent() { return AimingSplineComponent; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem] | Aiming")
+	FORCEINLINE USplineComponent* GetAimingSplineComponent() const { return AimingSplineComponent; }
 
-	// @PR JanSeliv [Coding Standards] - no public getter returning whole TArray by non-const ref, keep AimingSplineMeshArray protected and expose helper accessors
-	/** Obtain aiming static mesh (currently it's sphere component */
+	/** Add a new spline mesh component */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	FORCEINLINE TArray<class USplineMeshComponent*>& GetAimingSplineMeshArrayComponent() { return AimingSplineMeshArray; }
+	void AddAimingSplineMeshComponent(USplineMeshComponent* SplineMeshComponent);
 
-	// @PR JanSeliv [Coding Standards] - component getter missing BlueprintPure, add it like GetPlayerNameNick3DWidgetComponent and GetPlayerArrowStartWidgetComponent above (applies across file: GetAimingSplineComponent)
 	/** Obtain aiming static mesh (currently it's sphere component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	FORCEINLINE UStaticMeshComponent* GetAimingSphereComponent() { return AimingSphereComponent; }
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem] | Aiming")
+	FORCEINLINE UStaticMeshComponent* GetAimingSphereComponent() const { return AimingSphereComponent; }
 
 	/** Hide spline elements (trajectory) */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ClearTrajectorySplines();
 };

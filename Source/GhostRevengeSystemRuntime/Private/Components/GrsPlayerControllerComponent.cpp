@@ -478,7 +478,7 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		// Register the component so it appears in the game
 		SplineMesh->RegisterComponent();
 
-		GrsPawn->GetAimingSplineMeshArrayComponent().AddUnique(SplineMesh);
+		GrsPawn->AddAimingSplineMeshComponent(SplineMesh);
 	}
 }
 
