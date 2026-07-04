@@ -23,7 +23,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
-UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)
+UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(const AGrsPawn* GrsPawn)
 {
 	// @PR JanSeliv [Coding Standards] - use checkf with ERROR [%i] %hs message form like checkf lines below, not bare check, applies across file
 	check(GrsPawn);
@@ -32,16 +32,16 @@ UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(AGrsPawn* GrsPawn)
 }
 
 // Set visibility of the player character
-void FGrsPawnVisualizer::SetVisibility(AGrsPawn* GrsPawn, bool Visibility)
+void FGrsPawnVisualizer::SetVisibility(const AGrsPawn* GrsPawn, bool bVisibility)
 {
 	check(GrsPawn);
 
 	// @PR JanSeliv [Coding Standards] - GetMesh() derefed without null-check, route through GetMeshChecked like other funcs
-	GrsPawn->GetMesh()->SetVisibility(Visibility, true);
+	GrsPawn->GetMesh()->SetVisibility(bVisibility, true);
 }
 
 //  Initialize skeletal mesh of the character
-void FGrsPawnVisualizer::InitializeSkeletalMesh(AGrsPawn* GrsPawn)
+void FGrsPawnVisualizer::InitializeSkeletalMesh(const AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -60,7 +60,7 @@ void FGrsPawnVisualizer::InitializeSkeletalMesh(AGrsPawn* GrsPawn)
 }
 
 // Configure the movement component of the character
-void FGrsPawnVisualizer::MovementComponentConfiguration(AGrsPawn* GrsPawn)
+void FGrsPawnVisualizer::ConfigureMovementComponent(const AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -77,7 +77,7 @@ void FGrsPawnVisualizer::MovementComponentConfiguration(AGrsPawn* GrsPawn)
 }
 
 // Set up the capsule component of the character
-void FGrsPawnVisualizer::InitCapsuleComponent(AGrsPawn* GrsPawn)
+void FGrsPawnVisualizer::InitCapsuleComponent(const AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -100,7 +100,7 @@ void FGrsPawnVisualizer::InitCapsuleComponent(AGrsPawn* GrsPawn)
 }
 
 // Set and apply skeletal mesh for ghost player. Copy mesh from current player
-void FGrsPawnVisualizer::InitPlayerMesh(AGrsPawn* GrsPawn)
+void FGrsPawnVisualizer::InitPlayerMesh(const AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 
@@ -123,7 +123,7 @@ void FGrsPawnVisualizer::InitPlayerMesh(AGrsPawn* GrsPawn)
 }
 
 // Initialize character visual (animation, skins)  once added to the level by utilizing player id
-void FGrsPawnVisualizer::InitCharacterVisual(AGrsPawn* GrsPawn)
+void FGrsPawnVisualizer::InitCharacterVisual(const AGrsPawn* GrsPawn)
 {
 	check(GrsPawn);
 

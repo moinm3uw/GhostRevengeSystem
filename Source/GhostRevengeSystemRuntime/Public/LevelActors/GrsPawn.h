@@ -184,7 +184,6 @@ protected:
 	void InitAimingSphere();
 
 public:
-	// @PR JanSeliv [Coding Standards] - Get func needs const at end (applies across file: GetAimingSplineMeshArrayComponent, GetAimingSphereComponent)
 	/** Obtain aiming static mesh (currently it's sphere component */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem] | Aiming")
 	FORCEINLINE USplineComponent* GetAimingSplineComponent() const { return AimingSplineComponent; }

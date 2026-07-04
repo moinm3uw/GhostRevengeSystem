@@ -93,7 +93,7 @@ APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* Gr
 
 // Obtains bmr pawn from the provided GrsPawn
 // @PR JanSeliv [Coding Standards] - ABmrPawn used directly here, missing `#include "Actors/BmrPawn.h"`, never rely on transitive
-ABmrPawn* UGrsPawnHelper::GetOwningBmrPawn(class AGrsPawn* GrsPawn)
+ABmrPawn* UGrsPawnHelper::GetOwningBmrPawn(const AGrsPawn* GrsPawn)
 {
 	// @PR JanSeliv [Coding Standards] - redundant local used once, return GetPawn result directly
 	ABmrPawn* BmrPawn = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());

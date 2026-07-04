@@ -32,5 +32,5 @@ public:
 
 	/** Obtains bmr pawn from the provided GrsPawn */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	static class ABmrPawn* GetOwningBmrPawn(AGrsPawn* GrsPawn);
+	static class ABmrPawn* GetOwningBmrPawn(const AGrsPawn* GrsPawn);
 };

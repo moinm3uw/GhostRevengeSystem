@@ -11,29 +11,24 @@ class AGrsPawn;
  */
 struct FGrsPawnVisualizer
 {
-	// @PR JanSeliv [Coding Standards] - GrsPawn only read via const GetMesh(), mark const AGrsPawn* like GetOwningBmrPawn convention in GrsPawnHelper.h
 	/** Returns the Skeletal Mesh of ghost revenge character. */
-	static class UBmrSkeletalMeshComponent* GetMeshChecked(AGrsPawn* GrsPawn);
+	static class UBmrSkeletalMeshComponent* GetMeshChecked(const AGrsPawn* GrsPawn);
 
-	/* @PR JanSeliv [Coding Standards] - mark const AGrsPawn*, GrsPawn only read via const GetMesh(), not mutated, like
-	 * GetOwningBmrPawn convention. Same for InitializeSkeletalMesh, MovementComponentConfiguration, InitCapsuleComponent, applies across file */
 	/** Set visibility of the player character */
-	// @PR JanSeliv [Coding Standards] - bool param needs b prefix, rename Visibility to bVisibility per module bVisibility/bEnable
-	static void SetVisibility(AGrsPawn* GrsPawn, bool Visibility);
+	static void SetVisibility(const AGrsPawn* GrsPawn, bool bVisibility);
 
 	/** Initialize skeletal mesh of the character */
-	static void InitializeSkeletalMesh(AGrsPawn* GrsPawn);
+	static void InitializeSkeletalMesh(const AGrsPawn* GrsPawn);
 
-	// @PR JanSeliv [Coding Standards] - action func noun-first, rename verb-first ConfigureMovementComponent like sibling SetVisibility/InitCapsuleComponent
 	/** Configure the movement component of the character */
-	static void MovementComponentConfiguration(AGrsPawn* GrsPawn);
+	static void ConfigureMovementComponent(const AGrsPawn* GrsPawn);
 
 	/** Set up the capsule component of the character */
-	static void InitCapsuleComponent(AGrsPawn* GrsPawn);
+	static void InitCapsuleComponent(const AGrsPawn* GrsPawn);
 
 	/** Set and apply skeletal mesh for ghost player. Copy mesh from current player. */
-	static void InitPlayerMesh(AGrsPawn* GrsPawn);
+	static void InitPlayerMesh(const AGrsPawn* GrsPawn);
 
 	/** Initialize character visual (animation, skins)  once added to the level by utilizing player id */
-	static void InitCharacterVisual(AGrsPawn* GrsPawn);
+	static void InitCharacterVisual(const AGrsPawn* GrsPawn);
 };

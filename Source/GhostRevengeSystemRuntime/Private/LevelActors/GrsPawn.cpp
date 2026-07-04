@@ -98,7 +98,7 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 	FGrsPawnVisualizer::InitializeSkeletalMesh(this);
 
 	// --- Configure the movement component
-	FGrsPawnVisualizer::MovementComponentConfiguration(this);
+	FGrsPawnVisualizer::ConfigureMovementComponent(this);
 
 	// --- Setup capsule component
 	FGrsPawnVisualizer::InitCapsuleComponent(this);
