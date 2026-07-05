@@ -29,11 +29,8 @@ public:
 	/** Sets default values for this component's properties */
 	UGrsPlayerStateComponent();
 
-	/* @PR JanSeliv [Coding Standards] - BlueprintProtected meta must mirror C++ access, applies across file.
-	 * Public GetCurrentPlayerState and GrantPlayerReviveEffect drop BlueprintProtected, protected GetAbilitySystemComponent add it */
-	// @PR JanSeliv [Coding Standards] - const getter missing BlueprintPure, pair BlueprintCallable with BlueprintPure like GetPlayerController in neighbor component. Applies across file: GetAppliedBombSpawningEffectHandle
 	/** Returns the player state from attached BmrPlayerState component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	ABmrPlayerState* GetCurrentPlayerState() const;
 	ABmrPlayerState& GetCurrentPlayerStateChecked() const;
 
@@ -44,9 +41,8 @@ protected:
 	/** Called as part of GFP lifecycle when unload happens */
 	virtual void OnUnregister() override;
 
-	// @PR JanSeliv [Coding Standards] - On-prefixed callback must be BlueprintNativeEvent, sibling OnGameStateChanged\OnOpponentsKilledNumChanged already are
 	/** Starting point once whole module is ready(loaded) to be initialized */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
 	/** Listen game states to grant revive ability for player character  */
@@ -61,19 +57,14 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void TryReviveCharacter();
 
-	/* @PR JanSeliv [Coding Standards] - interface override re-adds redundant per-class UFUNCTION(BlueprintCallable), parent IAbilitySystemInterface stays CannotImplementInterfaceInBlueprint.
-	 * Doc already says call as interface function, declare bare like sibling AGrsPawn GetAbilitySystemComponent, drop UFUNCTION */
 	/** Returns the Ability System Component from the Player State.
 	 * In blueprints, call 'Get Ability System Component' as interface function. */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	/*********************************************************************************************
 	 * Revive ability
 	 **********************************************************************************************/
 protected:
-	/* @PR JanSeliv [Coding Standards] - protected cached member needs Internal suffix per module convention, rename to PreviousGrsPawnInternal like neighbor CollisionPoolActorHandlersInternal.
-	 * Applies across file: AppliedBombSpawnEffectHandle to AppliedBombSpawnEffectHandleInternal. DisplayName keeps editor label */
 	/** Cached reference to a previous GrsPawn that was possessing this PlayerState. Used to indicate that an elimination done by this PlayerState was from previously possessed GrsPawn.
 	 * At apply a revive ability current possessed pawn could be different from GrsPawn. */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Possessed GrsPawn"))
@@ -91,7 +82,7 @@ public:
 	void RevivePlayerCharacter(class ABmrPawn* PlayerCharacter);
 
 	/** Grant to a player revive GAS effect */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void GrantPlayerReviveEffect();
 
 	/** To Remove Revive applied gameplay effect */
@@ -106,10 +97,8 @@ protected:
 	FActiveGameplayEffectHandle AppliedBombSpawnEffectHandle;
 
 public:
-	// @PR JanSeliv [Coding Standards] - getter returns struct by value, copies handle each call, return const FActiveGameplayEffectHandle&
 	/** Returns handle of current applied ability effect  */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	FORCEINLINE FActiveGameplayEffectHandle GetAppliedBombSpawningEffectHandle() const { return AppliedBombSpawnEffectHandle; }
+	FORCEINLINE const FActiveGameplayEffectHandle& GetAppliedBombSpawningEffectHandle() const { return AppliedBombSpawnEffectHandle; }
 
 	/** To apply explosion (bomb spawning) gameplay effect */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")

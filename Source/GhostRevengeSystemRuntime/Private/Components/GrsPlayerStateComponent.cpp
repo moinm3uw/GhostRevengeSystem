@@ -87,7 +87,7 @@ void UGrsPlayerStateComponent::OnUnregister()
 
 // @PR JanSeliv [Coding Standards] - no elaborated type specifier in .cpp, include header use plain FGameplayEventData\AGrsPawn, applies across file
 // Starting point once whole module is ready(loaded) to be initialized
-void UGrsPlayerStateComponent::OnInitialize(const FGameplayEventData& Payload)
+void UGrsPlayerStateComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
