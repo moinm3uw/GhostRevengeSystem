@@ -136,8 +136,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	void ThrowProjectile();
 
-	// @PR JanSeliv [Coding Standards] - pass FBmrCell struct by const ref, by-value copies whole struct
 	/** Spawn bomb at aiming mesh location */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	void SpawnBomb(const FBmrCell& TargetCell);
+	void SpawnBomb(const struct FBmrCell& TargetCell);
 };
