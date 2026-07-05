@@ -207,7 +207,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
-	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetReviePlayerCharacterTriggerTag(), &EventData);
+	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetRevivePlayerCharacterTriggerTag(), &EventData);
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 	UGRSWorldSubSystem::Get().SetRevivedPlayer(PlayerCharacter);
 }
@@ -228,7 +228,7 @@ void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 	}
 
 	// @PR JanSeliv [Coding Standards] - read-only local never reassigned, mark const TSubclassOf, applies across file (RemoveAppliedReviveGameplayEffect, ApplyBombSpawningGameplayEffect)
-	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
+	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
 	// @PR JanSeliv [Coding Standards] - ensureMsgf text names wrong symbol `PlayerDeathEffect`, checked expr is `PlayerReviveEffect`, message must name actual asserted var, applies across file (RemoveAppliedReviveGameplayEffect too)
 	if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
 	{
@@ -254,7 +254,7 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 		return;
 	}
 
-	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffect();
+	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
 	if (!ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not returned from data asset!"), __LINE__, __FUNCTION__))
 	{
 		return;
@@ -293,7 +293,7 @@ void UGrsPlayerStateComponent::ApplyBombSpawningGameplayEffect()
 
 	// @PR JanSeliv [Coding Standards] - ASC deref without null-check, GetAbilitySystemComponent() returns nullable, ensureMsgf ASC like sibling GrantPlayerReviveEffect\RemoveAppliedReviveGameplayEffect
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffect();
+	TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffectClass();
 	if (!ensureMsgf(ExplosionDamageEffect, TEXT("ASSERT: [%i] %hs:\n'ExplosionDamageEffect' is not set!"), __LINE__, __FUNCTION__))
 	{
 		return;
