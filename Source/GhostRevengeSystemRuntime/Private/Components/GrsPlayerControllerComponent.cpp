@@ -361,9 +361,9 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 	ShowVisualTrajectory();
 
 	// @PR JanSeliv [Coding Standards] - magic 1.0f max charge time, extract to constexpr or DataAsset config value
-	if (CurrentHoldTimeInternal < 1.0f)
+	if (CurrentHoldTime < 1.0f)
 	{
-		CurrentHoldTimeInternal = CurrentHoldTimeInternal + GetWorld()->GetDeltaSeconds();
+		CurrentHoldTime = CurrentHoldTime + GetWorld()->GetDeltaSeconds();
 	}
 	else
 	{
@@ -372,7 +372,7 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 			ThrowProjectile();
 		}
 		// @PR JanSeliv [Coding Standards] - int 0 assigned to float, use 0.0f
-		CurrentHoldTimeInternal = 0;
+		CurrentHoldTime = 0;
 	}
 
 	// UE_LOG(LogGrs, Verbose, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
@@ -411,7 +411,7 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 }
 
 // Add spline points to the aiming spline component
-void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult& Result)
+void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult& OutResult)
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
 	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
@@ -426,19 +426,19 @@ void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult
 	}
 
 	// @PR JanSeliv [Coding Standards] - 1-char loop var, use Index, applies across file
-	for (int32 i = 0; i < Result.PathData.Num(); i++)
+	for (int32 i = 0; i < OutResult.PathData.Num(); i++)
 	{
-		FVector SplinePoint = Result.PathData[i].Location;
+		FVector SplinePoint = OutResult.PathData[i].Location;
 		AimingSplineComponent->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
 		AimingSplineComponent->Mobility = EComponentMobility::Static;
 	}
 
-	AimingSplineComponent->SetSplinePointType(Result.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
+	AimingSplineComponent->SetSplinePointType(OutResult.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
 	AimingSplineComponent->UpdateSpline();
 }
 
 // Add spline mesh to spline points
-void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& Result)
+void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& OutResult)
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
 	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
@@ -474,7 +474,7 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
 
 		// Set start and end
-		SplineMesh->SetStartAndEnd(Result.PathData[i].Location, TangentStart, Result.PathData[i + 1].Location, TangentEnd);
+		SplineMesh->SetStartAndEnd(OutResult.PathData[i].Location, TangentStart, OutResult.PathData[i + 1].Location, TangentEnd);
 		// Register the component so it appears in the game
 		SplineMesh->RegisterComponent();
 
@@ -501,7 +501,7 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 	 * Store allocated side on AGrsPawn (replicate enum), aiming reads stored side, drop positional re-derivation and unused EGRSSpotType enum */
 	const float SideSign = UGrsUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
-	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTimeInternal), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
+	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTime), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
 	Params.ActorsToIgnore.Add(GetCurrentPawn());
 
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
@@ -542,7 +542,7 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 }
 
 // Spawn bomb at aiming mesh location
-void UGrsPlayerControllerComponent::SpawnBomb(FBmrCell TargetCell)
+void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
 	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
