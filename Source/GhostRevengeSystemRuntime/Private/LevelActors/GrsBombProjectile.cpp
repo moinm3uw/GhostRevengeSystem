@@ -38,10 +38,10 @@ AGrsBombProjectile::AGrsBombProjectile()
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
+	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
+	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
+	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
+	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
 
 	// @PR JanSeliv [Potential Bug] - dont bind in Constructor, but in OnRegister\BeginPlay
 	// @PR JanSeliv [Coding Standards] - bind via `&ThisClass::OnHit`, module uses ThisClass everywhere not explicit class name

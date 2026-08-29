@@ -31,8 +31,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsPawnComponent : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	UGrsPawnComponent();
-	
-	// @PR JanSeliv [Coding Standards] - redundant specifier pair, BlueprintPure already implies callable, drop BlueprintCallable, use BlueprintPure alone like neighbor GetGhostPlayerCharacter
+
 	/** Returns BmrPawn of this component */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	ABmrPawn* GetBmrPawn() const;
@@ -42,38 +41,31 @@ public:
 	 * Main functionality (core loop)
 	 **********************************************************************************************/
 protected:
-	// @PR JanSeliv [Coding Standards] - protected member needs Internal suffix per module convention, rename to GrsPawnPoolManagerHandlersInternal like neighbor CollisionPoolActorHandlersInternal
 	/** Array of pool actors handlers of characters which should be released */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "GrsPawn Pool Manager Handlers"))
 	TArray<FPoolObjectHandle> GrsPawnPoolManagerHandlers;
 
-	// @PR JanSeliv [Coding Standards] - redundant `protected:`, same section already protected from line above, no section banner between, remove duplicate specifier
-protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
 	/** Clears all transient data created by this component */
 	virtual void OnUnregister() override;
 
-	// @PR JanSeliv [Coding Standards] - message listener handler must be On-prefixed per module convention, rename Player_PawnReady to OnPawnReady, neighbor GRSWorldSubSystem binds Player_LocalPawnReady to OnLocalPawnReady
 	/** Event that fires when any pawn is spawned, possessed, and replicated, obtain pawn from Payload.Instigator */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void Player_PawnReady(const struct FGameplayEventData& Payload);
+	void OnPawnReady(const struct FGameplayEventData& Payload);
 
-	// @PR JanSeliv [Coding Standards] - On-callback must be BlueprintNativeEvent, applies across file to OnTakeGrsPawnsFromPoolCompleted
 	/** A pawn could be loaded/replicated faster than GFP is fully loaded therefore waiting for whole module to be initialized is required */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	UFUNCTION(BlueprintNativeEvent, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	// @PR JanSeliv [Coding Standards] - protected UFUNCTION missing meta = (BlueprintProtected), BP can call it unprotected, applies across file to OnTakeGrsPawnsFromPoolCompleted
 	/** Spawn ghost character when a module is initialized */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void AddGhostCharacter();
 
-	// @PR JanSeliv [Coding Standards] - signature-only FPoolObjectData neither included nor forward-declared, PoolObjectHandle.h does not pull it, add elaborated specifier `const TArray<struct FPoolObjectData>&` like FGameplayEventData params above
 	/** Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 	 * @param CreatedGhostPawns - Handles of objects from Pool Manager
 	 */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns);
+	UFUNCTION(BlueprintNativeEvent, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnTakeGrsPawnsFromPoolCompleted(const TArray<struct FPoolObjectData>& CreatedGhostPawns);
 };

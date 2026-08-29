@@ -90,10 +90,10 @@ void FGrsPawnVisualizer::InitCapsuleComponent(const AGrsPawn* GrsPawn)
 		RootCapsuleComponent->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
 		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
-		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
+		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
+		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
+		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
+		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
 
 		RootCapsuleComponent->SetIsReplicated(true);
 	}

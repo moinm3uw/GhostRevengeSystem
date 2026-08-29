@@ -59,7 +59,7 @@ void UGrsPawnComponent::BeginPlay()
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGRSWorldSubSystem::Get().RegisterPawnComponent(this);
 
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::Player_PawnReady);
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::OnPawnReady);
 }
 
 // Clears all transient data created by this component
@@ -96,7 +96,7 @@ void UGrsPawnComponent::OnUnregister()
 
 // Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
 // @PR JanSeliv [Coding Standards] - drop elaborated specifier `struct` in .cpp def, include FGameplayEventData header use plain type, applies across file to OnInitialize
-void UGrsPawnComponent::Player_PawnReady(const FGameplayEventData& Payload)
+void UGrsPawnComponent::OnPawnReady(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
@@ -111,7 +111,7 @@ void UGrsPawnComponent::Player_PawnReady(const FGameplayEventData& Payload)
 }
 
 // A pawn could be loaded/replicated faster than GFP is fully loaded therefore waiting for whole module to be initialized is required
-void UGrsPawnComponent::OnInitialize(const FGameplayEventData& Payload)
+void UGrsPawnComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
@@ -151,7 +151,7 @@ void UGrsPawnComponent::AddGhostCharacter()
 }
 
 //  Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
-void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedGhostPawns)
+void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
 	// @PR JanSeliv [Coding Standards] - GetBmrPawn() return deref without null check, use existing GetBmrPawnChecked() accessor, applies across file (also line below in loop)
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), GetBmrPawn()->GetPlayerId());

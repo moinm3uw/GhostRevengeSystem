@@ -89,7 +89,7 @@ void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEven
 }
 
 // The spawner is considered as loaded only when the subsystem is loaded
-void UGrsCollisionComponent::OnInitialize(const FGameplayEventData& Payload)
+void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	// spawn collisions only once
@@ -119,7 +119,7 @@ void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 }
 
 // Grabs a side collision asset from the pool manager (Object pooling patter)
-void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects)
+void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedObjects)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
