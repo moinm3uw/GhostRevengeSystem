@@ -38,7 +38,7 @@
 UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 {
 	const UWorld* World = UUtilsLibrary::GetPlayWorld();
-	checkf(World, TEXT("%s: 'World' is null [%i] %hs"), __LINE__, __FUNCTION__);
+	checkf(World, TEXT("'World' is null [%i] %hs"), __LINE__, __FUNCTION__);
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
 	checkf(ThisSubsystem, TEXT("[%i] %hs: 'GRSWorldSubSystem' is null"), __LINE__, __FUNCTION__);
 	return *ThisSubsystem;
