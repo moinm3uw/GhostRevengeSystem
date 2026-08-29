@@ -74,7 +74,7 @@ bool UGrsPawnHelper::IsReady(const AGrsPawn* GrsPawn)
 
 	if (!GrsPawn->GetPlayerState())
 	{
-		UE_LOG(LogGrs, Verbose, TEXT("GetPlayerState() is not available"), __FUNCTION__); // ~ Log LogGrs Verbose
+		UE_LOG(LogGrs, Verbose, TEXT("GetPlayerState() is not available [%i] %hs: "), __LINE__, __FUNCTION__);
 		return false;
 	}
 
@@ -92,7 +92,7 @@ APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const AGrsPawn* GrsPawn)
 	APlayerState* FoundPlayerState = Cast<APlayerState>(UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID()));
 	if (!FoundPlayerState)
 	{
-		UE_LOG(LogGrs, Verbose, TEXT("FoundPlayerState failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __FUNCTION__); // ~ Log LogGrs Verbose
+		UE_LOG(LogGrs, Verbose, TEXT("FoundPlayerState failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState! [%i] %hs"), __LINE__, __FUNCTION__);
 		return nullptr;
 	}
 

@@ -23,7 +23,6 @@ AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext
 	ABmrPlayerController* PlayerController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController();
 	AGrsPawn* PlayerCharacter = nullptr;
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
 	if (PlayerController)
 	{
 		PlayerCharacter = Cast<AGrsPawn>(PlayerController->GetPawn());
