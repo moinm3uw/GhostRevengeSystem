@@ -373,7 +373,8 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 //  Changes the Bmr HUD visibility
 void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 {
-	UTextBlock* ResultTextBlock = GetTextBlockToHide();
+	const FName ResultTextBlockName = TEXT("RESULT");
+	UTextBlock* ResultTextBlock = GetTextBlockToHide(ResultTextBlockName);
 	if (!ensureMsgf(ResultTextBlock, TEXT("ASSERT: [%i] %hs:\n'ResultTextBlock' with name %s is not found in the BmrHUD !"), __LINE__, __FUNCTION__, *ResultTextBlockName.ToString()))
 	{
 		return;
@@ -384,15 +385,13 @@ void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 }
 
 // Find and return a textblock element responsible for the end game result
-UTextBlock* UGRSWorldSubSystem::GetTextBlockToHide()
+UTextBlock* UGRSWorldSubSystem::GetTextBlockToHide(FName ResultTextBlockName)
 {
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
 	}
-
-	const FName ResultTextBlockName = TEXT("RESULT");
 
 	/* @PR JanSeliv [Architecture] - Wrap entire hack as separate function, marked as @TODO for JanSeliv. */
 	UTextBlock* FoundTextBlock = nullptr;

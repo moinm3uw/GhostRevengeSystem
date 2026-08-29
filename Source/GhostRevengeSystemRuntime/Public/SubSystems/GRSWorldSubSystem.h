@@ -202,5 +202,5 @@ protected:
 	
 	/** Find and return a textblock element responsible for the end game result */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class UTextBlock* GetTextBlockToHide();
+	class UTextBlock* GetTextBlockToHide(FName ResultTextBlockName);
 };
