@@ -3,12 +3,14 @@
 // Grs
 #include "Utils/GrsPawnHelper.h"
 
+#include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "LevelActors/GrsPawn.h"
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
-#include "GameFramework/BmrPlayerState.h"
 #include "Actors/BmrPawn.h"
+#include "GameFramework/BmrPlayerState.h"
+#include "Structures/BmrCell.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
@@ -20,8 +22,7 @@
 // Set pawn location to available side (left or right)
 void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 {
-	// @PR JanSeliv [Coding Standards] - use checkf with ERROR [%i] %hs message form like line below, not bare check, applies across file
-	check(GrsPawn);
+	checkf(GrsPawn, TEXT("ERROR: [%i] %hs:\n'GrsPawn' is null!"), __LINE__, __FUNCTION__);
 
 	if (!GrsPawn->HasAuthority())
 	{
@@ -29,38 +30,42 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 	}
 	const EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get().RegisterGhostCharacter(GrsPawn);
 
-	// @PR JanSeliv [Coding Standards] - redundant double-negative, write CharacterSide != EGRSCharacterSide::None not !(==)
-	checkf(!(CharacterSide == EGRSCharacterSide::None), TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
+	checkf(CharacterSide != EGRSCharacterSide::None, TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
 
-	// @PR JanSeliv [Coding Standards] - FBmrCell stored by value and FBmrCell::CellSize used, missing `#include "Structures/BmrCell.h"`, never rely on transitive
 	FBmrCell ActorSpawnLocation;
-	// @PR JanSeliv [Coding Standards] - CellSize never reassigned, mark const float. Float divisor needs .f, write 2.f not int 2, applies to every / 2 below
-	float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
+	const float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2.0f);
 
 	if (CharacterSide == EGRSCharacterSide::Left)
 	{
 		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
 		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X - CellSize;
-		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
+		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2.0f); // temporary, debug row
 	}
 	else if (CharacterSide == EGRSCharacterSide::Right)
 	{
 		ActorSpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
 		ActorSpawnLocation.Location.X = ActorSpawnLocation.Location.X + CellSize;
-		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2); // temporary, debug row
+		ActorSpawnLocation.Location.Y = ActorSpawnLocation.Location.Y + (CellSize / 2.0f); // temporary, debug row
 	}
 
 	// Match the Z axis to what we have on the level
-	// @PR JanSeliv [Coding Standards] - GetPawn result derefed without null-check, save to var and null-guard before GetActorLocation
-	ActorSpawnLocation.Location.Z = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID())->GetActorLocation().Z;
+	ABmrPawn* BmrPawn = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
+	if (!ensureMsgf(BmrPawn, TEXT("ASSERT: [%i] %hs:\n'BmrPawn' failed to obtain from playerID during setting pawn to a side"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	ActorSpawnLocation.Location.Z = BmrPawn->GetActorLocation().Z;
 	GrsPawn->SetActorLocation(ActorSpawnLocation);
 }
 
 // Checks if Pawn is replicated fully (player state and controller present
 bool UGrsPawnHelper::IsReady(const AGrsPawn* GrsPawn)
 {
-	// @PR JanSeliv [Coding Standards] - bIsReady is Is-func, drop check on GrsPawn, silent return false on null input, never assert in Is-func
-	check(GrsPawn);
+	if (!GrsPawn)
+	{
+		return false;
+	}
 
 	if (!GrsPawn->GetController())
 	{
@@ -69,8 +74,7 @@ bool UGrsPawnHelper::IsReady(const AGrsPawn* GrsPawn)
 
 	if (!GrsPawn->GetPlayerState())
 	{
-		// @PR JanSeliv [Coding Standards] - remove commented-out dead UE_LOG line, no commented-out code
-		// UE_LOG(LogGrs, Verbose, TEXT("GetPlayerState() is not available"), ___FUNCTION___); // ~ Log LogGrs Verbose
+		UE_LOG(LogGrs, Verbose, TEXT("GetPlayerState() is not available"), __FUNCTION__); // ~ Log LogGrs Verbose
 		return false;
 	}
 
@@ -78,24 +82,30 @@ bool UGrsPawnHelper::IsReady(const AGrsPawn* GrsPawn)
 }
 
 // Obtains player state from the provided playerID
-// @PR JanSeliv [Coding Standards] - cpp uses elaborated class specifier, GrsPawn.h included so drop class keyword, plain AGrsPawn*, applies across file
-// @PR JanSeliv [Coding Standards] - GrsPawn derefed via GetPlayerID without null-check, guard like check(GrsPawn) in sibling funcs, applies across file
-APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const class AGrsPawn* GrsPawn)
+APlayerState* UGrsPawnHelper::GetPlayerStateForPlayerID(const AGrsPawn* GrsPawn)
 {
-	APlayerState* FoundPlayerState = Cast<APlayerState>(UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID()));
-	// @PR JanSeliv [Coding Standards] - no ensureMsgf in Get-func, on null FoundPlayerState silent return nullptr or LogGrs Verbose, never assert in getter
-	if (!ensureMsgf(FoundPlayerState, TEXT("ASSERT: [%i] %hs:\n'FoundPlayerState' failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is null "), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
 	}
+
+	APlayerState* FoundPlayerState = Cast<APlayerState>(UBmrBlueprintFunctionLibrary::GetPlayerState(GrsPawn->GetPlayerID()));
+	if (!FoundPlayerState)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("FoundPlayerState failed to obtain from UBmrBlueprintFunctionLibrary::GetPlayerState!"), __FUNCTION__); // ~ Log LogGrs Verbose
+		return nullptr;
+	}
+
 	return FoundPlayerState;
 }
 
 // Obtains bmr pawn from the provided GrsPawn
-// @PR JanSeliv [Coding Standards] - ABmrPawn used directly here, missing `#include "Actors/BmrPawn.h"`, never rely on transitive
 ABmrPawn* UGrsPawnHelper::GetOwningBmrPawn(const AGrsPawn* GrsPawn)
 {
-	// @PR JanSeliv [Coding Standards] - redundant local used once, return GetPawn result directly
-	ABmrPawn* BmrPawn = UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
-	return BmrPawn;
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is null "), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+
+	return UBmrBlueprintFunctionLibrary::GetPawn(GrsPawn->GetPlayerID());
 }
