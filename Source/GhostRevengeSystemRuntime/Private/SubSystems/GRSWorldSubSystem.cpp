@@ -38,10 +38,9 @@
 UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 {
 	const UWorld* World = UUtilsLibrary::GetPlayWorld();
-	// @PR JanSeliv [Coding Standards] - use %hs with __FUNCTION__, not %s with *FString(). Applies to ThisSubsystem checkf below
-	checkf(World, TEXT("%s: 'World' is null"), *FString(__FUNCTION__));
+	checkf(World, TEXT("%s: 'World' is null [%i] %hs"), __LINE__, __FUNCTION__);
 	UGRSWorldSubSystem* ThisSubsystem = World->GetSubsystem<ThisClass>();
-	checkf(ThisSubsystem, TEXT("%s: 'GRSWorldSubSystem' is null"), *FString(__FUNCTION__));
+	checkf(ThisSubsystem, TEXT("[%i] %hs: 'GRSWorldSubSystem' is null"), __LINE__, __FUNCTION__);
 	return *ThisSubsystem;
 }
 
@@ -60,7 +59,6 @@ void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventDat
 	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
 	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
 	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
-	// @PR JanSeliv [Coding Standards] - AddUniqueDynamic with no matching RemoveDynamic in PerformCleanUp, every Add listener needs paired Remove on cleanup
 	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
@@ -121,6 +119,14 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	{
 		BmrHUD->SetVisibility(ESlateVisibility::Visible);
 	}
+
+	ABmrPlayerState* PlayerState = UBmrBlueprintFunctionLibrary::GetLocalPlayerState();
+	if (!PlayerState)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: 'PlayerState' is null! "), __LINE__, __FUNCTION__);
+		return;
+	}
+	PlayerState->OnEndGameStateChanged.RemoveDynamic(this, &ThisClass::OnEndGameStateChanged);
 }
 
 /*********************************************************************************************
@@ -136,8 +142,7 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponen
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - `!= CollisionMangerComponent` already guaranteed by ensureMsgf above, drop redundant clause, keep null-check `if (NewCollisionManagerComponent)`. Applies across file: RegisterCharacterManagerComponent
-	if (NewCollisionManagerComponent && NewCollisionManagerComponent != CollisionManagerComponent)
+	if (NewCollisionManagerComponent)
 	{
 		CollisionManagerComponent = NewCollisionManagerComponent;
 	}
@@ -246,12 +251,11 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
 {
 	if (!ensureMsgf(NewCharacterManagerComponent != CharacterManagerComponent, TEXT("ASSERT: [%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
 	{
-		// @PR JanSeliv [Coding Standards] - redundant UE_LOG, ensureMsgf already surfaces same message, drop it like RegisterCollisionManagerComponent
 		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__);
 		return;
 	}
 
-	if (NewCharacterManagerComponent && NewCharacterManagerComponent != CharacterManagerComponent)
+	if (NewCharacterManagerComponent)
 	{
 		CharacterManagerComponent = NewCharacterManagerComponent;
 	}
@@ -266,8 +270,7 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
 // Register ghost character
 EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
 {
-	// @PR JanSeliv [Coding Standards] - missing terminating `;` after UE_LOG, every other call site ends with `;`
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__)
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
 	if (!GhostCharacterLeftSide)
@@ -296,7 +299,8 @@ void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnCompone
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s %i"), __LINE__, __FUNCTION__, NewPawnComponent->GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), PawnComponents.Num());
 
-	if (!ensureMsgf(PawnComponents.Num() < 4, TEXT("ASSERT: [%i] %hs:\n'PawnComponents' is more than expected!"), __LINE__, __FUNCTION__))
+	int32 MaxPlayers = 4;
+	if (!ensureMsgf(PawnComponents.Num() < MaxPlayers, TEXT("ASSERT: [%i] %hs:\n'PawnComponents' is more than expected!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
@@ -308,8 +312,7 @@ void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnCompone
 // Clears the registered pawn component once it deleted
 void UGRSWorldSubSystem::UnregisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister)
 {
-	// @PR JanSeliv [Coding Standards] - Contains then Remove double lookup, Remove already no-op on absent element, drop Contains and null-guard only
-	if (!PawnComponentToUnregister || PawnComponents.IsEmpty() || !PawnComponents.Contains(PawnComponentToUnregister))
+	if (!PawnComponentToUnregister || PawnComponents.IsEmpty())
 	{
 		return;
 	}
@@ -370,16 +373,29 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 //  Changes the Bmr HUD visibility
 void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 {
-	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
-	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
+	UTextBlock* ResultTextBlock = GetTextBlockToHide();
+	if (!ensureMsgf(ResultTextBlock, TEXT("ASSERT: [%i] %hs:\n'ResultTextBlock' with name %s is not found in the BmrHUD !"), __LINE__, __FUNCTION__, *ResultTextBlockName.ToString()))
 	{
 		return;
 	}
-	UTextBlock* ResultTextBlock = nullptr;
-	// @PR JanSeliv [Coding Standards] - compile-time name, extract to static const FName, drop redundant FName() wrap
-	FName ResultTextBlockName = FName(TEXT("RESULT"));
+
+	ESlateVisibility NewVisibility = bVisibility ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+	ResultTextBlock->SetVisibility(NewVisibility);
+}
+
+// Find and return a textblock element responsible for the end game result
+UTextBlock* UGRSWorldSubSystem::GetTextBlockToHide()
+{
+	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
+	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return nullptr;
+	}
+
+	const FName ResultTextBlockName = TEXT("RESULT");
 
 	/* @PR JanSeliv [Architecture] - Wrap entire hack as separate function, marked as @TODO for JanSeliv. */
+	UTextBlock* FoundTextBlock = nullptr;
 	TArray<UWidget*> AllWidgets;
 	BmrHUD->WidgetTree->GetAllWidgets(AllWidgets);
 
@@ -390,19 +406,12 @@ void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
 		{
 			if (TextBlock->GetName() == ResultTextBlockName)
 			{
-				ResultTextBlock = TextBlock;
+				FoundTextBlock = TextBlock;
 			}
 		}
 	}
 
-	if (!ensureMsgf(ResultTextBlock, TEXT("ASSERT: [%i] %hs:\n'ResultTextBlock' with name %s is not found in the BmrHUD !"), __LINE__, __FUNCTION__, *ResultTextBlockName.ToString()))
-	{
-		return;
-	}
-
-	// @PR JanSeliv [Coding Standards] - local named same as type ESlateVisibility shadows enum, rename to NewVisibility
-	ESlateVisibility ESlateVisibility = bVisibility ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
-	ResultTextBlock->SetVisibility(ESlateVisibility);
+	return FoundTextBlock;
 }
 
 // Listen end game states to show/hide HUD temporarry
@@ -425,15 +434,12 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	// @PR JanSeliv [Coding Standards] - HasTag(InGame) retrieved twice, cache to local bool and use if\else
-	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	bool bHasInGameTag = Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame;
+	if (bHasInGameTag)
 	{
 		TryInit();
 		ResetRevivedPlayers();
-	}
-
-	if (!Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	} else
 	{
 		bool bShowHUDEndResult = true;
 		ChangeHUDEndResultVisibility(bShowHUDEndResult);

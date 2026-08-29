@@ -199,4 +199,8 @@ protected:
 	/** Changes the Bmr HUD visibility */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void ChangeHUDEndResultVisibility(bool bVisibility);
+	
+	/** Find and return a textblock element responsible for the end game result */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	class UTextBlock* GetTextBlockToHide();
 };
