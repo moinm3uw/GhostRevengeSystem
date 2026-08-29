@@ -433,7 +433,7 @@ void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState E
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	bool bHasInGameTag = Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame;
+	bool bHasInGameTag = Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame);
 	if (bHasInGameTag)
 	{
 		TryInit();
