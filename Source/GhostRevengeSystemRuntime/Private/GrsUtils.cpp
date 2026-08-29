@@ -32,6 +32,13 @@ AGrsPawn* UGrsUtils::GetGhostPlayerCharacter(const UObject* OptionalWorldContext
 	return PlayerCharacter;
 }
 
+// Returns the pointer to the ghost controller component, nullptr if local player controller is not initialized yet
+UGrsPlayerControllerComponent* UGrsUtils::GetControllerComponent(const UObject* OptionalWorldContext)
+{
+	const ABmrPlayerController* LocalController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController(OptionalWorldContext);
+	return LocalController ? LocalController->FindComponentByClass<UGrsPlayerControllerComponent>() : nullptr;
+}
+
 //  Calculates the character side from an actor reference
 EGRSCharacterSide UGrsUtils::GetCharacterSideFromActor(const AActor* Actor)
 {
