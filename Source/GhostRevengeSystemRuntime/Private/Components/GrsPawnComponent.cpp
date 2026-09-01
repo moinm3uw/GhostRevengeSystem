@@ -21,13 +21,11 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "GameplayEffectTypes.h"
 
-// @PR JanSeliv [Coding Standards] - own .h has reflection, UE_INLINE_GENERATED_CPP_BY_NAME must be active after includes + 1 empty line, currently commented out
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawnComponent)
 
-// @PR JanSeliv [Coding Standards] - no forward-declare in .cpp, GRSWorldSubSystem.h already included, remove redundant decl
-class UGRSWorldSubSystem;
 // Sets default values for this component's properties
 UGrsPawnComponent::UGrsPawnComponent()
 {
@@ -43,11 +41,9 @@ ABmrPawn* UGrsPawnComponent::GetBmrPawn() const
 
 ABmrPawn& UGrsPawnComponent::GetBmrPawnChecked() const
 {
-	// @PR JanSeliv [Coding Standards] - MyBmrPawn dereferenced at return, declare as reference with Ref suffix not pointer, e.g `ABmrPawn& BmrPawnRef`
-	ABmrPawn* MyBmrPawn = GetBmrPawn();
-	// @PR JanSeliv [Coding Standards] - use %hs with __FUNCTION__ directly, drop %s + *FString() wrap
-	checkf(MyBmrPawn, TEXT("%s: 'MyBmrPawn' is null"), *FString(__FUNCTION__));
-	return *MyBmrPawn;
+	ABmrPawn& MyBmrPawnRef = *GetBmrPawn();
+	checkf(&MyBmrPawnRef, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	return MyBmrPawnRef;
 }
 
 // Called when the game starts
@@ -55,8 +51,12 @@ void UGrsPawnComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// @PR JanSeliv [Coding Standards] - GetOwner() deref without null check, applies across file log lines, cache owner and guard
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
+
 	UGRSWorldSubSystem::Get().RegisterPawnComponent(this);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::OnPawnReady);
@@ -65,7 +65,11 @@ void UGrsPawnComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPawnComponent::OnUnregister()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
@@ -75,8 +79,7 @@ void UGrsPawnComponent::OnUnregister()
 	if (PoolManager
 	    && !GrsPawnPoolManagerHandlers.IsEmpty())
 	{
-		// @PR JanSeliv [Coding Standards] - iterate FPoolObjectHandle struct element by const&, copies handle each loop
-		for (FPoolObjectHandle GrsPoolObjectHandle : GrsPawnPoolManagerHandlers)
+		for (FPoolObjectHandle& GrsPoolObjectHandle : GrsPawnPoolManagerHandlers)
 		{
 			const FPoolObjectData& SpawnObject = PoolManager->FindPoolObjectByHandle(GrsPoolObjectHandle);
 			if (SpawnObject.IsValid())
@@ -88,20 +91,19 @@ void UGrsPawnComponent::OnUnregister()
 		GrsPawnPoolManagerHandlers.Empty();
 	}
 
-	// @PR JanSeliv [Coding Standards] - duplicate UnRegisterPawnComponent call, already invoked above this func, remove redundant call
-	UGRSWorldSubSystem::Get().UnregisterPawnComponent(this);
-
 	Super::OnUnregister();
 }
 
 // Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
-// @PR JanSeliv [Coding Standards] - drop elaborated specifier `struct` in .cpp def, include FGameplayEventData header use plain type, applies across file to OnInitialize
 void UGrsPawnComponent::OnPawnReady(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
-	// @PR JanSeliv [Coding Standards] - reuse existing GetBmrPawn() accessor, never re-Cast<ABmrPawn>(GetOwner()) inline
-	const ABmrPawn* OwnerBmrPawn = Cast<ABmrPawn>(GetOwner());
+	const ABmrPawn* OwnerBmrPawn = GetBmrPawn();
 	const ABmrPawn* InstigatorPawn = Cast<ABmrPawn>(Payload.Instigator);
 
 	if (OwnerBmrPawn == InstigatorPawn)
@@ -115,8 +117,13 @@ void UGrsPawnComponent::OnInitialize_Implementation(const FGameplayEventData& Pa
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
-	// @PR JanSeliv [Coding Standards] - GetOwner() deref in control-flow branch without null check, not covered by log-line systemic note, cache owner and guard
-	if (GetOwner()->HasAuthority())
+	const AActor* CurrentOwner = GetOwner();
+	if (!ensureMsgf(CurrentOwner, TEXT("ASSERT: [%i] %hs:\n'CurrentOwner' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	if (CurrentOwner->HasAuthority())
 	{
 		AddGhostCharacter();
 	}
@@ -125,7 +132,11 @@ void UGrsPawnComponent::OnInitialize_Implementation(const FGameplayEventData& Pa
 // Spawn ghost character when a module is initialized
 void UGrsPawnComponent::AddGhostCharacter()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
 	// --- Return to Pool Manager items first as they are no longer needed
 	if (!GrsPawnPoolManagerHandlers.IsEmpty())
@@ -136,8 +147,7 @@ void UGrsPawnComponent::AddGhostCharacter()
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
-	// @PR JanSeliv [Coding Standards] - local lambda shadows member func same name OnTakeGrsPawnsFromPoolCompleted, name lambda distinct, neighbor GrsCollisionComponent uses OnTakeActorsFromPoolCompleted lambda vs OnTakeCollisionActorsFromPoolCompleted member
-	const FOnSpawnAllCallback OnTakeGrsPawnsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
+	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
 	{
 		if (UGrsPawnComponent* This = WeakThis.Get())
 		{
@@ -146,22 +156,26 @@ void UGrsPawnComponent::AddGhostCharacter()
 	};
 
 	// --- Spawn actor
-	// @PR JanSeliv [Coding Standards] - magic literal `1` for Amount, extract to named constexpr, neighbor TakeFromPoolArray always passes named count never bare literal
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(GrsPawnPoolManagerHandlers, UGRSDataAsset::Get().GetGrsActorClass(), 1, OnTakeGrsPawnsFromPoolCompleted, ESpawnRequestPriority::High);
+	constexpr int32 AmountOfActorsToSpawn = 1;
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(GrsPawnPoolManagerHandlers, UGRSDataAsset::Get().GetGrsActorClass(), AmountOfActorsToSpawn, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
 //  Grabs a Ghost Revenge Player Character from the pool manager (Object pooling patter)
 void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
-	// @PR JanSeliv [Coding Standards] - GetBmrPawn() return deref without null check, use existing GetBmrPawnChecked() accessor, applies across file (also line below in loop)
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), GetBmrPawn()->GetPlayerId());
+	const int32 CurrentPlayerId = GetBmrPawnChecked().GetPlayerId();
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), CurrentPlayerId);
+	}
+
 	// --- Setup spawned characters
-	// @PR JanSeliv [Coding Standards] - cache GetBmrPawn()->GetPlayerId() into local once before loop, re-fetched per iteration below and at log above
 	for (const FPoolObjectData& CreatedGhostPawn : CreatedGhostPawns)
 	{
 		AGrsPawn& GhostCharacter = CreatedGhostPawn.GetChecked<AGrsPawn>();
 
-		GhostCharacter.InitPawn(GetBmrPawn()->GetPlayerId());
+		GhostCharacter.InitPawn(CurrentPlayerId);
 		GhostCharacter.SetActorLocation(UGrsUtils::MaxPos);
 	}
 }

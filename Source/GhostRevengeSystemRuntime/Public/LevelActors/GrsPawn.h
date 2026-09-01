@@ -126,7 +126,7 @@ protected:
 
 	/** Activates ghost with required initiation  */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, class ABmrPawn* FromPlayerCharacter);
+	void TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const class ABmrPawn* FromPlayerCharacter);
 
 	/** Possess a player controller */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))

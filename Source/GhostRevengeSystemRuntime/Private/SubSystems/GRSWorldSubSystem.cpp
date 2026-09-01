@@ -173,14 +173,7 @@ void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
 // Returns TRUE if collision are spawned
 bool UGRSWorldSubSystem::IsCollisionsSpawned() const
 {
-	// @PR JanSeliv [Coding Standards] - if only assigns bool literal, collapse to const bool bIsSpawned = LeftSideCollision && RightSideCollision. Applies across file: IsRevivable below
-	bool bIsSpawned = false;
-
-	if (LeftSideCollision && RightSideCollision)
-	{
-		bIsSpawned = true;
-	}
-
+	const bool bIsSpawned = LeftSideCollision && RightSideCollision;
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsSpawned ? TEXT("TRUE") : TEXT("FALSE"));
 	return bIsSpawned;
 }
@@ -213,12 +206,7 @@ void UGRSWorldSubSystem::ClearCollisions()
 // Checks if the target Player was already revived. Player can be revived only once
 bool UGRSWorldSubSystem::IsRevivable(const ABmrPawn* PlayerToRevive) const
 {
-	bool bIsRevivable = true;
-
-	if (!PlayerToRevive || RevivedPlayerCharacters.Contains(PlayerToRevive))
-	{
-		bIsRevivable = false;
-	}
+	const bool bIsRevivable = PlayerToRevive && !RevivedPlayerCharacters.Contains(PlayerToRevive);
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsRevivable ? TEXT("Revivable") : TEXT("NOT Revivable"));
 	return bIsRevivable;
@@ -239,6 +227,7 @@ void UGRSWorldSubSystem::SetRevivedPlayer(ABmrPawn* PlayerToRevive)
 // Reset revived players so they can be ghosts again
 void UGRSWorldSubSystem::ResetRevivedPlayers()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	RevivedPlayerCharacters.Empty();
 }
 
@@ -438,7 +427,8 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	{
 		TryInit();
 		ResetRevivedPlayers();
-	} else
+	}
+	else
 	{
 		bool bShowHUDEndResult = true;
 		ChangeHUDEndResultVisibility(bShowHUDEndResult);

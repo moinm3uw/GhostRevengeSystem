@@ -1,10 +1,8 @@
 // Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-
-
 // Grs
 #include "Components/GrsPlayerStateComponent.h"
-// @PR JanSeliv [Coding Standards] - own module header, provides LogGrs, misgrouped under UE marker. Move to own plugin group right after own .h, UE group is engine headers only
+
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
@@ -24,8 +22,8 @@
 #include "Subsystems/GlobalMessageSubsystem.h"
 
 // UE
-#include "AbilitySystemComponent.h"
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
+#include "AbilitySystemComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
@@ -69,15 +67,10 @@ void UGrsPlayerStateComponent::OnUnregister()
 	RemoveAppliedReviveGameplayEffect();
 	RemoveBombSpawningGameplayEffect();
 
-	// @PR JanSeliv [Coding Standards] - redundant IsValid guard, Invalidate on already-invalid handle is no-op, collapse to direct AppliedBombSpawnEffectHandle.Invalidate()
-	if (AppliedBombSpawnEffectHandle.IsValid())
-	{
-		AppliedBombSpawnEffectHandle.Invalidate();
-	}
+	AppliedBombSpawnEffectHandle.Invalidate();
 
 	ABmrPlayerState* BmrPlayerState = GetCurrentPlayerState();
-	// @PR JanSeliv [Coding Standards] - redundant IsBound() guard, RemoveDynamic no-op when not bound, drop it keep only BmrPlayerState null-check
-	if (BmrPlayerState && BmrPlayerState->OnOpponentsKilledNumChanged.IsBound())
+	if (BmrPlayerState)
 	{
 		BmrPlayerState->OnOpponentsKilledNumChanged.RemoveDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
@@ -85,7 +78,6 @@ void UGrsPlayerStateComponent::OnUnregister()
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 }
 
-// @PR JanSeliv [Coding Standards] - no elaborated type specifier in .cpp, include header use plain FGameplayEventData\AGrsPawn, applies across file
 // Starting point once whole module is ready(loaded) to be initialized
 void UGrsPlayerStateComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
@@ -94,11 +86,10 @@ void UGrsPlayerStateComponent::OnInitialize_Implementation(const FGameplayEventD
 }
 
 // Listen game states to grant revive ability for player character
-void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const  FGameplayEventData& Payload)
+void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	// @PR JanSeliv [Coding Standards] - GetCurrentPlayerState() returns nullable Cast, deref without null-check, use GetCurrentPlayerStateChecked()
-	if (GetCurrentPlayerState()->IsABot())
+	if (GetCurrentPlayerStateChecked().IsABot())
 	{
 		return;
 	}
@@ -115,9 +106,8 @@ void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const  FGamepla
 		GrantPlayerReviveEffect();
 		PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 
-		// @PR JanSeliv [Coding Standards] - ref local from *Checked getter needs Ref suffix, rename to BmrPlayerStateRef like sibling GrsPawnVisualizer convention
-		ABmrPlayerState& BmrPlayerState = GetCurrentPlayerStateChecked();
-		BmrPlayerState.OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+		ABmrPlayerState& BmrPlayerStateRef = GetCurrentPlayerStateChecked();
+		BmrPlayerStateRef.OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 	}
 }
 
@@ -138,16 +128,16 @@ void UGrsPlayerStateComponent::TryReviveCharacter()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
-	// @PR JanSeliv [Coding Standards] - GetCurrentPlayerStateChecked() called twice, cache to ref var reuse it
-	if (!GetCurrentPlayerStateChecked().HasAuthority()
+	const ABmrPlayerState& PlayerStateRef = GetCurrentPlayerStateChecked();
+	const int32 PreviousPawnPlayerId = PreviousGrsPawn->GetPlayerID();
+	if (!PlayerStateRef.HasAuthority()
 	    || !PreviousGrsPawn // pawn could be not set (killing a bot)
-	    || PreviousGrsPawn->GetPlayerID() != GetCurrentPlayerStateChecked().GetPlayerId())
+	    || PreviousPawnPlayerId != PlayerStateRef.GetPlayerId())
 	{
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - PreviousGrsPawn->GetPlayerID() retrieved twice (here and condition above), cache to local int32 reuse it
-	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PreviousGrsPawn->GetPlayerID());
+	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PreviousPawnPlayerId);
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
@@ -175,11 +165,7 @@ void UGrsPlayerStateComponent::AssignPreviousGrsPawn(AGrsPawn* NewGrsPawn)
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - redundant guard, assign equals same result, collapse to direct PreviousGrsPawn = NewGrsPawn
-	if (PreviousGrsPawn != NewGrsPawn)
-	{
-		PreviousGrsPawn = NewGrsPawn;
-	}
+	PreviousGrsPawn = NewGrsPawn;
 }
 
 // Apply a revive ability that will restore regular player character
@@ -227,12 +213,10 @@ void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - read-only local never reassigned, mark const TSubclassOf, applies across file (RemoveAppliedReviveGameplayEffect, ApplyBombSpawningGameplayEffect)
-	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
-	// @PR JanSeliv [Coding Standards] - ensureMsgf text names wrong symbol `PlayerDeathEffect`, checked expr is `PlayerReviveEffect`, message must name actual asserted var, applies across file (RemoveAppliedReviveGameplayEffect too)
-	if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not set!"), __LINE__, __FUNCTION__))
+	const TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
+	if (ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerReviveEffect' is not set!"), __LINE__, __FUNCTION__))
 	{
-		ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.f, ASC->MakeEffectContext());
+		ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.0f, ASC->MakeEffectContext());
 	}
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Applied revive gameplay effect to self  "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
@@ -254,8 +238,8 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 		return;
 	}
 
-	TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
-	if (!ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerDeathEffect' is not returned from data asset!"), __LINE__, __FUNCTION__))
+	const TSubclassOf<UGameplayEffect> PlayerReviveEffect = UGRSDataAsset::Get().GetPlayerReviveEffectClass();
+	if (!ensureMsgf(PlayerReviveEffect, TEXT("ASSERT: [%i] %hs:\n'PlayerReviveEffect' is not returned from data asset!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
@@ -263,12 +247,11 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 	FGameplayEffectQuery Query;
 	Query.EffectDefinition = PlayerReviveEffect;
 	TArray<FActiveGameplayEffectHandle> Handles = ASC->GetActiveEffects(Query);
-	// @PR JanSeliv [Coding Standards] - iterate struct by const&, by-value copies each handle, Invalidate on copy is no-op
-	for (FActiveGameplayEffectHandle Handle : Handles)
+	for (const FActiveGameplayEffectHandle& Handle : Handles)
 	{
 		ASC->RemoveActiveGameplayEffect(Handle);
-		Handle.Invalidate();
 	}
+	Handles.Empty();
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Removed revive gameplay effect "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 }
@@ -291,9 +274,12 @@ void UGrsPlayerStateComponent::ApplyBombSpawningGameplayEffect()
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - ASC deref without null-check, GetAbilitySystemComponent() returns nullable, ensureMsgf ASC like sibling GrantPlayerReviveEffect\RemoveAppliedReviveGameplayEffect
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffectClass();
+	if (!ASC)
+	{
+		return;
+	}
+	const TSubclassOf<UGameplayEffect> ExplosionDamageEffect = UGRSDataAsset::Get().GetExplosionDamageEffectClass();
 	if (!ensureMsgf(ExplosionDamageEffect, TEXT("ASSERT: [%i] %hs:\n'ExplosionDamageEffect' is not set!"), __LINE__, __FUNCTION__))
 	{
 		return;

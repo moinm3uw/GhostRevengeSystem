@@ -1,12 +1,11 @@
 ﻿// Copyright (c) Valerii Rotermel & Yevhenii Selivanov
 
-
-
 // Grs
 #include "Components/GrsCharacterManagerComponent.h"
+
 #include "Data/GRSDataAsset.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
+#include "SubSystems/GRSWorldSubSystem.h"
 
 // DataAssetsLoader
 #include "DalSubsystem.h"
@@ -25,7 +24,6 @@ UGrsCharacterManagerComponent::UGrsCharacterManagerComponent()
 
 	/* @PR JanSeliv [Architecture] - component only does BeginPlay -> ListenForDataAsset -> RegisterCharacterManagerComponent, owns no data and manages no characters, only product is presence to pass readiness count plus warming data asset everyone gets via UGRSDataAsset::Get(), also SetIsReplicatedByDefault(true) with zero replicated props.
 	 * Delete component, base readiness on real participants, at minimum drop SetIsReplicatedByDefault(true) like sibling GrsCollisionComponent sets false */
-	SetIsReplicatedByDefault(true);
 }
 
 // Called when the game starts

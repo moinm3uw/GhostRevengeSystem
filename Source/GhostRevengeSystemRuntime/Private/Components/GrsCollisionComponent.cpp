@@ -9,10 +9,10 @@
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
+#include "Controllers/BmrPlayerController.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
-#include "Controllers/BmrPlayerController.h"
 
 // PoolManager
 #include "PoolManagerSubsystem.h"
@@ -20,7 +20,7 @@
 // MyEditorUtils
 #include "Subsystems/GlobalMessageSubsystem.h"
 
-// UE 
+// UE
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "GameFramework/PlayerController.h"
 
@@ -44,8 +44,11 @@ void UGrsCollisionComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// @PR JanSeliv [Coding Standards] - GetOwner() deref without null check, applies across file log lines, cache owner and guard
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
 	// Binds to local character ready to guarantee that the player controller is initialized
 	// so we can safely use Widget's Subsystem
@@ -57,12 +60,15 @@ void UGrsCollisionComponent::OnUnregister()
 {
 	Super::OnUnregister();
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
-	// @PR JanSeliv [Coding Standards] - use !IsEmpty() not Num() > 0
-	if (CollisionPoolActorHandlersInternal.Num() > 0)
+	if (!CollisionPoolActorHandlersInternal.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
 		CollisionPoolActorHandlersInternal.Empty();
@@ -79,10 +85,14 @@ void UGrsCollisionComponent::OnUnregister()
  **********************************************************************************************/
 
 // Is called when local player character is ready to guarantee that they player controller is initialized
-// @PR JanSeliv [Coding Standards] - include `Abilities/GameplayAbilityTypes.h` in UE group, never rely on transitive from GlobalMessageSubsystem.h
 void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
+
 	UGRSWorldSubSystem::Get().RegisterCollisionManagerComponent(this);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
@@ -91,7 +101,12 @@ void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEven
 // The spawner is considered as loaded only when the subsystem is loaded
 void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
+
 	// spawn collisions only once
 	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
 	{
@@ -102,7 +117,12 @@ void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventDat
 //  Spawn a collision box the side of the map
 void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
+
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
 	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis](const TArray<FPoolObjectData>& CreatedObjects)
@@ -121,7 +141,11 @@ void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 // Grabs a side collision asset from the pool manager (Object pooling patter)
 void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedObjects)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	const AActor* CurrentOwner = GetOwner();
+	if (CurrentOwner)
+	{
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	}
 
 	APlayerController* PlayerController = Cast<APlayerController>(UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this));
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
@@ -130,36 +154,39 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementati
 	}
 
 	// Spawn side collision
+	UGRSWorldSubSystem& GrsWorldSubSystem = UGRSWorldSubSystem::Get();
+	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
 	for (const FPoolObjectData& CreatedObject : CreatedObjects)
 	{
 		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
 		SpawnedCollision.SetOwner(PlayerController);
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *SpawnedCollision.GetName());
+
+		if (CurrentOwner)
+		{
+			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *SpawnedCollision.GetName());
+		}
+
 		// base cell for the calculation
 		FBmrCell SpawnLocation;
 
 		// calculate the distance from the center of current cell
-		// @PR JanSeliv [Coding Standards] - mark const, use float literal 2.f not int 2 in float math
-		float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2);
+		const float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2.0f);
 
-		// @PR JanSeliv [Coding Standards] - UGRSWorldSubSystem::Get() called repeatedly per loop iteration, cache to local ref once like OnUnregister `WorldSubsystem`
-		if (!UGRSWorldSubSystem::Get().GetLeftCollisionActor())
+		if (!GrsWorldSubSystem.GetLeftCollisionActor())
 		{
 			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
 			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
 		}
-		else if (!UGRSWorldSubSystem::Get().GetRightCollisionActor())
+		else if (!GrsWorldSubSystem.GetRightCollisionActor())
 		{
 			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
 			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
 		}
 
-		UGRSWorldSubSystem::Get().AddCollisionActor(&SpawnedCollision);
+		GrsWorldSubSystem.AddCollisionActor(&SpawnedCollision);
 
-		// @PR JanSeliv [Coding Standards] - typo `CollisionTransfrom` local, rename to CollisionTransform across all 3 uses
-		FTransform CollisionTransfrom = UGRSDataAsset::Get().GetCollisionTransform();
-		// @PR JanSeliv [Coding Standards] - int literals in FVector ctor, use float literals 0.f not 0
-		CollisionTransfrom.SetLocation(FVector(SpawnLocation.Location.X, 0, 0));
-		SpawnedCollision.SetActorTransform(CollisionTransfrom);
+		FTransform CollisionTransform = GrsDataAsset.GetCollisionTransform();
+		CollisionTransform.SetLocation(FVector(SpawnLocation.Location.X, 0.0f, 0.0f));
+		SpawnedCollision.SetActorTransform(CollisionTransform);
 	}
 }

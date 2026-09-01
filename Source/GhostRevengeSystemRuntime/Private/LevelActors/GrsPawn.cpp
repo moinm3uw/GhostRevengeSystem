@@ -38,7 +38,6 @@
 #include "Engine/StaticMesh.h"
 #include "Net/UnrealNetwork.h"
 
-// @PR JanSeliv [Coding Standards] - cpp with reflection in own header must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment it
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
 
 // Returns the Ability System Component from the Player State
@@ -51,15 +50,13 @@ UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const
 // Obtains players state from the cached and replicated PlayerID
 UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 {
-	// @PR JanSeliv [Coding Standards] - read-only local must be const-pointee const APlayerState* (applies across file to read-only locals: MyPlayerState, PlayerCharacter, CurrentGhostCharacter)
-	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
+	const APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
 	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UGrsPawnHelper::GetPlayerStateForPlayerID!"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
 	}
 	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
-	// @PR JanSeliv [Potential Bug] - inverted ensure polarity, success path returns nullptr while null path returns null component, add `!` like MyPlayerState guard above
-	if (ensureMsgf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is not found on APlayerState (not attached, initialized or no longer exists"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is not found on APlayerState (not attached, initialized or no longer exists"), __LINE__, __FUNCTION__))
 	{
 		return nullptr;
 	}
@@ -69,7 +66,7 @@ UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 // Obtains players state from the cached and replicated PlayerID
 UGrsPlayerStateComponent& AGrsPawn::GetGrsPlayerStateComponentChecked() const
 {
-	APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
+	const APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
 	checkf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
 
 	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
@@ -153,18 +150,13 @@ void AGrsPawn::OnRep_PlayerID()
 // Basic initialization of the Pawn
 void AGrsPawn::InitPawn(int32 NewPlayerId)
 {
-	// @PR JanSeliv [Coding Standards] - drop redundant `this->`, call bare HasAuthority() like rest of file and module
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) PlayerID: %i  "), __LINE__, __FUNCTION__, this->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), NewPlayerId);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) PlayerID: %i  "), __LINE__, __FUNCTION__, HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), NewPlayerId);
 	if (!ensureMsgf(NewPlayerId >= 0, TEXT("ASSERT: [%i] %hs:\n'NewPlayerId' invalid. Value is less than 0!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - redundant guard around plain assignment, self-assign harmless, drop if and assign PlayerID directly
-	if (PlayerID != NewPlayerId)
-	{
-		PlayerID = NewPlayerId;
-	}
+	PlayerID = NewPlayerId;
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
@@ -187,11 +179,10 @@ void AGrsPawn::OnInitialize_Implementation(const FGameplayEventData& Payload)
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 
 	// --- listens to event when BmrPawn controller by player was eliminated on level
-	// @PR JanSeliv [Coding Standards] - read-only local must be const-pointee const ABmrPawn*, only passed to GetMapComponent(const AActor*), never mutated
-	ABmrPawn* MyPawn = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
-	if (MyPawn)
+	const ABmrPawn* BmrPawn = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
+	if (BmrPawn)
 	{
-		UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(MyPawn);
+		UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(BmrPawn);
 		if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
 		{
 			return;
@@ -211,7 +202,7 @@ void AGrsPawn::OnGameStateChanged_Implementation(const FGameplayEventData& Paylo
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
 void AGrsPawn::OnPreRemovedFromLevel_Implementation(UBmrMapComponent* PlayerMapComponent, UObject* DestroyCauser)
 {
-	ABmrPawn* PlayerCharacter = PlayerMapComponent->GetOwner<ABmrPawn>();
+	const ABmrPawn* PlayerCharacter = PlayerMapComponent->GetOwner<ABmrPawn>();
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__)
 	    || PlayerCharacter->IsBotControlled()
 	    || !DestroyCauser)
@@ -227,7 +218,7 @@ void AGrsPawn::OnPreRemovedFromLevel_Implementation(UBmrMapComponent* PlayerMapC
 }
 
 // Activates ghost with required initiation
-void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* FromPlayerCharacter)
+void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const ABmrPawn* FromPlayerCharacter)
 {
 	if (!GhostCharacter
 	    || !FromPlayerCharacter
@@ -243,7 +234,7 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* Fro
 	}
 
 	// --- check if the player already possessed by other ghost
-	AGrsPawn* CurrentGhostCharacter = Cast<AGrsPawn>(PlayerController->GetPawn());
+	const AGrsPawn* CurrentGhostCharacter = Cast<AGrsPawn>(PlayerController->GetPawn());
 	if (CurrentGhostCharacter)
 	{
 		return;
@@ -262,19 +253,16 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, ABmrPawn* Fro
 //  Possess a player controller
 void AGrsPawn::TryPossessController(AController* PlayerController)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	if (!PlayerController || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - redundant null re-check, early return above already guarantees PlayerController valid, drop nested if and reduce nesting
-	if (PlayerController)
+	// Unpossess current pawn first
+	if (PlayerController->GetPawn())
 	{
-		// Unpossess current pawn first
-		if (PlayerController->GetPawn())
-		{
-			PlayerController->UnPossess();
-		}
+		PlayerController->UnPossess();
 	}
 
 	PlayerController->Possess(this);
@@ -283,6 +271,7 @@ void AGrsPawn::TryPossessController(AController* PlayerController)
 // APawn Interface when this pawn was possessed by a new controller
 void AGrsPawn::PossessedBy(AController* NewController)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	Super::PossessedBy(NewController);
 
 	if (!UGrsPawnHelper::IsReady(this))
@@ -296,6 +285,7 @@ void AGrsPawn::PossessedBy(AController* NewController)
 // APawn Interface when this pawn was replicated by a new controller
 void AGrsPawn::OnRep_Controller()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	Super::OnRep_Controller();
 
 	if (!UGrsPawnHelper::IsReady(this))
@@ -309,6 +299,7 @@ void AGrsPawn::OnRep_Controller()
 //  APawn Interface when this pawn was replicated by a new player state
 void AGrsPawn::OnRep_PlayerState()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	Super::OnRep_PlayerState();
 
 	if (!UGrsPawnHelper::IsReady(this))
@@ -322,6 +313,7 @@ void AGrsPawn::OnRep_PlayerState()
 // Overridable function called whenever this actor is being removed from a level
 void AGrsPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	Super::EndPlay(EndPlayReason);
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
@@ -331,6 +323,7 @@ void AGrsPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 // APawn Interface when this pawn was unpossessed
 void AGrsPawn::UnPossessed()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	Super::UnPossessed();
 
 	HideGhostCharacterFromMap(); // remove on clients and server ghost from map
@@ -339,6 +332,7 @@ void AGrsPawn::UnPossessed()
 // Refresh and enable this pawn
 void AGrsPawn::RefreshPawn()
 {
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	FGrsPawnVisualizer::SetVisibility(this, true);
 	ClearTrajectorySplines();
 	AimingSphereComponent->SetVisibility(true);
@@ -353,7 +347,6 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
 	// --- update collision mod of this pawn if needed
-
 	FGrsPawnVisualizer::SetVisibility(this, false);
 	AimingSphereComponent->SetVisibility(false);
 	PlayerArrowStartComponent->SetArrowEnabled(false);
@@ -412,9 +405,9 @@ void AGrsPawn::PerformCleanUp()
 // Initiate and activate aiming point
 void AGrsPawn::InitAimingSphere()
 {
-	// @PR JanSeliv [Coding Standards] - UGRSDataAsset::Get() called twice, cache once into const ref like WorldSubSystem above, reuse var
-	AimingSphereComponent->SetStaticMesh(UGRSDataAsset::Get().GetProjectileMesh());
-	AimingSphereComponent->SetMaterial(0, UGRSDataAsset::Get().GetAimingMaterial());
+	const UGRSDataAsset* const GrsDataAsset = &UGRSDataAsset::Get();
+	AimingSphereComponent->SetStaticMesh(GrsDataAsset->GetProjectileMesh());
+	AimingSphereComponent->SetMaterial(0, GrsDataAsset->GetAimingMaterial());
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AimingSphereComponent->SetVisibility(false);
 }

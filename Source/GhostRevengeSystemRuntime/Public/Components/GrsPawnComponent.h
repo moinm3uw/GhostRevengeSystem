@@ -36,7 +36,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "[GhostRevengeSystem]")
 	ABmrPawn* GetBmrPawn() const;
 	ABmrPawn& GetBmrPawnChecked() const;
-
 	/*********************************************************************************************
 	 * Main functionality (core loop)
 	 **********************************************************************************************/

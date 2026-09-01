@@ -59,10 +59,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
-	/** Called when player's match result was changed (Win, lose, draw or none applied). */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
-
 	/** Is increased when this player kills an opponent */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnOpponentsKilledNumChanged(int32 OpponentsKilledNum);

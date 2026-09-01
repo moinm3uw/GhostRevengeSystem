@@ -10,13 +10,13 @@
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
+#include "Actors/BmrPawn.h"
 #include "Controllers/BmrPlayerController.h"
 #include "DataAssets/BmrInputMappingContext.h"
 #include "DataAssets/BmrPlayerInputDataAsset.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameplayTags.h"
 #include "UtilityLibraries/BmrCellUtilsLibrary.h"
-#include "Actors/BmrPawn.h"
 
 // MyEditorUtils
 #include "MyUtilsLibraries/InputUtilsLibrary.h"
@@ -59,8 +59,7 @@ ABmrPlayerController* UGrsPlayerControllerComponent::GetPlayerController() const
 ABmrPlayerController& UGrsPlayerControllerComponent::GetPlayerControllerChecked() const
 {
 	ABmrPlayerController* MyPlayerController = GetPlayerController();
-	// @PR JanSeliv [Coding Standards] - use %hs with __FUNCTION__, drop *FString() wrap, applies across file
-	checkf(MyPlayerController, TEXT("%s: 'MyPlayerController' is null"), *FString(__FUNCTION__));
+	checkf(MyPlayerController, TEXT("[%i] %hs:: 'MyPlayerController' is null"), __LINE__, __FUNCTION__);
 	return *MyPlayerController;
 }
 
@@ -74,7 +73,7 @@ APawn* UGrsPlayerControllerComponent::GetCurrentPawn() const
 APawn& UGrsPlayerControllerComponent::GetCurrentPawnChecked() const
 {
 	APawn* CurrentPawn = GetPlayerControllerChecked().GetPawn();
-	checkf(CurrentPawn, TEXT("%s: 'CurrentPawn' is null"), *FString(__FUNCTION__));
+	checkf(CurrentPawn, TEXT("[%i] %hs:: 'CurrentPawn' is null"), __LINE__, __FUNCTION__);
 	return *CurrentPawn;
 }
 
@@ -83,17 +82,9 @@ void UGrsPlayerControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// @PR JanSeliv [Coding Standards] - GetPlayerControllerChecked() called repeatedly here, cache once to local ref and reuse, applies across file
-	GetPlayerControllerChecked().OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
+	ABmrPlayerController& PlayerControllerRef = GetPlayerControllerChecked();
+	PlayerControllerRef.OnPossessedPawnChanged.AddUniqueDynamic(this, &ThisClass::OnPossessedPawnChanged);
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
-	ABmrPlayerState* BmrPlayerState = GetPlayerControllerChecked().GetPlayerState<ABmrPlayerState>();
-	// @PR JanSeliv [Coding Standards] - GetOwner() deref without null-check, and SERVER\CLIENT HasAuthority ternary duplicated across log sites, cache HasAuthority to local, applies across file
-	UE_CLOG(!BmrPlayerState, LogGrs, Verbose, TEXT("[%i] %hs (%s) 'BmrPlayerState' is null, which is expected (BeginPlay is too early)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	if (BmrPlayerState)
-	{
-		BmrPlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
-	}
 }
 
 // @PR JanSeliv [Coding Standards] - listeners added in BeginPlay (OnPossessedPawnChanged, GameState_Changed, OnEndGameStateChanged) and OnOpponentsKilledNumChanged lack matching Remove here, add RemoveDynamic + StopListeningForAllGlobalMessages like neighbor GrsPlayerStateComponent cleanup
@@ -104,15 +95,6 @@ void UGrsPlayerControllerComponent::OnUnregister()
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 
 	Super::OnUnregister();
-}
-
-// Called when player's match result was changed (Win, lose, draw or none applied).
-void UGrsPlayerControllerComponent::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
-{
-	// @PR JanSeliv [Coding Standards] - empty if body, remove dead branch or implement
-	if (EndGameState == EBmrEndGameState::Lose)
-	{
-	}
 }
 
 // Listen game states to reset player controller state
@@ -134,9 +116,6 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const FGam
 		}
 		BmrPlayerState->OnOpponentsKilledNumChanged.AddUniqueDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
 
-		// @PR JanSeliv [Coding Standards] - CurrentOwner unused local, remove dead variable
-		AActor* CurrentOwner = GetOwner();
-		// @PR JanSeliv [Coding Standards] - read-only local pointer, make const-pointee const APawn*, applies across file
 		APawn* CurrentPossessedPawn = GetCurrentPawn();
 		ABmrPawn* CurrentPawn = Cast<ABmrPawn>(CurrentPossessedPawn);
 		if (!ensureMsgf(CurrentPawn, TEXT("ASSERT: [%i] %hs:\n'CurrentPawn' is not valid!"), __LINE__, __FUNCTION__))
@@ -144,11 +123,7 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const FGam
 			return;
 		}
 
-		// @PR JanSeliv [Coding Standards] - redundant guard, assign MainBmrPlayerPawn = CurrentPawn directly, same result
-		if (MainBmrPlayerPawn != CurrentPawn)
-		{
-			MainBmrPlayerPawn = CurrentPawn;
-		}
+		MainBmrPlayerPawn = CurrentPawn;
 	}
 }
 
@@ -179,19 +154,16 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 	}
 
 	// --- if pawn is empty possess back to BmrPawn
-	// @PR JanSeliv [Coding Standards] - TObjectPtr is for .h UObject members, local uses raw APawn* (const-pointee, read-only)
-	TObjectPtr<APawn> CurrentPossessedPawn = PlayerController->GetPawn();
+	APawn* CurrentPossessedPawn = PlayerController->GetPawn();
 	if (!CurrentPossessedPawn)
 	{
 		// --- Always possess to player character when ghost character is no longer in control
 		// @PR JanSeliv [Coding Standards] - read-only value local needs const, const bool bInDestroy, applies across file (FVector SplinePoint, TangentStart, TangentEnd)
-		bool bInDestroy = PlayerController->IsActorBeingDestroyed();
+		const bool bInDestroy = PlayerController->IsActorBeingDestroyed();
 		if (!bInDestroy)
 		{
 			PlayerController->Possess(MainBmrPlayerPawn);
-			// @PR JanSeliv [Coding Standards] - Cast + checkf, use CastChecked<ABmrPawn>, applies across file
-			ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
-			checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
+			ABmrPawn* NewPossessedPawn = CastChecked<ABmrPawn>(PlayerController->GetPawn());
 			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs pawn is empty. Possessed back to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
 		}
 	}
@@ -201,9 +173,11 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 		AGrsPawn* GhostPawn = Cast<AGrsPawn>(CurrentPossessedPawn);
 		if (GhostPawn)
 		{
-			// @PR JanSeliv [Potential Bug] - GetPlayerState() can be null during unpossess/teardown, deref via ->FindComponentByClass crashes, cache to local and null-guard first
-			UGrsPlayerStateComponent* GrsPlayerStateComponent = GhostPawn->GetPlayerState()->FindComponentByClass<UGrsPlayerStateComponent>();
-			checkf(GrsPlayerStateComponent, TEXT("%s: 'GrsPlayerStateComponent' failed to check obtain component"), *FString(__FUNCTION__));
+			APlayerState* PlayerState = GhostPawn->GetPlayerState();
+			checkf(PlayerState, TEXT("[%i] %hs:: 'PlayerState' failed to successful check obtain playerstate"), __LINE__, __FUNCTION__);
+
+			UGrsPlayerStateComponent* GrsPlayerStateComponent = PlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
+			checkf(GrsPlayerStateComponent, TEXT("[%i] %hs:: 'GrsPlayerStateComponent' failed to successful check obtained component"), __LINE__, __FUNCTION__);
 			/* @PR JanSeliv [Architecture] - UnpossessGhostPawn reaches into sibling actor GrsPlayerStateComponent and writes its non-replicated PreviousGrsPawn, revive decision then depends on externally accessed member (reset in 3 places) not actual kill signal.
 			 * GrsPlayerStateComponent derives killer-ghost itself in OnOpponentsKilledNumChanged from own PlayerId, drop AssignPreviousGrsPawn and this cross-actor write */
 			GrsPlayerStateComponent->AssignPreviousGrsPawn(GhostPawn);
@@ -211,7 +185,7 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 			PlayerController->UnPossess();
 			PlayerController->Possess(MainBmrPlayerPawn);
 			ABmrPawn* NewPossessedPawn = Cast<ABmrPawn>(PlayerController->GetPawn());
-			checkf(NewPossessedPawn, TEXT("%s: 'NewPossessedPawn' failed to check possession completion"), *FString(__FUNCTION__));
+			checkf(NewPossessedPawn, TEXT("[%i] %hs:: 'NewPossessedPawn' failed to successful possession completion check"), __LINE__, __FUNCTION__);
 			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs  Possessed to %s Expected: %s  "), __LINE__, __FUNCTION__, *GetNameSafe(NewPossessedPawn), *GetNameSafe(MainBmrPlayerPawn));
 		}
 	}
@@ -248,28 +222,31 @@ void UGrsPlayerControllerComponent::DisableGhostInputs()
 // Enables or disable input  context (enhanced input) depends on possession state. Called when possessed pawn changed
 void UGrsPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn)
 {
-	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character)
-	// @PR JanSeliv [Coding Standards] - flatten nested if with guard clauses, early return `if (!NewPawn) return;` then Cast then `if (!GhostCharacter) return;`, matches early-return style used across file
-	if (NewPawn)
+	// --- case 1: possessed to ghost character (condition: NewPawn is a ghost character
+	if (!NewPawn)
 	{
-		AGrsPawn* GhostCharacter = Cast<AGrsPawn>(NewPawn);
-		if (GhostCharacter)
-		{
-			SetManagedInputContextEnabled(GetPlayerController(), true);
-		}
+		return;
 	}
+
+	AGrsPawn* GhostCharacter = Cast<AGrsPawn>(NewPawn);
+	if (!GhostCharacter)
+	{
+		return;
+	}
+
+	SetManagedInputContextEnabled(GetPlayerController(), true);
 }
 
 // Enables or disables the input context
 void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
 {
-	if (!PlayerController || !PlayerController->IsLocalController())
+	const bool bIsLocalController = PlayerController->IsLocalController();
+	if (!PlayerController || bIsLocalController)
 	{
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - IsLocalController() re-called here, guard above already returned when false so log always prints TRUE, drop redundant call
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s "), __LINE__, __FUNCTION__, PlayerController->IsLocalController() ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: --- PlayerController is IsLocalController() %s "), __LINE__, __FUNCTION__, bIsLocalController ? TEXT("TRUE") : TEXT("FALSE"));
 	ABmrPlayerController* MyPlayerController = Cast<ABmrPlayerController>(PlayerController);
 	if (!MyPlayerController)
 	{
@@ -287,11 +264,7 @@ void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 	int32 HighestContextPriority = -1;
 	for (const UBmrInputMappingContext* BmrInputContext : BmrInputContexts)
 	{
-		// @PR JanSeliv [Coding Standards] - hand-written max with double GetContextPriority() call, use HighestContextPriority = FMath::Max(HighestContextPriority, BmrInputContext->GetContextPriority())
-		if (HighestContextPriority < BmrInputContext->GetContextPriority())
-		{
-			HighestContextPriority = BmrInputContext->GetContextPriority();
-		}
+		HighestContextPriority = FMath::Max(HighestContextPriority, BmrInputContext->GetContextPriority());
 	}
 	HighestContextPriority++;
 
@@ -309,12 +282,8 @@ void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* P
 	if (InputContext
 	    && !InputContext->GetActiveForStates().IsEmpty())
 	{
-		// @PR JanSeliv [Coding Standards] - redundant InputContext null-check, outer if already guards it, drop inner if to reduce nesting
-		if (InputContext)
-		{
-			MyPlayerController->BindInputActionsInContext(InputContext);
-			UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
-		}
+		MyPlayerController->BindInputActionsInContext(InputContext);
+		UInputUtilsLibrary::SetInputContextEnabled(this, bEnable, InputContext, HighestContextPriority);
 	}
 }
 
@@ -338,12 +307,9 @@ void UGrsPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionVa
 
 	// Get forward vector
 	const FVector ForwardDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
-	// @PR JanSeliv [Coding Standards] - remove commented-out dead code, applies across file
-	// const FVector ForwardDirection = FVector().ZeroVector;
 
 	// Get right vector
 	const FVector RightDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
-	// const FVector RightDirection = FVector().ZeroVector;;
 
 	APawn* GrsPawn = GetPlayerControllerChecked().GetPawn();
 	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not valid!"), __LINE__, __FUNCTION__))
@@ -371,8 +337,7 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 		{
 			ThrowProjectile();
 		}
-		// @PR JanSeliv [Coding Standards] - int 0 assigned to float, use 0.0f
-		CurrentHoldTime = 0;
+		CurrentHoldTime = 0.0f;
 	}
 
 	// UE_LOG(LogGrs, Verbose, TEXT("GRS: Current hold time value: %f"), CurrentHoldTimeInternal);
@@ -401,8 +366,7 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 	}
 
 	// show trajectory visual
-	// @PR JanSeliv [Coding Standards] - Num() > 0, use !Result.PathData.IsEmpty()
-	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && Result.PathData.Num() > 0)
+	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && !Result.PathData.IsEmpty())
 	{
 		GrsPawn->ClearTrajectorySplines();
 		AddSplinePoints(Result);
@@ -452,6 +416,9 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		return;
 	}
 
+	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
+	const FVector2D TrajectoryMeshScale = GrsDataAsset.GetTrajectoryMeshScale();
+
 	// @PR JanSeliv [Coding Standards] - GetNumberOfSplinePoints() re-evaluated every iteration, count invariant in loop, cache once to local before loop and reuse
 	for (int32 i = 0; i < AimingSplineComponent->GetNumberOfSplinePoints() - 2; i++)
 	{
@@ -462,14 +429,13 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		SplineMesh->AttachToComponent(AimingSplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
 		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
 		SplineMesh->Mobility = EComponentMobility::Static;
-		// @PR JanSeliv [Coding Standards] - GetTrajectoryMeshScale() retrieved twice for same value, cache to local and reuse for start and end
-		// @PR JanSeliv [Coding Standards] - UGRSDataAsset::Get() called repeatedly, cache once to `const UGRSDataAsset& DataAsset = UGRSDataAsset::Get();` and reuse like neighbor components, applies across file
-		SplineMesh->SetStartScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
-		SplineMesh->SetEndScale(UGRSDataAsset::Get().GetTrajectoryMeshScale());
+
+		SplineMesh->SetStartScale(TrajectoryMeshScale);
+		SplineMesh->SetEndScale(TrajectoryMeshScale);
 
 		// Set mesh and material
-		SplineMesh->SetStaticMesh(UGRSDataAsset::Get().GetChargeMesh());
-		SplineMesh->SetMaterial(0, UGRSDataAsset::Get().GetTrajectoryMaterial());
+		SplineMesh->SetStaticMesh(GrsDataAsset.GetChargeMesh());
+		SplineMesh->SetMaterial(0, GrsDataAsset.GetTrajectoryMaterial());
 		FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
 		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
 
@@ -487,22 +453,23 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 {
 	// Set launch velocity (forward direction with some upward angle)
 	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
+	
+	APawn& CurrentPawn = GetCurrentPawnChecked();
+	
 	// 45-degree vector between up and right
-	// @PR JanSeliv [Coding Standards] - GetCurrentPawnChecked() called 3x in this func, cache once to local ref and reuse
-	FVector UpRight45 = (GetCurrentPawnChecked().GetActorForwardVector() + GetCurrentPawnChecked().GetActorUpVector()).GetSafeNormal();
+	FVector UpRight45 = (CurrentPawn.GetActorForwardVector() + CurrentPawn.GetActorUpVector()).GetSafeNormal();
 
 	// Predict and draw the trajectory
 	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
-	Params.StartLocation = GetCurrentPawnChecked().GetActorLocation();
+	Params.StartLocation = CurrentPawn.GetActorLocation();
 
 	// --- pick a direction based on the side of the map (left or right)
-	// @PR JanSeliv [Coding Standards] - redundant Cast<AActor>, APawn already IS-A AActor, pass &GetCurrentPawnChecked() directly as implicit upcast
 	/* @PR JanSeliv [Architecture] - ghost side defined twice, RegisterGhostCharacter stores it by slot and PredictProjectilePath here re-derives from world position via GetCharacterSideFromActor, both can disagree since slot allocation independent of post-spawn X.
 	 * Store allocated side on AGrsPawn (replicate enum), aiming reads stored side, drop positional re-derivation and unused EGRSSpotType enum */
-	const float SideSign = UGrsUtils::GetCharacterSideFromActor(Cast<AActor>(&GetCurrentPawnChecked())) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+	const float SideSign = UGrsUtils::GetCharacterSideFromActor(&CurrentPawn) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
 	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTime), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
-	Params.ActorsToIgnore.Add(GetCurrentPawn());
+	Params.ActorsToIgnore.Add(&CurrentPawn);
 
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
 }
@@ -526,12 +493,11 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	FBmrCell TargetCell;
 	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
 	SpawnBomb(TargetCell);
-
-	// @PR JanSeliv [Coding Standards] - int literals for float math, use .f (5.f, 100.f), applies across file
-	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5, 5, 0.0f);
+	
+	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5.0f, 5.0f, 0.0f);
 	ThrowDirection.Normalize();
 	// @PR JanSeliv [Coding Standards] - LaunchVelocity never read, dead local, remove it and ThrowDirection compute that only feeds it
-	FVector LaunchVelocity = ThrowDirection * 100;
+	FVector LaunchVelocity = ThrowDirection * 100.0f;
 
 	// @PR JanSeliv [Potential Bug] - CurrentHoldTimeInternal not reset on release-throw path, only ChargeBomb max-charge branch resets, charges silently leak across throws, reset it here
 	GrsPawn->ClearTrajectorySplines();
