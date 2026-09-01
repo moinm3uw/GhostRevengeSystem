@@ -143,7 +143,7 @@ void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(i
 // Unpossess current pawn from ghost to BmwPlayerPawn
 void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) Started \n "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs (%s) Started \n "), __LINE__, __FUNCTION__, GetPlayerControllerChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	ABmrPlayerController* PlayerController = GetPlayerController();
 	if (!MainBmrPlayerPawn
@@ -312,11 +312,6 @@ void UGrsPlayerControllerComponent::MovePlayer(const FInputActionValue& ActionVa
 	const FVector RightDirection = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
 
 	APawn* GrsPawn = GetPlayerControllerChecked().GetPawn();
-	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
 	GrsPawn->AddMovementInput(ForwardDirection, MovementVector.Y);
 	GrsPawn->AddMovementInput(RightDirection, MovementVector.X);
 }
@@ -453,9 +448,9 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 {
 	// Set launch velocity (forward direction with some upward angle)
 	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
-	
+
 	APawn& CurrentPawn = GetCurrentPawnChecked();
-	
+
 	// 45-degree vector between up and right
 	FVector UpRight45 = (CurrentPawn.GetActorForwardVector() + CurrentPawn.GetActorUpVector()).GetSafeNormal();
 
@@ -493,7 +488,7 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	FBmrCell TargetCell;
 	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
 	SpawnBomb(TargetCell);
-	
+
 	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5.0f, 5.0f, 0.0f);
 	ThrowDirection.Normalize();
 	// @PR JanSeliv [Coding Standards] - LaunchVelocity never read, dead local, remove it and ThrowDirection compute that only feeds it

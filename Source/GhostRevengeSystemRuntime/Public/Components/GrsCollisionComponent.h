@@ -10,7 +10,11 @@
 #include "CoreMinimal.h"
 
 #include "GrsCollisionComponent.generated.h"
-
+/**
+ *  Attached to the BmrGameState to spawn collision on the sides of the map.
+ *  The component on start up register in subsystem and waits for overall loading of GFP. After OnInitialize event spawn collision through pool manager.
+ *
+ */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsCollisionComponent : public UActorComponent
 {

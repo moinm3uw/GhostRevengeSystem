@@ -52,7 +52,7 @@ void UGrsPlayerStateComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
@@ -81,14 +81,14 @@ void UGrsPlayerStateComponent::OnUnregister()
 // Starting point once whole module is ready(loaded) to be initialized
 void UGrsPlayerStateComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
 // Listen game states to grant revive ability for player character
 void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (GetCurrentPlayerStateChecked().IsABot())
 	{
 		return;
@@ -126,7 +126,7 @@ void UGrsPlayerStateComponent::OnOpponentsKilledNumChanged_Implementation(int32 
 // Tries to revive main player character when a ghost eliminates an enemy on level including elimination of bots
 void UGrsPlayerStateComponent::TryReviveCharacter()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	const ABmrPlayerState& PlayerStateRef = GetCurrentPlayerStateChecked();
 	const int32 PreviousPawnPlayerId = PreviousGrsPawn->GetPlayerID();
@@ -176,7 +176,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 		return;
 	}
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Activate to: %s"), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *GetNameSafe(PlayerCharacter));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Activate to: %s"), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *GetNameSafe(PlayerCharacter));
 
 	const ABmrGameState& GameState = ABmrGameState::Get();
 	if (!PlayerCharacter || !GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame))
@@ -201,7 +201,7 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 // Grant to a player revive GAS effect
 void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
@@ -219,13 +219,13 @@ void UGrsPlayerStateComponent::GrantPlayerReviveEffect()
 		ASC->ApplyGameplayEffectToSelf(PlayerReviveEffect.GetDefaultObject(), /*Level*/ 1.0f, ASC->MakeEffectContext());
 	}
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Applied revive gameplay effect to self  "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Applied revive gameplay effect to self  "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 }
 
 // To Remove Revive applied gameplay effect
 void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED  "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) STARTED  "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 	if (!GetCurrentPlayerStateChecked().HasAuthority())
 	{
 		return;
@@ -253,7 +253,7 @@ void UGrsPlayerStateComponent::RemoveAppliedReviveGameplayEffect()
 	}
 	Handles.Empty();
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Removed revive gameplay effect "), __LINE__, __FUNCTION__, GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) Removed revive gameplay effect "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 }
 
 /*********************************************************************************************

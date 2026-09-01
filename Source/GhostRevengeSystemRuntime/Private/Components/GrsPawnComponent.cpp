@@ -51,11 +51,7 @@ void UGrsPawnComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetBmrPawnChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UGRSWorldSubSystem::Get().RegisterPawnComponent(this);
 
@@ -65,11 +61,7 @@ void UGrsPawnComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPawnComponent::OnUnregister()
 {
-	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetBmrPawnChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
@@ -97,11 +89,7 @@ void UGrsPawnComponent::OnUnregister()
 // Event that fires when any pawn is spawned, possessed, and replicated. Is a ready trigger for this component to listen whole module to be ready
 void UGrsPawnComponent::OnPawnReady(const FGameplayEventData& Payload)
 {
-	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetBmrPawnChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	const ABmrPawn* OwnerBmrPawn = GetBmrPawn();
 	const ABmrPawn* InstigatorPawn = Cast<ABmrPawn>(Payload.Instigator);
@@ -132,11 +120,7 @@ void UGrsPawnComponent::OnInitialize_Implementation(const FGameplayEventData& Pa
 // Spawn ghost character when a module is initialized
 void UGrsPawnComponent::AddGhostCharacter()
 {
-	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, GetBmrPawnChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// --- Return to Pool Manager items first as they are no longer needed
 	if (!GrsPawnPoolManagerHandlers.IsEmpty())
@@ -164,11 +148,8 @@ void UGrsPawnComponent::AddGhostCharacter()
 void UGrsPawnComponent::OnTakeGrsPawnsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedGhostPawns)
 {
 	const int32 CurrentPlayerId = GetBmrPawnChecked().GetPlayerId();
-	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), CurrentPlayerId);
-	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs ( %s ) PlayerID: %i"), __LINE__, __FUNCTION__, GetBmrPawnChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), CurrentPlayerId);
 
 	// --- Setup spawned characters
 	for (const FPoolObjectData& CreatedGhostPawn : CreatedGhostPawns)

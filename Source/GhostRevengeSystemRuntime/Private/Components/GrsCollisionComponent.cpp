@@ -45,10 +45,8 @@ void UGrsCollisionComponent::BeginPlay()
 	Super::BeginPlay();
 
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// Binds to local character ready to guarantee that the player controller is initialized
 	// so we can safely use Widget's Subsystem
@@ -61,10 +59,8 @@ void UGrsCollisionComponent::OnUnregister()
 	Super::OnUnregister();
 
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
@@ -88,10 +84,8 @@ void UGrsCollisionComponent::OnUnregister()
 void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	UGRSWorldSubSystem::Get().RegisterCollisionManagerComponent(this);
 
@@ -102,10 +96,9 @@ void UGrsCollisionComponent::OnLocalPawnReady_Implementation(const FGameplayEven
 void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// spawn collisions only once
 	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
@@ -118,10 +111,8 @@ void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventDat
 void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 {
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
@@ -142,10 +133,8 @@ void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementation(const TArray<FPoolObjectData>& CreatedObjects)
 {
 	const AActor* CurrentOwner = GetOwner();
-	if (CurrentOwner)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-	}
+	checkf(CurrentOwner, TEXT("[%i] %hs 'MyBmrPawn' is null"), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	APlayerController* PlayerController = Cast<APlayerController>(UBmrBlueprintFunctionLibrary::GetLocalPlayerController(this));
 	if (!ensureMsgf(PlayerController, TEXT("ASSERT: [%i] %hs:\n'PlayerController' is not valid!"), __LINE__, __FUNCTION__))
@@ -161,10 +150,7 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementati
 		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
 		SpawnedCollision.SetOwner(PlayerController);
 
-		if (CurrentOwner)
-		{
-			UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *SpawnedCollision.GetName());
-		}
+		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *SpawnedCollision.GetName());
 
 		// base cell for the calculation
 		FBmrCell SpawnLocation;
