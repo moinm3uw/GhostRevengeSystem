@@ -129,15 +129,14 @@ void UGrsPlayerStateComponent::TryReviveCharacter()
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s)"), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	const ABmrPlayerState& PlayerStateRef = GetCurrentPlayerStateChecked();
-	const int32 PreviousPawnPlayerId = PreviousGrsPawn->GetPlayerID();
 	if (!PlayerStateRef.HasAuthority()
 	    || !PreviousGrsPawn // pawn could be not set (killing a bot)
-	    || PreviousPawnPlayerId != PlayerStateRef.GetPlayerId())
+	    || PreviousGrsPawn->GetPlayerID() != PlayerStateRef.GetPlayerId())
 	{
 		return;
 	}
 
-	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PreviousPawnPlayerId);
+	ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PreviousGrsPawn->GetPlayerID());
 	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;

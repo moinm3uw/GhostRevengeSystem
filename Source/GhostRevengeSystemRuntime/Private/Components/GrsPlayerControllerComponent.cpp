@@ -241,7 +241,7 @@ void UGrsPlayerControllerComponent::OnPossessedPawnChanged_Implementation(APawn*
 void UGrsPlayerControllerComponent::SetManagedInputContextEnabled(AController* PlayerController, bool bEnable)
 {
 	const bool bIsLocalController = PlayerController->IsLocalController();
-	if (!PlayerController || bIsLocalController)
+	if (!PlayerController || !bIsLocalController)
 	{
 		return;
 	}
