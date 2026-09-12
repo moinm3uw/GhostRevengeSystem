@@ -18,8 +18,11 @@
 #include "Components/BmrPlayerArrowStartComponent.h"
 #include "Components/BmrPlayerNameWidgetComponent.h"
 #include "Components/BmrSkeletalMeshComponent.h"
+#include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
+#include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
+#include "Subsystems/BmrPawnReadySubsystem.h"
 #include "UI/Widgets/BmrPlayerNameWidget.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
@@ -43,33 +46,20 @@
 // Returns the Ability System Component from the Player State
 UAbilitySystemComponent* AGrsPawn::GetAbilitySystemComponent() const
 {
-	const ABmrPlayerState* InPlayerState = Cast<ABmrPlayerState>(UGrsPawnHelper::GetPlayerStateForPlayerID(this));
-	return InPlayerState ? InPlayerState->GetAbilitySystemComponent() : nullptr;
+	const UGrsPlayerStateComponent* MyPlayerStateComponent = GetGrsPlayerStateComponent();
+	return MyPlayerStateComponent ? MyPlayerStateComponent->GetCurrentPlayerStateChecked().GetAbilitySystemComponent() : nullptr;
 }
 
-// Obtains players state from the cached and replicated PlayerID
+// Returns cached GRS component of the player state that owns PlayerID
 UGrsPlayerStateComponent* AGrsPawn::GetGrsPlayerStateComponent() const
 {
-	const APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
-	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' failed to obtain from UGrsPawnHelper::GetPlayerStateForPlayerID!"), __LINE__, __FUNCTION__))
-	{
-		return nullptr;
-	}
-	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
-	if (!ensureMsgf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is not found on APlayerState (not attached, initialized or no longer exists"), __LINE__, __FUNCTION__))
-	{
-		return nullptr;
-	}
-	return GrsPlayerStateComponent;
+	return PlayerStateComponent.Get();
 }
 
 // Obtains players state from the cached and replicated PlayerID
 UGrsPlayerStateComponent& AGrsPawn::GetGrsPlayerStateComponentChecked() const
 {
-	const APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
-	checkf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
-
-	UGrsPlayerStateComponent* GrsPlayerStateComponent = MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>();
+	UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
 	checkf(GrsPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'GrsPlayerStateComponent' is nullptr, can not get PlayerState for '%i' PlayerID."), __LINE__, __FUNCTION__, PlayerID);
 
 	return *GrsPlayerStateComponent;
@@ -120,13 +110,13 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 // Initialize player name widget (on top of character)
 void AGrsPawn::InitializePlayerNameWidget()
 {
-	ABmrPlayerState* MyPlayerState = Cast<ABmrPlayerState>(UGrsPawnHelper::GetPlayerStateForPlayerID(this));
-	if (!ensureMsgf(MyPlayerState, TEXT("ASSERT: [%i] %hs:\n'MyPlayerState' is not valid!"), __LINE__, __FUNCTION__))
+	const UGrsPlayerStateComponent* MyPlayerStateComponent = PlayerStateComponent.Get();
+	if (!ensureMsgf(MyPlayerStateComponent, TEXT("ASSERT: [%i] %hs:\n'PlayerStateComponent' is not valid!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
 
-	PlayerNickName3DWidgetComponent->Init(MyPlayerState);
+	PlayerNickName3DWidgetComponent->Init(&MyPlayerStateComponent->GetCurrentPlayerStateChecked());
 }
 
 // Returns properties that are replicated for the lifetime of the actor channel
@@ -158,6 +148,10 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 
 	PlayerID = NewPlayerId;
 
+	// --- pawn can be reinitialized and serve another player, so previously cached references do not belong to it anymore
+	PlayerStateComponent.Reset();
+	StopListeningPlayerCharacterRemoval();
+
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(GrsGameplayTags::Event::GameFeaturePluginReady, this, &ThisClass::OnInitialize);
 }
 
@@ -166,6 +160,65 @@ void AGrsPawn::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
+	// --- bind to clear ghost data and to re-init it for each match
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
+
+	// --- init once player character of this ghost is ready, is replayed for already ready player characters
+	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_PawnReady, this, &ThisClass::OnPawnReady);
+}
+
+// Listen game states to remove ghost character from level and to re-init it for each match
+void AGrsPawn::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
+{
+	// --- hiding also unsubscribes from the player character, so it has to be re-initialized for the match below
+	HideGhostCharacterFromMap();
+
+	TryInitGhostCharacter();
+}
+
+// Is called when any player character (BmrPawn) is spawned, possessed, and replicated
+void AGrsPawn::OnPawnReady_Implementation(const FGameplayEventData& Payload)
+{
+	const ABmrPawn* ReadyPawn = Cast<ABmrPawn>(Payload.Instigator.Get());
+	if (ReadyPawn
+	    && ReadyPawn->GetPlayerId() == PlayerID)
+	{
+		TryInitGhostCharacter();
+	}
+}
+
+// Inits this ghost for the current player character of PlayerID only when the match is starting or in progress and that player character is ready
+void AGrsPawn::TryInitGhostCharacter()
+{
+	const ABmrGameState& GameState = ABmrGameState::Get();
+	const bool bIsMatchStartingOrInProgress = GameState.HasMatchingGameplayTag(FBmrGameStateTag::GameStarting)
+	                                          || GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
+
+	const ABmrPawn* PlayerCharacter = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
+	if (!bIsMatchStartingOrInProgress
+	    || !UBmrPawnReadySubsystem::Get().IsReady(PlayerCharacter))
+	{
+		return;
+	}
+	
+	if (ListenedMapComponent.IsValid()
+	    && ListenedMapComponent.Get() == UBmrMapComponent::GetMapComponent(PlayerCharacter))
+	{
+		return;
+	}
+
+	InitGhostCharacter(PlayerCharacter);
+}
+
+// Inits this ghost for given player character
+void AGrsPawn::InitGhostCharacter(const ABmrPawn* PlayerCharacter)
+{
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) PlayerID: %i"), __LINE__, __FUNCTION__, HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), PlayerID);
+	if (!ensureMsgf(PlayerCharacter, TEXT("ASSERT: [%i] %hs:\n'PlayerCharacter' is not valid!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
 	// --- default params required for the fist start to have character prepared
 	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
@@ -173,30 +226,36 @@ void AGrsPawn::OnInitialize_Implementation(const FGameplayEventData& Payload)
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
 	InitAimingSphere();
-	InitializePlayerNameWidget();
-
-	// --- bind to clear ghost data
-	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
-
-	// --- listens to event when BmrPawn controller by player was eliminated on level
-	const ABmrPawn* BmrPawn = UBmrBlueprintFunctionLibrary::GetPawn(PlayerID);
-	if (BmrPawn)
+	
+	const APlayerState* MyPlayerState = UGrsPawnHelper::GetPlayerStateForPlayerID(this);
+	PlayerStateComponent = MyPlayerState ? MyPlayerState->FindComponentByClass<UGrsPlayerStateComponent>() : nullptr;
+	if (ensureMsgf(PlayerStateComponent.IsValid(), TEXT("ASSERT: [%i] %hs:\n'PlayerStateComponent' is not found on the player state of '%i' PlayerID!"), __LINE__, __FUNCTION__, PlayerID))
 	{
-		UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(BmrPawn);
-		if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
-		{
-			return;
-		}
-
-		// @PR JanSeliv [Coding Standards] - OnPreRemovedFromLevel listener never removed, add matching RemoveDynamic in cleanup (EndPlay/PerformCleanUp) like StopListeningForAllGlobalMessages handles global listeners
-		MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+		InitializePlayerNameWidget();
 	}
+
+	// --- listens to event when player character of this ghost was eliminated on level
+	// --- Unsubscribes from previous player character first, since it could be respawned as another one
+	StopListeningPlayerCharacterRemoval();
+	UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(PlayerCharacter);
+	if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n 'MapComponent' is null!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	MapComponent->OnPreRemovedFromLevel.AddUniqueDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+	ListenedMapComponent = MapComponent;
 }
 
-// Listen game states to remove ghost character from level
-void AGrsPawn::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
+// Unsubscribes from removal from level of the player character this ghost was initialized for
+void AGrsPawn::StopListeningPlayerCharacterRemoval()
 {
-	HideGhostCharacterFromMap();
+	if (UBmrMapComponent* MapComponent = ListenedMapComponent.Get())
+	{
+		MapComponent->OnPreRemovedFromLevel.RemoveDynamic(this, &ThisClass::OnPreRemovedFromLevel);
+	}
+
+	ListenedMapComponent.Reset();
 }
 
 // Called right before owner actor going to remove from the Generated Map, on both server and clients.
@@ -221,8 +280,19 @@ void AGrsPawn::OnPreRemovedFromLevel_Implementation(UBmrMapComponent* PlayerMapC
 void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const ABmrPawn* FromPlayerCharacter)
 {
 	if (!GhostCharacter
-	    || !FromPlayerCharacter
-	    || !UGRSWorldSubSystem::Get().IsRevivable(FromPlayerCharacter))
+	    || !FromPlayerCharacter)
+	{
+		return;
+	}
+	
+	if (!ensureMsgf(FromPlayerCharacter->GetPlayerId() == GetPlayerID(), TEXT("ASSERT: [%i] %hs:\n'FromPlayerCharacter' belongs to another player than this ghost!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+	
+	const UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
+	if (!GrsPlayerStateComponent
+	    || !GrsPlayerStateComponent->IsRevivable())
 	{
 		return;
 	}
@@ -250,7 +320,7 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const ABmrPaw
 	UGrsPawnHelper::SetPawnToAvailableSide(this);
 }
 
-//  Possess a player controller
+// Possess a player controller
 void AGrsPawn::TryPossessController(AController* PlayerController)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -339,7 +409,7 @@ void AGrsPawn::RefreshPawn()
 	PlayerArrowStartComponent->SetArrowEnabled(true);
 }
 
-// Remove ghost character from the level
+// Remove ghost character from the level when clean up or ghost kills a player
 void AGrsPawn::HideGhostCharacterFromMap()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -353,6 +423,8 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	ClearTrajectorySplines();
 
 	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
+	
+	StopListeningPlayerCharacterRemoval();
 
 	if (HasAuthority())
 	{
@@ -377,11 +449,10 @@ void AGrsPawn::PerformCleanUp()
 	}
 
 	PlayerID = 0;
+	PlayerStateComponent.Reset();
 
-	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem& WorldSubSystem = UGRSWorldSubSystem::Get();
-	WorldSubSystem.UnregisterGhostCharacter(this);
-	WorldSubSystem.ResetRevivedPlayers();
+	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached reference
+	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
 
 	if (HasAuthority())
 	{

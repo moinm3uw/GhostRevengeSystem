@@ -17,6 +17,8 @@ class ABmrPlayerState;
  * Grants abilities: review and bomb spawn when game started ( game state changed to InGame)
  * Remove abilities: review and bomb spawn when game is about to start (game state changed to GameStarting) or GFP is unloaded (Unregistered)
  * When a ghost player eliminates a player/bot, component applies revive ability to return from a ghost (GrsPawn) to a regular player (BmrPlayer)
+ *
+ * Owns the replicated 'was already revived' state of its player, so a player can be revived only once per match.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent
@@ -35,6 +37,9 @@ public:
 	ABmrPlayerState& GetCurrentPlayerStateChecked() const;
 
 protected:
+	/** Returns properties that are replicated for the lifetime of the actor channel */
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
 
@@ -88,6 +93,29 @@ public:
 	/** To Remove Revive applied gameplay effect */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void RemoveAppliedReviveGameplayEffect();
+
+	/*********************************************************************************************
+	 * Revive (once per match)
+	 **********************************************************************************************/
+protected:
+	/** Is set once this player was revived back from a ghost to the regular player character.
+	 * Is replicated, so clients know as well that this player already used their only revive of the current match.
+	 * Is reset on each match start (game state changed to InGame) and on GFP unload. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Replicated, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Is Revived"))
+	bool bIsRevived = false;
+
+public:
+	/** Returns TRUE if this player was not revived yet in the current match, so they are still allowed to become a ghost */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	bool IsRevivable() const;
+
+	/** Marks this player as revived, so they can't become a ghost again until the match restarts. Is applied on server only as the state is replicated to clients. */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void SetRevived();
+
+	/** Resets the revive state, so this player can become a ghost again */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void ResetRevived();
 
 	/*********************************************************************************************
 	 * Bomb spawning ability that automatically explodes after a certain time

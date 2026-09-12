@@ -6,6 +6,7 @@
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
+#include "LevelActors/GrsPawn.h" // EGRSCharacterSide
 #include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
@@ -25,6 +26,15 @@
 #include "GameFramework/PlayerController.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsCollisionComponent)
+
+namespace GrsSideCollisions
+{
+	/** Sides of the map that have to be bounded, exactly one collision actor is spawned per each of them. */
+	static constexpr EGRSCharacterSide Sides[] = {EGRSCharacterSide::Left, EGRSCharacterSide::Right};
+
+	/** Number of side collisions to spawn, is driven by the sides that have to be bounded. */
+	static constexpr int32 Num = UE_ARRAY_COUNT(Sides);
+}
 
 /*********************************************************************************************
  * Lifecycle
@@ -64,16 +74,79 @@ void UGrsCollisionComponent::OnUnregister()
 
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
+	ClearCollisions();
+
+	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
+	UGRSWorldSubSystem::Get().UnregisterCollisionManagerComponent();
+}
+
+/*********************************************************************************************
+ * Side Collisions actors
+ **********************************************************************************************/
+
+// Returns TRUE if collision are spawned
+bool UGrsCollisionComponent::IsCollisionsSpawned() const
+{
+	const bool bIsSpawned = LeftSideCollisionInternal && RightSideCollisionInternal;
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsSpawned ? TEXT("TRUE") : TEXT("FALSE"));
+	return bIsSpawned;
+}
+
+// Returns spawned collisions back to the pool they were taken from and clears cached references
+void UGrsCollisionComponent::ClearCollisions()
+{
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+
+	// Collisions are pooled actors owned by this component, so they are released back to the pool instead of being destroyed
 	if (!CollisionPoolActorHandlersInternal.IsEmpty())
 	{
 		UPoolManagerSubsystem::Get().ReturnToPoolArray(CollisionPoolActorHandlersInternal);
 		CollisionPoolActorHandlersInternal.Empty();
 	}
 
-	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached references
-	UGRSWorldSubSystem& WorldSubsystem = UGRSWorldSubSystem::Get();
-	WorldSubsystem.ClearCollisions();
-	WorldSubsystem.UnregisterCollisionManagerComponent();
+	LeftSideCollisionInternal = nullptr;
+	RightSideCollisionInternal = nullptr;
+}
+
+// Caches the spawned collision actor as the one that bounds given side of the map
+void UGrsCollisionComponent::SetCollisionActorBySide(EGRSCharacterSide Side, AActor* CollisionActor)
+{
+	switch (Side)
+	{
+	case EGRSCharacterSide::Left:
+		LeftSideCollisionInternal = CollisionActor;
+		break;
+	case EGRSCharacterSide::Right:
+		RightSideCollisionInternal = CollisionActor;
+		break;
+	default:
+		ensureMsgf(false, TEXT("ASSERT: [%i] %hs:\n'Side' has to be Left or Right to bound the map!"), __LINE__, __FUNCTION__);
+		break;
+	}
+}
+
+// Returns the world location where the collision actor has to be placed to bound given side of the map
+FVector UGrsCollisionComponent::GetCollisionLocationBySide(EGRSCharacterSide Side)
+{
+	// Distance from the center of the corner cell, so the collision is placed right outside of the level
+	static constexpr float DistanceFromCorner = FBmrCell::CellSize + FBmrCell::CellSize / 2.f;
+
+	switch (Side)
+	{
+	case EGRSCharacterSide::Left:
+	{
+		const FBmrCell CornerCell = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
+		return FVector(CornerCell.Location.X - DistanceFromCorner, 0.f, 0.f);
+	}
+	case EGRSCharacterSide::Right:
+	{
+		const FBmrCell CornerCell = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
+		return FVector(CornerCell.Location.X + DistanceFromCorner, 0.f, 0.f);
+	}
+	default:
+		ensureMsgf(false, TEXT("ASSERT: [%i] %hs:\n'Side' has to be Left or Right to bound the map!"), __LINE__, __FUNCTION__);
+		return FVector::ZeroVector;
+	}
 }
 
 /*********************************************************************************************
@@ -101,7 +174,7 @@ void UGrsCollisionComponent::OnInitialize_Implementation(const FGameplayEventDat
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
 
 	// spawn collisions only once
-	if (!UGRSWorldSubSystem::Get().IsCollisionsSpawned())
+	if (!IsCollisionsSpawned())
 	{
 		SpawnMapCollisionOnSide();
 	}
@@ -125,8 +198,7 @@ void UGrsCollisionComponent::SpawnMapCollisionOnSide()
 	};
 
 	// --- Spawn actor
-	// @PR JanSeliv [Coding Standards] - magic literal 2 (left + right sides), extract to constexpr var
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGRSDataAsset::Get().GetCollisionsAssetClass(), 2, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(CollisionPoolActorHandlersInternal, UGRSDataAsset::Get().GetCollisionsAssetClass(), GrsSideCollisions::Num, OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
 }
 
 // Grabs a side collision asset from the pool manager (Object pooling patter)
@@ -142,37 +214,26 @@ void UGrsCollisionComponent::OnTakeCollisionActorsFromPoolCompleted_Implementati
 		return;
 	}
 
-	// Spawn side collision
-	UGRSWorldSubSystem& GrsWorldSubSystem = UGRSWorldSubSystem::Get();
-	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
-	for (const FPoolObjectData& CreatedObject : CreatedObjects)
+	if (!ensureMsgf(CreatedObjects.Num() == GrsSideCollisions::Num, TEXT("ASSERT: [%i] %hs:\n'CreatedObjects' contains %i objects while %i side collisions are expected!"), __LINE__, __FUNCTION__, CreatedObjects.Num(), GrsSideCollisions::Num))
 	{
-		AActor& SpawnedCollision = CreatedObject.GetChecked<AActor>();
+		return;
+	}
+
+	// Spawn side collision
+	const FTransform& CollisionTransform = UGRSDataAsset::Get().GetCollisionTransform();
+	for (int32 Index = 0; Index < GrsSideCollisions::Num; ++Index)
+	{
+		AActor& SpawnedCollision = CreatedObjects[Index].GetChecked<AActor>();
 		SpawnedCollision.SetOwner(PlayerController);
+
+		const EGRSCharacterSide Side = GrsSideCollisions::Sides[Index];
 
 		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs %s: --- %s "), __LINE__, __FUNCTION__, CurrentOwner->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), *SpawnedCollision.GetName());
 
-		// base cell for the calculation
-		FBmrCell SpawnLocation;
+		FTransform NewCollisionTransform = CollisionTransform;
+		NewCollisionTransform.SetLocation(GetCollisionLocationBySide(Side));
+		SpawnedCollision.SetActorTransform(NewCollisionTransform);
 
-		// calculate the distance from the center of current cell
-		const float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2.0f);
-
-		if (!GrsWorldSubSystem.GetLeftCollisionActor())
-		{
-			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopLeft);
-			SpawnLocation.Location.X = SpawnLocation.Location.X - CellSize;
-		}
-		else if (!GrsWorldSubSystem.GetRightCollisionActor())
-		{
-			SpawnLocation = UBmrCellUtilsLibrary::GetCellByCornerOnLevel(EBmrGridCorner::TopRight);
-			SpawnLocation.Location.X = SpawnLocation.Location.X + CellSize;
-		}
-
-		GrsWorldSubSystem.AddCollisionActor(&SpawnedCollision);
-
-		FTransform CollisionTransform = GrsDataAsset.GetCollisionTransform();
-		CollisionTransform.SetLocation(FVector(SpawnLocation.Location.X, 0.0f, 0.0f));
-		SpawnedCollision.SetActorTransform(CollisionTransform);
+		SetCollisionActorBySide(Side, &SpawnedCollision);
 	}
 }

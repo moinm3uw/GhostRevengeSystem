@@ -9,6 +9,7 @@
 #include "GrsPawn.generated.h"
 
 class UGrsPlayerStateComponent;
+class UBmrMapComponent;
 class UBmrPlayerNameWidgetComponent;
 class UBmrPlayerArrowStartComponent;
 class UStaticMeshComponent;
@@ -47,7 +48,7 @@ class GHOSTREVENGESYSTEMRUNTIME_API AGrsPawn : public ACharacter
 {
 	GENERATED_BODY()
 public:
-	/** Obtains players state from the cached and replicated PlayerID  */
+	/** Returns cached GRS component of the player state that owns PlayerID, nullptr if player state references are not initialized yet. */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	UGrsPlayerStateComponent* GetGrsPlayerStateComponent() const;
 	UGrsPlayerStateComponent& GetGrsPlayerStateComponentChecked() const;
@@ -91,6 +92,15 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_PlayerID", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Id of Bmr Player Character"))
 	int32 PlayerID = 0;
 
+	/** GRS component of the player state that owns PlayerID, is cached so access does not search the player state and scan its components each time.
+	 * Is also the source of the player state itself through its getters, so the player state is not cached separately */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "[GhostRevengeSystem]", meta = (DisplayName = "Grs Player State Component"))
+	TWeakObjectPtr<UGrsPlayerStateComponent> PlayerStateComponent;
+
+	/** Map component of the player character (BmrPawn) whose removal from level this ghost listens to. Is kept to unsubscribe exactly from it. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "[GhostRevengeSystem]", meta = (DisplayName = "Listened Map Component"))
+	TWeakObjectPtr<UBmrMapComponent> ListenedMapComponent;
+
 public:
 	/** Called on client when player ID is changed. */
 	UFUNCTION()
@@ -112,13 +122,30 @@ protected:
 	/** Returns properties that are replicated for the lifetime of the actor channel. */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point */
+	/** The player character could be replicated faster than GFP is loaded on client so the only we have to wait/check for subsystem to initialize as it is central loading point.
+	 * Subscribes to events that init this ghost, the init itself is done in InitGhostCharacter() */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	/** Listen game states to remove ghost character from level */
+	/** Listen game states to remove ghost character from level and to re-init it for each match */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
+
+	/** Is called when any player character (BmrPawn) is spawned, possessed, and replicated, inits this ghost once it's the player character of its PlayerID */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnPawnReady(const struct FGameplayEventData& Payload);
+
+	/** Inits this ghost for the current player character of PlayerID only when the match is starting or in progress and that player character is ready.
+	 * Is triggered by both pawn ready and game state change, since either of them can come last: pooled player character does not broadcast pawn ready again once it was ready. */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void TryInitGhostCharacter();
+
+	/** Inits this ghost for given player character. */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void InitGhostCharacter(const class ABmrPawn* PlayerCharacter);
+
+	/** Unsubscribes from removal from level of the player character this ghost was initialized for */
+	void StopListeningPlayerCharacterRemoval();
 
 	/** Called right before owner actor going to remove from the Generated Map, on both server and clients.*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))

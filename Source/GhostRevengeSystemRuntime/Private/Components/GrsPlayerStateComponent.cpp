@@ -7,7 +7,6 @@
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsPawn.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
 #include "Actors/BmrPawn.h"
@@ -24,6 +23,7 @@
 // UE
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "AbilitySystemComponent.h"
+#include "Net/UnrealNetwork.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerStateComponent)
 
@@ -32,6 +32,17 @@ UGrsPlayerStateComponent::UGrsPlayerStateComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
+	
+	SetIsReplicatedByDefault(true);
+}
+
+// Returns properties that are replicated for the lifetime of the actor channel
+void UGrsPlayerStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams Params;
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, bIsRevived, Params);
 }
 
 // Returns the player state from attached BmrPlayerState component
@@ -76,6 +87,7 @@ void UGrsPlayerStateComponent::OnUnregister()
 	}
 
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
+	ResetRevived();
 }
 
 // Starting point once whole module is ready(loaded) to be initialized
@@ -89,6 +101,13 @@ void UGrsPlayerStateComponent::OnInitialize_Implementation(const FGameplayEventD
 void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (%s) "), __LINE__, __FUNCTION__, GetCurrentPlayerStateChecked().HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+	// --- a new match starts, so every player is allowed to be revived once again
+	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
+	{
+		ResetRevived();
+	}
+
 	if (GetCurrentPlayerStateChecked().IsABot())
 	{
 		return;
@@ -194,7 +213,43 @@ void UGrsPlayerStateComponent::RevivePlayerCharacter(ABmrPawn* PlayerCharacter)
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(PlayerCharacter->GetActorLocation());
 	ASC->HandleGameplayEvent(UGRSDataAsset::Get().GetRevivePlayerCharacterTriggerTag(), &EventData);
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
-	UGRSWorldSubSystem::Get().SetRevivedPlayer(PlayerCharacter);
+	SetRevived();
+}
+
+/*********************************************************************************************
+ * Revive (once per match)
+ **********************************************************************************************/
+
+// Returns TRUE if this player was not revived yet in the current match
+bool UGrsPlayerStateComponent::IsRevivable() const
+{
+	const bool bIsRevivable = !bIsRevived;
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsRevivable ? TEXT("Revivable") : TEXT("NOT Revivable"));
+	return bIsRevivable;
+}
+
+// Marks this player as revived, so they can't become a ghost again until the match restarts
+void UGrsPlayerStateComponent::SetRevived()
+{
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
+	{
+		return;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) "), __LINE__, __FUNCTION__);
+	bIsRevived = true;
+}
+
+// Resets the revive state, so this player can become a ghost again
+void UGrsPlayerStateComponent::ResetRevived()
+{
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
+	{
+		return;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) "), __LINE__, __FUNCTION__);
+	bIsRevived = false;
 }
 
 // Grant to a player revive GAS effect

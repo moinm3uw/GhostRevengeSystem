@@ -10,7 +10,6 @@
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
-#include "Actors/BmrPawn.h"
 #include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameStateTag.h"
@@ -112,7 +111,6 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	UnregisterCharacterManagerComponent();
 	UnregisterCollisionManagerComponent();
 	ClearGhostCharacters();
-	ClearCollisions();
 
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (BmrHUD)
@@ -130,7 +128,7 @@ void UGRSWorldSubSystem::PerformCleanUp()
 }
 
 /*********************************************************************************************
- * Side Collisions actors
+ * Collision Component
  **********************************************************************************************/
 
 // Register collision manager component used to track if all components loaded and GFP ready to initialize
@@ -150,85 +148,11 @@ void UGRSWorldSubSystem::RegisterCollisionManagerComponent(UGrsCollisionComponen
 	TryInit(); // try to initialize
 }
 
-// Add spawned collision actors to be cached
-void UGRSWorldSubSystem::AddCollisionActor(AActor* Actor)
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	if (!Actor)
-	{
-		return;
-	}
-
-	if (!LeftSideCollision)
-	{
-		LeftSideCollision = Actor;
-	}
-	else if (!RightSideCollision)
-	{
-		RightSideCollision = Actor;
-	}
-}
-
-// Returns TRUE if collision are spawned
-bool UGRSWorldSubSystem::IsCollisionsSpawned() const
-{
-	const bool bIsSpawned = LeftSideCollision && RightSideCollision;
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsSpawned ? TEXT("TRUE") : TEXT("FALSE"));
-	return bIsSpawned;
-}
-
 // Clears cached collision manager component
 void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	CollisionManagerComponent = nullptr;
-}
-
-// Clear cached collisions
-void UGRSWorldSubSystem::ClearCollisions()
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	if (LeftSideCollision)
-	{
-		LeftSideCollision->Destroy();
-	}
-
-	if (RightSideCollision)
-	{
-		RightSideCollision->Destroy();
-	}
-
-	LeftSideCollision = nullptr;
-	RightSideCollision = nullptr;
-}
-
-// Checks if the target Player was already revived. Player can be revived only once
-bool UGRSWorldSubSystem::IsRevivable(const ABmrPawn* PlayerToRevive) const
-{
-	const bool bIsRevivable = PlayerToRevive && !RevivedPlayerCharacters.Contains(PlayerToRevive);
-
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bIsRevivable ? TEXT("Revivable") : TEXT("NOT Revivable"));
-	return bIsRevivable;
-}
-
-// Set a player character as it was revived once
-void UGRSWorldSubSystem::SetRevivedPlayer(ABmrPawn* PlayerToRevive)
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	if (!PlayerToRevive)
-	{
-		return;
-	}
-	RevivedPlayerCharacters.AddUnique(PlayerToRevive);
-}
-
-// Reset revived players so they can be ghosts again
-void UGRSWorldSubSystem::ResetRevivedPlayers()
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	RevivedPlayerCharacters.Empty();
 }
 
 /*********************************************************************************************
@@ -344,7 +268,7 @@ void UGRSWorldSubSystem::ClearGhostCharacters()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 
-	/* @PR JanSeliv [Architecture] - ghost AGrsPawns taken from pool by GrsPawnComponent but Destroy() directly here while pawn also returns to pool in PerformCleanUp, two disposal owners for one pooled actor (stale handle, pool churn). ClearCollisions has same bug.
+	/* @PR JanSeliv [Architecture] - ghost AGrsPawns taken from pool by GrsPawnComponent but Destroy() directly here while pawn also returns to pool in PerformCleanUp, two disposal owners for one pooled actor (stale handle, pool churn).
 	 * Subsystem only nulls cached refs, never Destroy() pooled actor which it does not own, Destroy() must happen in owner who initially spawned it. */
 	if (GhostCharacterLeftSide)
 	{
@@ -425,8 +349,8 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	bool bHasInGameTag = Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame);
 	if (bHasInGameTag)
 	{
+		// Revive state is reset by each UGrsPlayerStateComponent that listens for the same game state change
 		TryInit();
-		ResetRevivedPlayers();
 	}
 	else
 	{

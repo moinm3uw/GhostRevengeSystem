@@ -9,8 +9,6 @@
 
 enum class EGRSCharacterSide : uint8;
 enum class EBmrEndGameState : uint8;
-class AActor;
-class ABmrPawn;
 class AGrsPawn;
 class UGrsCharacterManagerComponent;
 class UGrsPawnComponent;
@@ -19,11 +17,11 @@ class UGrsCollisionComponent;
 /**
  * Implements the world subsystem to act as singleton with access to different components in the module.
  * Manages GFP overall loading status.
- * Manages also if a player character (BmrPawn) is revivable or not. A player character can be revived only once per game round, resets revived players when game starts (game state changes to InGame)
  * Manages available spot (left or right side) for GrsPawn on spawn. Only 1 grs allowed per side
  */
 /* @PR JanSeliv [Architecture] - god-object subsystem fuses 5 unrelated jobs into one non-replicated singleton every component hard-depends on: GFP load orchestration, revive-once rules, ghost side allocation, side-collision lifecycle, Bmr HUD visibility.
  * Split per NMM: thin readiness broker, revive and side state on replicated PlayerState, side allocation own owner, collision lifecycle into GrsCollisionComponent, drop UI entirely */
+
 UCLASS(BlueprintType, Blueprintable)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UGfpmWorldSubsystem
 {
@@ -62,69 +60,27 @@ public:
 	bool IsReady() const;
 
 	/*********************************************************************************************
-	 * Side Collisions actors
+	 * Collision Component
+	 * Spawns and owns the side collisions itself, is tracked here only to know when GFP is ready.
+	 * @see UGrsCollisionComponent
 	 **********************************************************************************************/
 protected:
 	/** Current Collision Manager Component used to identify if GFP is ready to be loaded */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Collision Manager Component"))
 	TObjectPtr<UGrsCollisionComponent> CollisionManagerComponent;
 
-	/** Left Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Left Side Collision"))
-	TObjectPtr<AActor> LeftSideCollision;
-
-	/** Right Side collision */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Right Side Collision"))
-	TObjectPtr<AActor> RightSideCollision;
-
 public:
 	/** Register collision manager component used to track if all components loaded and GFP ready to initialize */
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void RegisterCollisionManagerComponent(UGrsCollisionComponent* NewCollisionManagerComponent);
 
-	/** Add spawned collision actors to be cached */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void AddCollisionActor(AActor* Actor);
-
-	/** Returns TRUE if collision are spawned */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	bool IsCollisionsSpawned() const;
-
-	/** Returns left side spawned collision or nullptr */
-	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE AActor* GetLeftCollisionActor() const { return LeftSideCollision; }
-
-	/** Returns right side spawned collision or nullptr */
-	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE AActor* GetRightCollisionActor() const { return RightSideCollision; }
-
 	/** Clears cached collision manager component */
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterCollisionManagerComponent();
 
-	/** Clear cached collisions */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void ClearCollisions();
-
-protected:
-	/** Contains list of player characters that were eliminated at least once per game(round) and character can't be a ghost anymore */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Revied Player Character"))
-	TArray<TObjectPtr<ABmrPawn>> RevivedPlayerCharacters;
-
-public:
-	/** Checks if the target Player was already revived. Player can be revived only once
-	 * @param PlayerToRevive The BmrPawn to revive
-	 * @return false if player was revived once in game */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	bool IsRevivable(const ABmrPawn* PlayerToRevive) const;
-
-	/** Set a player character as it was revived once */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void SetRevivedPlayer(ABmrPawn* PlayerToRevive);
-
-	/** Reset revived players so they can be ghosts again */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void ResetRevivedPlayers();
+	/** Returns currently registered collision manager component or nullptr if it's not registered yet */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE UGrsCollisionComponent* GetCollisionManagerComponent() const { return CollisionManagerComponent; }
 
 	/*********************************************************************************************
 	 * Ghost Characters
