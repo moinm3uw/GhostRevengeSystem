@@ -34,6 +34,8 @@ UGrsPlayerStateComponent::UGrsPlayerStateComponent()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	
 	SetIsReplicatedByDefault(true);
+
+	GhostSide = EGRSCharacterSide::None;
 }
 
 // Returns properties that are replicated for the lifetime of the actor channel
@@ -43,6 +45,7 @@ void UGrsPlayerStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 
 	FDoRepLifetimeParams Params;
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, bIsRevived, Params);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, GhostSide, Params);
 }
 
 // Returns the player state from attached BmrPlayerState component
@@ -88,6 +91,7 @@ void UGrsPlayerStateComponent::OnUnregister()
 
 	PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 	ResetRevived();
+	ResetGhostSide();
 }
 
 // Starting point once whole module is ready(loaded) to be initialized
@@ -250,6 +254,33 @@ void UGrsPlayerStateComponent::ResetRevived()
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) "), __LINE__, __FUNCTION__);
 	bIsRevived = false;
+}
+
+/*********************************************************************************************
+ * Ghost side
+ **********************************************************************************************/
+
+// Places the ghost of this player on given side of the map
+void UGrsPlayerStateComponent::SetGhostSide(EGRSCharacterSide NewGhostSide)
+{
+	ABmrPlayerState& PlayerStateRef = GetCurrentPlayerStateChecked();
+	if (!PlayerStateRef.HasAuthority()
+	    || GhostSide == NewGhostSide)
+	{
+		return;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) %s"), __LINE__, __FUNCTION__, *UEnum::GetValueAsString(NewGhostSide));
+	GhostSide = NewGhostSide;
+
+	// Player states replicate rarely, but aiming on the owning client needs the side right after the ghost is possessed
+	PlayerStateRef.ForceNetUpdate();
+}
+
+// Frees the side of the map occupied by the ghost of this player
+void UGrsPlayerStateComponent::ResetGhostSide()
+{
+	SetGhostSide(EGRSCharacterSide::None);
 }
 
 // Grant to a player revive GAS effect

@@ -7,7 +7,6 @@
 #include "Components/GrsPawnComponent.h"
 #include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
-#include "LevelActors/GrsPawn.h"
 
 // Bmr
 #include "GameFramework/BmrGameState.h"
@@ -75,7 +74,8 @@ void UGRSWorldSubSystem::TryInit()
 	}
 }
 
-// Checks if the system is ready to load
+// Checks if the system is ready to load.
+//  Currently strictly tied to FBmrGameStateTag::InGame and expected module to be loaded/unloaded
 bool UGRSWorldSubSystem::IsReady() const
 {
 	// @PR JanSeliv [Coding Standards] - extract magic 4 to shared constexpr max players, same literal hardcoded at PawnComponents.Num() < 4 in RegisterPawnComponent
@@ -110,7 +110,6 @@ void UGRSWorldSubSystem::PerformCleanUp()
 
 	UnregisterCharacterManagerComponent();
 	UnregisterCollisionManagerComponent();
-	ClearGhostCharacters();
 
 	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
 	if (BmrHUD)
@@ -180,27 +179,6 @@ void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerC
  * Pawn Component
  **********************************************************************************************/
 
-// Register ghost character
-EGRSCharacterSide UGRSWorldSubSystem::RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	checkf(GhostPlayerCharacter, TEXT("ERROR: [%i] %hs:\n'GhostPlayerCharacter' is null!"), __LINE__, __FUNCTION__);
-
-	if (!GhostCharacterLeftSide)
-	{
-		GhostCharacterLeftSide = GhostPlayerCharacter;
-		return EGRSCharacterSide::Left;
-	}
-
-	if (!GhostCharacterRightSide)
-	{
-		GhostCharacterRightSide = GhostPlayerCharacter;
-		return EGRSCharacterSide::Right;
-	}
-
-	return EGRSCharacterSide::None;
-}
-
 // Register a new Pawn component to track the pawn state
 void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnComponent)
 {
@@ -238,49 +216,6 @@ void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
 	CharacterManagerComponent = nullptr;
-}
-
-// Clear cached ghost character by reference
-void UGRSWorldSubSystem::UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter)
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	if (!GhostPlayerCharacter)
-	{
-		return;
-	}
-
-	if (GhostCharacterLeftSide == GhostPlayerCharacter)
-	{
-		GhostCharacterLeftSide = nullptr;
-
-		return;
-	}
-
-	if (GhostCharacterRightSide == GhostPlayerCharacter)
-	{
-		GhostCharacterRightSide = nullptr;
-	}
-}
-
-// Clear cached ghost character references
-void UGRSWorldSubSystem::ClearGhostCharacters()
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	/* @PR JanSeliv [Architecture] - ghost AGrsPawns taken from pool by GrsPawnComponent but Destroy() directly here while pawn also returns to pool in PerformCleanUp, two disposal owners for one pooled actor (stale handle, pool churn).
-	 * Subsystem only nulls cached refs, never Destroy() pooled actor which it does not own, Destroy() must happen in owner who initially spawned it. */
-	if (GhostCharacterLeftSide)
-	{
-		GhostCharacterLeftSide->Destroy();
-		GhostCharacterLeftSide = nullptr;
-	}
-
-	if (GhostCharacterRightSide)
-	{
-		GhostCharacterRightSide->Destroy();
-		GhostCharacterRightSide = nullptr;
-	}
 }
 
 //  Changes the Bmr HUD visibility

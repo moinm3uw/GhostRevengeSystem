@@ -6,7 +6,6 @@
 #include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
-#include "GrsUtils.h"
 #include "LevelActors/GrsPawn.h"
 
 // Bmr
@@ -351,6 +350,11 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 
 	// Configure PredictProjectilePath settings and get result
 	PredictProjectilePath(Result);
+	if (Result.PathData.IsEmpty())
+	{
+		// nothing is predicted, e.g. ghost side is not replicated yet, so aiming area would be placed to the world origin
+		return;
+	}
 
 	// Aiming area - show visual element in the of predicted end
 	UStaticMeshComponent* AimingStaticMeshComponent = GrsPawn->GetAimingSphereComponent();
@@ -361,7 +365,7 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 	}
 
 	// show trajectory visual
-	if (UGRSDataAsset::Get().ShouldDisplayTrajectory() && !Result.PathData.IsEmpty())
+	if (UGRSDataAsset::Get().ShouldDisplayTrajectory())
 	{
 		GrsPawn->ClearTrajectorySplines();
 		AddSplinePoints(Result);
@@ -458,10 +462,16 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
 	Params.StartLocation = CurrentPawn.GetActorLocation();
 
-	// --- pick a direction based on the side of the map (left or right)
-	/* @PR JanSeliv [Architecture] - ghost side defined twice, RegisterGhostCharacter stores it by slot and PredictProjectilePath here re-derives from world position via GetCharacterSideFromActor, both can disagree since slot allocation independent of post-spawn X.
-	 * Store allocated side on AGrsPawn (replicate enum), aiming reads stored side, drop positional re-derivation and unused EGRSSpotType enum */
-	const float SideSign = UGrsUtils::GetCharacterSideFromActor(&CurrentPawn) == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+	// --- pick a direction based on the side of the map (left or right) the server allocated for this ghost
+	const AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn);
+	const UGrsPlayerStateComponent* GrsPlayerStateComponent = GrsPawn ? GrsPawn->GetGrsPlayerStateComponent() : nullptr;
+	const EGRSCharacterSide GhostSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
+	if (GhostSide == EGRSCharacterSide::None)
+	{
+		return;
+	}
+
+	const float SideSign = GhostSide == EGRSCharacterSide::Left ? 1.0f : -1.0f;
 
 	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTime), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
 	Params.ActorsToIgnore.Add(&CurrentPawn);

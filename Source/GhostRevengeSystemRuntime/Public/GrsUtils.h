@@ -8,8 +8,6 @@
 
 #include "GrsUtils.generated.h"
 
-enum class EGRSCharacterSide : uint8;
-
 /**
  * Useful GFP wide utils methods and data.
  */
@@ -33,8 +31,4 @@ public:
 	 * Is picked by own input actions as context that owns their input callbacks. */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]", DisplayName = "Get Ghost Controller Component (Local)", meta = (WorldContext = "OptionalWorldContext", CallableWithoutWorldContext))
 	static class UGrsPlayerControllerComponent* GetControllerComponent(const UObject* OptionalWorldContext = nullptr);
-
-	/** Calculates the character side from an actor reference */
-	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	static EGRSCharacterSide GetCharacterSideFromActor(const class AActor* Actor);
 };

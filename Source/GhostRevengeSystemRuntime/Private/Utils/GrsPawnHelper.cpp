@@ -3,12 +3,13 @@
 // Grs
 #include "Utils/GrsPawnHelper.h"
 
+#include "Components/GrsPlayerStateComponent.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "LevelActors/GrsPawn.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 
 // Bmr
 #include "Actors/BmrPawn.h"
+#include "GameFramework/BmrGameState.h"
 #include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrCell.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
@@ -28,9 +29,17 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 	{
 		return;
 	}
-	const EGRSCharacterSide CharacterSide = UGRSWorldSubSystem::Get().RegisterGhostCharacter(GrsPawn);
+
+	// --- keep already occupied side if this ghost is placed again, otherwise its own side would be treated as occupied by another ghost
+	UGrsPlayerStateComponent& GrsPlayerStateComponent = GrsPawn->GetGrsPlayerStateComponentChecked();
+	EGRSCharacterSide CharacterSide = GrsPlayerStateComponent.GetGhostSide();
+	if (CharacterSide == EGRSCharacterSide::None)
+	{
+		CharacterSide = FindAvailableGhostSide();
+	}
 
 	checkf(CharacterSide != EGRSCharacterSide::None, TEXT("ERROR: [%i] %hs:\n'CharacterSide' is none!"), __LINE__, __FUNCTION__);
+	GrsPlayerStateComponent.SetGhostSide(CharacterSide);
 
 	FBmrCell ActorSpawnLocation;
 	const float CellSize = FBmrCell::CellSize + (FBmrCell::CellSize / 2.0f);
@@ -57,6 +66,42 @@ void UGrsPawnHelper::SetPawnToAvailableSide(AGrsPawn* GrsPawn)
 
 	ActorSpawnLocation.Location.Z = BmrPawn->GetActorLocation().Z;
 	GrsPawn->SetActorLocation(ActorSpawnLocation);
+}
+
+// Returns the first side of the map that is not occupied by a ghost of any player
+EGRSCharacterSide UGrsPawnHelper::FindAvailableGhostSide()
+{
+	// side is stored on the player state of each ghost, so occupied sides are collected from all ghosts
+	bool bIsLeftSideOccupied = false;
+	bool bIsRightSideOccupied = false;
+	for (const APlayerState* PlayerState : ABmrGameState::Get().PlayerArray)
+	{
+		// --- personally I am not sure about this, however the main idea was to remove obligatory to manage sides from subsystem.
+		// --- otherwise we will cache something back on the subsystem (e.g. map<PlayerID,EGrsCharacterSide>, TArray ghostPlayersSpawned)
+		// --- alternative is to fetch by type from pool manager all objects (requires pool manager extension) but I am not sure what we win here (iterate through components vs iterate through types in pool manager)
+		const UGrsPlayerStateComponent* GrsPlayerStateComponent = PlayerState ? PlayerState->FindComponentByClass<UGrsPlayerStateComponent>() : nullptr;
+		const EGRSCharacterSide OccupiedSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
+		if (OccupiedSide == EGRSCharacterSide::Left)
+		{
+			bIsLeftSideOccupied = true;
+		}
+		else if (OccupiedSide == EGRSCharacterSide::Right)
+		{
+			bIsRightSideOccupied = true;
+		}
+	}
+
+	if (!bIsLeftSideOccupied)
+	{
+		return EGRSCharacterSide::Left;
+	}
+
+	if (!bIsRightSideOccupied)
+	{
+		return EGRSCharacterSide::Right;
+	}
+
+	return EGRSCharacterSide::None;
 }
 
 // Checks if Pawn is replicated fully (player state and controller present

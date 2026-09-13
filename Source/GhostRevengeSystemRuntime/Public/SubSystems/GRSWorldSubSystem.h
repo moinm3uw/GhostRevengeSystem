@@ -7,9 +7,7 @@
 
 #include "GRSWorldSubSystem.generated.h"
 
-enum class EGRSCharacterSide : uint8;
 enum class EBmrEndGameState : uint8;
-class AGrsPawn;
 class UGrsCharacterManagerComponent;
 class UGrsPawnComponent;
 class UGrsCollisionComponent;
@@ -17,10 +15,9 @@ class UGrsCollisionComponent;
 /**
  * Implements the world subsystem to act as singleton with access to different components in the module.
  * Manages GFP overall loading status.
- * Manages available spot (left or right side) for GrsPawn on spawn. Only 1 grs allowed per side
  */
 /* @PR JanSeliv [Architecture] - god-object subsystem fuses 5 unrelated jobs into one non-replicated singleton every component hard-depends on: GFP load orchestration, revive-once rules, ghost side allocation, side-collision lifecycle, Bmr HUD visibility.
- * Split per NMM: thin readiness broker, revive and side state on replicated PlayerState, side allocation own owner, collision lifecycle into GrsCollisionComponent, drop UI entirely */
+ * Split per NMM: thin readiness broker, side state on replicated PlayerState, side allocation own owner, collision lifecycle into GrsCollisionComponent, drop UI entirely */
 
 UCLASS(BlueprintType, Blueprintable)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UGfpmWorldSubsystem
@@ -55,7 +52,8 @@ protected:
 	void PerformCleanUp();
 
 public:
-	/** Checks if the system is ready to load */
+	/** Checks if the system is ready to load.
+	 * Currently strictly tied to FBmrGameStateTag::InGame and expected module to be loaded/unloaded on game start */
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	bool IsReady() const;
 
@@ -90,14 +88,6 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
 	TObjectPtr<UGrsCharacterManagerComponent> CharacterManagerComponent;
 
-	/** Ghost character spawned on left side of the map */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
-	TObjectPtr<AGrsPawn> GhostCharacterLeftSide;
-
-	/** Ghost character spawned on right side of the map */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
-	TObjectPtr<AGrsPawn> GhostCharacterRightSide;
-
 public:
 	/** Register character manager component. */
 	UFUNCTION(Category = "[GhostRevengeSystem]")
@@ -106,10 +96,6 @@ public:
 	/** Register character manager component. */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE UGrsCharacterManagerComponent* GetCharacterManagerComponent() const { return CharacterManagerComponent; }
-
-	/** Register ghost character to obtain it's side NONE if all sides occupied  */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	EGRSCharacterSide RegisterGhostCharacter(AGrsPawn* GhostPlayerCharacter);
 
 	/*********************************************************************************************
 	 * Pawn Component
@@ -132,14 +118,6 @@ public:
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterCharacterManagerComponent();
 
-	/** Clear cached ghost character by reference */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void UnregisterGhostCharacter(AGrsPawn* GhostPlayerCharacter);
-
-	/** Clear cached ghost character references */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void ClearGhostCharacters();
-
 	/*********************************************************************************************
 	 * Treasury (temp)
 	 **********************************************************************************************/
@@ -155,7 +133,7 @@ protected:
 	/** Changes the Bmr HUD visibility */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void ChangeHUDEndResultVisibility(bool bVisibility);
-	
+
 	/** Find and return a textblock element responsible for the end game result */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	class UTextBlock* GetTextBlockToHide(FName ResultTextBlockName);

@@ -10,7 +10,6 @@
 // Bmr
 #include "Controllers/BmrPlayerController.h"
 #include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
-#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
 // UE
 #include "GameFramework/Actor.h"
@@ -37,19 +36,4 @@ UGrsPlayerControllerComponent* UGrsUtils::GetControllerComponent(const UObject* 
 {
 	const ABmrPlayerController* LocalController = UBmrBlueprintFunctionLibrary::GetLocalPlayerController(OptionalWorldContext);
 	return LocalController ? LocalController->FindComponentByClass<UGrsPlayerControllerComponent>() : nullptr;
-}
-
-//  Calculates the character side from an actor reference
-EGRSCharacterSide UGrsUtils::GetCharacterSideFromActor(const AActor* Actor)
-{
-	if (!Actor)
-	{
-		return EGRSCharacterSide::None;
-	}
-
-	const FBmrCell ArenaCenter = UBmrCellUtilsLibrary::GetCenterCellOnLevel();
-	/* @PR JanSeliv [Potential Bug] - GetSafeNormal binds to GetActorLocation only, normalizes actor position not direction, side collapses to sign(ArenaCenter.X), same for left and right ghost, both throw same way. */
-	const FVector ToArenaDirection = (ArenaCenter.Location - Actor->GetActorLocation()).GetSafeNormal();
-
-	return ToArenaDirection.X > 0.0f ? EGRSCharacterSide::Left : EGRSCharacterSide::Right;
 }

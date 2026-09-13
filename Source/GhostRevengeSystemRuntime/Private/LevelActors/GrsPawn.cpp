@@ -9,7 +9,6 @@
 #include "GrsGameplayTags.h"
 #include "GrsUtils.h"
 #include "LevelActors/GrsPawnSubobjects/GrsPawnVisualizer.h"
-#include "SubSystems/GRSWorldSubSystem.h"
 #include "Utils/GrsPawnHelper.h"
 
 // Bmr
@@ -126,6 +125,7 @@ void AGrsPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 
 	FDoRepLifetimeParams Params;
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, PlayerID, Params);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, bIsGhostActive, Params);
 }
 
 // Called on client when player ID is changed
@@ -149,6 +149,10 @@ void AGrsPawn::InitPawn(int32 NewPlayerId)
 	PlayerID = NewPlayerId;
 
 	// --- pawn can be reinitialized and serve another player, so previously cached references do not belong to it anymore
+	if (UGrsPlayerStateComponent* PreviousPlayerStateComponent = PlayerStateComponent.Get())
+	{
+		PreviousPlayerStateComponent->ResetGhostSide();
+	}
 	PlayerStateComponent.Reset();
 	StopListeningPlayerCharacterRemoval();
 
@@ -222,7 +226,7 @@ void AGrsPawn::InitGhostCharacter(const ABmrPawn* PlayerCharacter)
 	// --- default params required for the fist start to have character prepared
 	FGrsPawnVisualizer::InitPlayerMesh(this); // --- default init of mesh
 	FGrsPawnVisualizer::InitCharacterVisual(this); // --- set character visuals (mesh, animation, skin)
-	FGrsPawnVisualizer::SetVisibility(this, false); // -- hidden by default
+	ApplyGhostActiveVisuals(); // -- hidden unless already active: on client the activation can be replicated before this init
 	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 
 	InitAimingSphere();
@@ -279,7 +283,9 @@ void AGrsPawn::OnPreRemovedFromLevel_Implementation(UBmrMapComponent* PlayerMapC
 // Activates ghost with required initiation
 void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const ABmrPawn* FromPlayerCharacter)
 {
-	if (!GhostCharacter
+	// --- ghost is activated by the server only, clients follow the replicated bIsGhostActive
+	if (!HasAuthority()
+	    || !GhostCharacter
 	    || !FromPlayerCharacter)
 	{
 		return;
@@ -310,8 +316,7 @@ void AGrsPawn::TryActivateGhostCharacter(AGrsPawn* GhostCharacter, const ABmrPaw
 		return;
 	}
 
-	FGrsPawnVisualizer::GetMeshChecked(this)->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	FGrsPawnVisualizer::SetVisibility(this, true);
+	SetGhostActive(true);
 
 	// --- authority calls:
 	TryPossessController(PlayerController);
@@ -403,7 +408,6 @@ void AGrsPawn::UnPossessed()
 void AGrsPawn::RefreshPawn()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	FGrsPawnVisualizer::SetVisibility(this, true);
 	ClearTrajectorySplines();
 	AimingSphereComponent->SetVisibility(true);
 	PlayerArrowStartComponent->SetArrowEnabled(true);
@@ -417,13 +421,18 @@ void AGrsPawn::HideGhostCharacterFromMap()
 	// --- change visibility of this pawn
 	// -- change nickname visibility of this pawn
 	// --- update collision mod of this pawn if needed
-	FGrsPawnVisualizer::SetVisibility(this, false);
+	// deactivated by the server, clients hide the ghost once the state is replicated
+	SetGhostActive(false);
 	AimingSphereComponent->SetVisibility(false);
 	PlayerArrowStartComponent->SetArrowEnabled(false);
 	ClearTrajectorySplines();
 
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
-	
+	// --- free the side of the map, so another ghost can be placed there
+	if (UGrsPlayerStateComponent* MyPlayerStateComponent = GetGrsPlayerStateComponent())
+	{
+		MyPlayerStateComponent->ResetGhostSide();
+	}
+
 	StopListeningPlayerCharacterRemoval();
 
 	if (HasAuthority())
@@ -451,9 +460,6 @@ void AGrsPawn::PerformCleanUp()
 	PlayerID = 0;
 	PlayerStateComponent.Reset();
 
-	// --- perform clean up from subsystem GFP is not possible so we have to call directly to clean cached reference
-	UGRSWorldSubSystem::Get().UnregisterGhostCharacter(this);
-
 	if (HasAuthority())
 	{
 		UPoolManagerSubsystem* PoolManager = UPoolManagerSubsystem::GetPoolManager();
@@ -467,6 +473,38 @@ void AGrsPawn::PerformCleanUp()
 			}
 		}
 	}
+}
+
+/*********************************************************************************************
+ * Ghost activity
+ **********************************************************************************************/
+
+// Is called on clients when this ghost was activated or deactivated by the server
+void AGrsPawn::OnRep_IsGhostActive()
+{
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (CLIENT) %s"), __LINE__, __FUNCTION__, bIsGhostActive ? TEXT("ACTIVE") : TEXT("INACTIVE"));
+	ApplyGhostActiveVisuals();
+}
+
+// Activates or deactivates this ghost
+void AGrsPawn::SetGhostActive(bool bNewActive)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) %s"), __LINE__, __FUNCTION__, bNewActive ? TEXT("ACTIVE") : TEXT("INACTIVE"));
+	bIsGhostActive = bNewActive;
+
+	// Rep notify is not called on the server, so visuals are applied here directly
+	ApplyGhostActiveVisuals();
+}
+
+// Applies visuals shared by all machines for the current bIsGhostActive
+void AGrsPawn::ApplyGhostActiveVisuals()
+{
+	FGrsPawnVisualizer::SetVisibility(this, bIsGhostActive);
 }
 
 /*********************************************************************************************

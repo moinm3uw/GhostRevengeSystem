@@ -11,6 +11,8 @@
 #include "GrsPlayerStateComponent.generated.h"
 
 class ABmrPlayerState;
+enum class EGRSCharacterSide : uint8;
+
 /**
  * The component is attached to BmrPlayerState primarily to take care of the GAS abilities: revive, bomb spawn ability.
  *
@@ -19,6 +21,7 @@ class ABmrPlayerState;
  * When a ghost player eliminates a player/bot, component applies revive ability to return from a ghost (GrsPawn) to a regular player (BmrPlayer)
  *
  * Owns the replicated 'was already revived' state of its player, so a player can be revived only once per match.
+ * Owns the replicated side of the map where the ghost of its player is placed, so server and clients agree on it.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsPlayerStateComponent
@@ -116,6 +119,28 @@ public:
 	/** Resets the revive state, so this player can become a ghost again */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ResetRevived();
+
+	/*********************************************************************************************
+	 * Ghost side
+	 **********************************************************************************************/
+protected:
+	/** Side of the map where the ghost of this player is placed, is None while this player is not a ghost.
+	 * Is replicated, so clients use the side the server allocated instead of guessing it by ghost location, e.g. to aim towards the level. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Replicated, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Ghost Side"))
+	EGRSCharacterSide GhostSide;
+
+public:
+	/** Returns side of the map where the ghost of this player is placed, None while this player is not a ghost */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE EGRSCharacterSide GetGhostSide() const { return GhostSide; }
+
+	/** Places the ghost of this player on given side of the map. Is applied on server only as the side is replicated to clients. */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void SetGhostSide(EGRSCharacterSide NewGhostSide);
+
+	/** Frees the side of the map occupied by the ghost of this player, so another ghost can be placed there */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void ResetGhostSide();
 
 	/*********************************************************************************************
 	 * Bomb spawning ability that automatically explodes after a certain time

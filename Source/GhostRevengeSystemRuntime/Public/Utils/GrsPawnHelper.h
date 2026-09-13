@@ -8,6 +8,7 @@
 #include "GrsPawnHelper.generated.h"
 
 class AGrsPawn;
+enum class EGRSCharacterSide : uint8;
 
 /**
  * This is helper designed only for the GrsPlayerCharacter with main intent to reduce the size of GrsPlayerCharacter
@@ -21,6 +22,10 @@ public:
 	/** Set pawn location to available side (left or right) */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]")
 	static void SetPawnToAvailableSide(AGrsPawn* GrsPawn);
+
+	/** Returns the first side of the map that is not occupied by a ghost of any player, None if all sides are occupied */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	static EGRSCharacterSide FindAvailableGhostSide();
 
 	/** Checks if Pawn is replicated fully (player state and controller present */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")

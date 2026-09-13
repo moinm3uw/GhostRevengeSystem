@@ -174,7 +174,7 @@ protected:
 	/** APawn Interface when this pawn was unpossessed */
 	virtual void UnPossessed() override;
 
-	/** Refresh and enable this pawn */
+	/** Refresh and enable visuals of the controlling player (aiming, start arrow), ghost mesh visibility is driven by bIsGhostActive instead */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void RefreshPawn();
 
@@ -185,6 +185,29 @@ protected:
 	/** Clean up the character for the GFP unload */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void PerformCleanUp();
+
+	/*********************************************************************************************
+	 * Ghost activity
+	 **********************************************************************************************/
+protected:
+	/** Is true while this ghost is in play: its player was eliminated and controls this ghost.
+	 * Is set by the server and replicated, so ghost visuals are applied on every machine:
+	 * component visibility itself is not replicated, while clients can't activate a ghost by themselves
+	 * (player character removal is replicated to clients without destroy causer, and controllers of other players don't exist on clients). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_IsGhostActive", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Is Ghost Active"))
+	bool bIsGhostActive = false;
+
+	/** Is called on clients when this ghost was activated or deactivated by the server */
+	UFUNCTION()
+	void OnRep_IsGhostActive();
+
+	/** Activates or deactivates this ghost. Is applied on server only as the state is replicated to clients */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void SetGhostActive(bool bNewActive);
+
+	/** Applies visuals shared by all machines for the current bIsGhostActive: ghost is visible only while it's active */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void ApplyGhostActiveVisuals();
 
 	/*********************************************************************************************
 	 * Aiming functionality
