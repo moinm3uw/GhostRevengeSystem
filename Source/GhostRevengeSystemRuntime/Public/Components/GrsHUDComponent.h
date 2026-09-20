@@ -11,9 +11,8 @@
 enum class EBmrEndGameState : uint8;
 
 /**
- * Actor component attached to game state to take care of the Bmr HUD while this GFP is loaded.
- * Hides the end game result of the local player while they are eliminated, since they still play as a ghost and the match is not over for them.
- * Restores the HUD back on each new match and on GFP unload.
+ * Actor component attached  to BmrGameState to hides the end game result of the local player while they are eliminated, since they still play as a ghost and the match is not over for them.
+ * Automatically restores the HUD back on each new match and on GFP unload.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsHUDComponent : public UActorComponent
@@ -38,7 +37,7 @@ protected:
 	 * Main functionality
 	 **********************************************************************************************/
 protected:
-	/** Is called when local player character is ready to guarantee that the player state is initialized */
+	/** Is called when local player character is ready to guarantee that the player state is initialized required for the OnEndGameStateChanged subscription  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnLocalPawnReady(const struct FGameplayEventData& Payload);
 
@@ -46,7 +45,7 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
 
-	/** Listen end game states of the local player to hide the HUD while they play as a ghost */
+	/** Listen end game states of the local player to hide the HUD while they are playing as a ghost */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
 
@@ -54,7 +53,7 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void ChangeHUDEndResultVisibility(bool bVisibility);
 
-	/** Find and return a textblock element responsible for the end game result */
+	/** Ftind and return a textblock element responsible for the end game resul */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	class UTextBlock* GetTextBlockToHide(FName ResultTextBlockName);
 };

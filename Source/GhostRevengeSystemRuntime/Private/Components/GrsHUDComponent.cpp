@@ -77,7 +77,7 @@ void UGrsHUDComponent::OnUnregister()
  * Main functionality
  **********************************************************************************************/
 
-// Is called when local player character is ready to guarantee that the player state is initialized
+// Is called when local player character is ready to guarantee that the player state is initialized required for the OnEndGameStateChanged subscription
 void UGrsHUDComponent::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -102,7 +102,7 @@ void UGrsHUDComponent::OnGameStateChanged_Implementation(const FGameplayEventDat
 	}
 }
 
-// Listen end game states of the local player to hide the HUD while they play as a ghost
+// Listen end game states of the local player to hide the HUD while they are playing as a ghost
 void UGrsHUDComponent::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);

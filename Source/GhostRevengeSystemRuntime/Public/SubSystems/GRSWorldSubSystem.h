@@ -15,8 +15,6 @@ class UGrsCollisionComponent;
  * Implements the world subsystem to act as singleton with access to different components in the module.
  * Manages GFP overall loading status.
  */
-/* @PR JanSeliv [Architecture] - god-object subsystem fuses 5 unrelated jobs into one non-replicated singleton every component hard-depends on: GFP load orchestration, revive-once rules, ghost side allocation, side-collision lifecycle, Bmr HUD visibility.
- * Split per NMM: thin readiness broker, side state on replicated PlayerState, side allocation own owner, collision lifecycle into GrsCollisionComponent, drop UI entirely */
 
 UCLASS(BlueprintType, Blueprintable)
 class GHOSTREVENGESYSTEMRUNTIME_API UGRSWorldSubSystem : public UGfpmWorldSubsystem
