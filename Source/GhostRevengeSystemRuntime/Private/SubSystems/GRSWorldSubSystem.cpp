@@ -10,11 +10,8 @@
 
 // Bmr
 #include "GameFramework/BmrGameState.h"
-#include "GameFramework/BmrPlayerState.h"
 #include "Structures/BmrGameStateTag.h"
 #include "Structures/BmrGameplayTags.h"
-#include "UI/Widgets/BmrHUDWidget.h"
-#include "UtilityLibraries/BmrBlueprintFunctionLibrary.h"
 
 // MyEditorUtils
 #include "MyUtilsLibraries/UtilsLibrary.h"
@@ -22,8 +19,6 @@
 
 // UE
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
-#include "Blueprint/WidgetTree.h"
-#include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GRSWorldSubSystem)
@@ -53,11 +48,6 @@ void UGRSWorldSubSystem::OnGameFeatureInitialize_Implementation()
 void UGRSWorldSubSystem::OnLocalPawnReady_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	const APawn* Pawn = Cast<APawn>(Payload.Instigator.Get());
-	ABmrPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<ABmrPlayerState>() : nullptr;
-	checkf(PlayerState, TEXT("ERROR: [%i] %hs:\n'PlayerState' is null!"), __LINE__, __FUNCTION__);
-	PlayerState->OnEndGameStateChanged.AddUniqueDynamic(this, &ThisClass::OnEndGameStateChanged);
 
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
@@ -110,20 +100,6 @@ void UGRSWorldSubSystem::PerformCleanUp()
 
 	UnregisterCharacterManagerComponent();
 	UnregisterCollisionManagerComponent();
-
-	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
-	if (BmrHUD)
-	{
-		BmrHUD->SetVisibility(ESlateVisibility::Visible);
-	}
-
-	ABmrPlayerState* PlayerState = UBmrBlueprintFunctionLibrary::GetLocalPlayerState();
-	if (!PlayerState)
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: 'PlayerState' is null! "), __LINE__, __FUNCTION__);
-		return;
-	}
-	PlayerState->OnEndGameStateChanged.RemoveDynamic(this, &ThisClass::OnEndGameStateChanged);
 }
 
 /*********************************************************************************************
@@ -218,66 +194,7 @@ void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
 	CharacterManagerComponent = nullptr;
 }
 
-//  Changes the Bmr HUD visibility
-void UGRSWorldSubSystem::ChangeHUDEndResultVisibility(bool bVisibility)
-{
-	const FName ResultTextBlockName = TEXT("RESULT");
-	UTextBlock* ResultTextBlock = GetTextBlockToHide(ResultTextBlockName);
-	if (!ensureMsgf(ResultTextBlock, TEXT("ASSERT: [%i] %hs:\n'ResultTextBlock' with name %s is not found in the BmrHUD !"), __LINE__, __FUNCTION__, *ResultTextBlockName.ToString()))
-	{
-		return;
-	}
-
-	ESlateVisibility NewVisibility = bVisibility ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
-	ResultTextBlock->SetVisibility(NewVisibility);
-}
-
-// Find and return a textblock element responsible for the end game result
-UTextBlock* UGRSWorldSubSystem::GetTextBlockToHide(FName ResultTextBlockName)
-{
-	UBmrHUDWidget* BmrHUD = UBmrBlueprintFunctionLibrary::GetHUDWidget(this);
-	if (!ensureMsgf(BmrHUD, TEXT("ASSERT: [%i] %hs:\n'BmrHUD' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return nullptr;
-	}
-
-	/* @PR JanSeliv [Architecture] - Wrap entire hack as separate function, marked as @TODO for JanSeliv. */
-	UTextBlock* FoundTextBlock = nullptr;
-	TArray<UWidget*> AllWidgets;
-	BmrHUD->WidgetTree->GetAllWidgets(AllWidgets);
-
-	// @PR JanSeliv [Coding Standards] - Widget only read, make const-pointee `const UWidget*` like neighbor loop in GrsPlayerControllerComponent
-	for (UWidget* Widget : AllWidgets)
-	{
-		if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
-		{
-			if (TextBlock->GetName() == ResultTextBlockName)
-			{
-				FoundTextBlock = TextBlock;
-			}
-		}
-	}
-
-	return FoundTextBlock;
-}
-
-// Listen end game states to show/hide HUD temporarry
-void UGRSWorldSubSystem::OnEndGameStateChanged_Implementation(EBmrEndGameState EndGameState)
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-
-	if (EndGameState == EBmrEndGameState::Lose || EndGameState == EBmrEndGameState::HonorLoss)
-	{
-		bool bShowHUDEndResult = false;
-		ChangeHUDEndResultVisibility(bShowHUDEndResult);
-	}
-}
-
-/*********************************************************************************************
- * Treasury (temp)
- **********************************************************************************************/
-
-// Listen game states to switch character skin.
+// Listen game states to try initializing the GFP once the match starts
 void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventData& Payload)
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
@@ -286,10 +203,5 @@ void UGRSWorldSubSystem::OnGameStateChanged_Implementation(const FGameplayEventD
 	{
 		// Revive state is reset by each UGrsPlayerStateComponent that listens for the same game state change
 		TryInit();
-	}
-	else
-	{
-		bool bShowHUDEndResult = true;
-		ChangeHUDEndResultVisibility(bShowHUDEndResult);
 	}
 }

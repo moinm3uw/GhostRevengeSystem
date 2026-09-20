@@ -7,7 +7,6 @@
 
 #include "GRSWorldSubSystem.generated.h"
 
-enum class EBmrEndGameState : uint8;
 class UGrsCharacterManagerComponent;
 class UGrsPawnComponent;
 class UGrsCollisionComponent;
@@ -118,23 +117,8 @@ public:
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterCharacterManagerComponent();
 
-	/*********************************************************************************************
-	 * Treasury (temp)
-	 **********************************************************************************************/
 protected:
-	/** Listen game states to switch character skin. */
+	/** Listen game states to try initializing the GFP once the match starts */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnGameStateChanged(const struct FGameplayEventData& Payload);
-
-	/** Listen end game states to show/hide HUD temporarry */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void OnEndGameStateChanged(EBmrEndGameState EndGameState);
-
-	/** Changes the Bmr HUD visibility */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	void ChangeHUDEndResultVisibility(bool bVisibility);
-
-	/** Find and return a textblock element responsible for the end game result */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	class UTextBlock* GetTextBlockToHide(FName ResultTextBlockName);
 };
