@@ -415,9 +415,9 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 
 	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
 	const FVector2D TrajectoryMeshScale = GrsDataAsset.GetTrajectoryMeshScale();
-
-	// @PR JanSeliv [Coding Standards] - GetNumberOfSplinePoints() re-evaluated every iteration, count invariant in loop, cache once to local before loop and reuse
-	for (int32 Index = 0; Index < AimingSplineComponent->GetNumberOfSplinePoints() - 2; Index++)
+	
+	const int32 SplinePointsNum = AimingSplineComponent->GetNumberOfSplinePoints();
+	for (int32 Index = 0; Index < SplinePointsNum - 2; Index++)
 	{
 		/* @PR JanSeliv [Architecture] - ChargeBomb runs every aim-held frame, each frame ClearTrajectorySplines destroys then this loop NewObject + RegisterComponent N spline components, defeats PoolManager this GFP depends on.
 		 * Keep grow-only pool of spline meshes sized to max points, per frame only update existing (SetStartAndEnd, visibility), set Mobility once outside loop */
