@@ -70,8 +70,6 @@ bool UGRSWorldSubSystem::IsReady() const
 {
 	// @PR JanSeliv [Coding Standards] - extract magic 4 to shared constexpr max players, same literal hardcoded at PawnComponents.Num() < 4 in RegisterPawnComponent
 	// todo: obtain max player param from Bmr core
-	/* @PR JanSeliv [Potential Bug] - readiness gates on PawnComponents.Num() == MaxPlayers with MaxPlayers literal 4 and RegisterPawnComponent hardcodes ensure(Num() < 4), so any non-4 match (fewer players, spectators, late-join) never broadcasts GameFeaturePluginReady and nothing initializes.
-	 * Replace literal 4 with UBmrBlueprintFunctionLibrary::GetAlivePlayersNum(EBmrPlayerType::Any) (counts BmrPawn players human and bots, no spectators), single TryInit trigger */
 	int32 MaxPlayers = 4;
 
 	const ABmrGameState& GameState = ABmrGameState::Get();
