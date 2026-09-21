@@ -20,8 +20,8 @@
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/CollisionProfile.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Returns the Skeletal Mesh of ghost revenge character
 UBmrSkeletalMeshComponent* FGrsPawnVisualizer::GetMeshChecked(const AGrsPawn* GrsPawn)
@@ -84,11 +84,6 @@ void FGrsPawnVisualizer::InitCapsuleComponent(const AGrsPawn* GrsPawn)
 		RootCapsuleComponent->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
 		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 		RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
-		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
-		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
-		// RootCapsuleComponent->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
-
 		RootCapsuleComponent->SetIsReplicated(true);
 	}
 }
@@ -97,7 +92,7 @@ void FGrsPawnVisualizer::InitCapsuleComponent(const AGrsPawn* GrsPawn)
 void FGrsPawnVisualizer::InitPlayerMesh(const AGrsPawn* GrsPawn)
 {
 	checkf(GrsPawn, TEXT("ERROR: [%i] %hs:\n'GrsPawn' is null!"), __LINE__, __FUNCTION__);
-	
+
 	const ABmrPawn* PlayerCharacter = UGrsPawnHelper::GetOwningBmrPawn(GrsPawn);
 	checkf(PlayerCharacter, TEXT("ERROR: [%i] %hs:\n'PlayerCharacter' is null!"), __LINE__, __FUNCTION__);
 
@@ -127,7 +122,7 @@ void FGrsPawnVisualizer::InitCharacterVisual(const AGrsPawn* GrsPawn)
 		const TSubclassOf<UAnimInstance> AnimInstanceClass = UBmrPlayerDataAsset::Get().GetAnimInstanceClass();
 		MeshComp->SetAnimInstanceClass(AnimInstanceClass);
 	}
-	
+
 	const UBmrSkeletalMeshComponent& MainCharacterMeshComponentRef = PlayerCharacter->GetMeshComponentChecked();
 	// @PR JanSeliv [Conding Standards] - redundant ensureMsgf, address-of GetMeshComponentChecked ref never null, drop guard. Same for GetMeshChecked result below, applies across file. Keep local var referenced as `UBmrSkeletalMeshComponent& MainCharacterMeshCompRef = ...`
 	if (!ensureMsgf(&MainCharacterMeshComponentRef, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
