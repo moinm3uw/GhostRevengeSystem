@@ -387,11 +387,10 @@ void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult
 		return;
 	}
 
-	// @PR JanSeliv [Coding Standards] - 1-char loop var, use Index, applies across file
-	for (int32 i = 0; i < OutResult.PathData.Num(); i++)
+	for (int32 Index = 0; Index < OutResult.PathData.Num(); Index++)
 	{
-		FVector SplinePoint = OutResult.PathData[i].Location;
-		AimingSplineComponent->AddSplinePointAtIndex(SplinePoint, i, ESplineCoordinateSpace::World);
+		FVector SplinePoint = OutResult.PathData[Index].Location;
+		AimingSplineComponent->AddSplinePointAtIndex(SplinePoint, Index, ESplineCoordinateSpace::World);
 		AimingSplineComponent->Mobility = EComponentMobility::Static;
 	}
 
@@ -418,7 +417,7 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 	const FVector2D TrajectoryMeshScale = GrsDataAsset.GetTrajectoryMeshScale();
 
 	// @PR JanSeliv [Coding Standards] - GetNumberOfSplinePoints() re-evaluated every iteration, count invariant in loop, cache once to local before loop and reuse
-	for (int32 i = 0; i < AimingSplineComponent->GetNumberOfSplinePoints() - 2; i++)
+	for (int32 Index = 0; Index < AimingSplineComponent->GetNumberOfSplinePoints() - 2; Index++)
 	{
 		/* @PR JanSeliv [Architecture] - ChargeBomb runs every aim-held frame, each frame ClearTrajectorySplines destroys then this loop NewObject + RegisterComponent N spline components, defeats PoolManager this GFP depends on.
 		 * Keep grow-only pool of spline meshes sized to max points, per frame only update existing (SetStartAndEnd, visibility), set Mobility once outside loop */
@@ -434,11 +433,11 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		// Set mesh and material
 		SplineMesh->SetStaticMesh(GrsDataAsset.GetChargeMesh());
 		SplineMesh->SetMaterial(0, GrsDataAsset.GetTrajectoryMaterial());
-		FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(i, ESplineCoordinateSpace::World);
-		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
+		FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(Index, ESplineCoordinateSpace::World);
+		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(Index + 1, ESplineCoordinateSpace::World);
 
 		// Set start and end
-		SplineMesh->SetStartAndEnd(OutResult.PathData[i].Location, TangentStart, OutResult.PathData[i + 1].Location, TangentEnd);
+		SplineMesh->SetStartAndEnd(OutResult.PathData[Index].Location, TangentStart, OutResult.PathData[Index + 1].Location, TangentEnd);
 		// Register the component so it appears in the game
 		SplineMesh->RegisterComponent();
 
