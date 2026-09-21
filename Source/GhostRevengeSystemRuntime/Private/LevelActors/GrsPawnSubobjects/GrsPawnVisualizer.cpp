@@ -124,11 +124,6 @@ void FGrsPawnVisualizer::InitCharacterVisual(const AGrsPawn* GrsPawn)
 	}
 
 	const UBmrSkeletalMeshComponent& MainCharacterMeshComponentRef = PlayerCharacter->GetMeshComponentChecked();
-	// @PR JanSeliv [Conding Standards] - redundant ensureMsgf, address-of GetMeshComponentChecked ref never null, drop guard. Same for GetMeshChecked result below, applies across file. Keep local var referenced as `UBmrSkeletalMeshComponent& MainCharacterMeshCompRef = ...`
-	if (!ensureMsgf(&MainCharacterMeshComponentRef, TEXT("ASSERT: [%i] %hs:\n'MainCharacterMeshComponent' is not valid!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
 	const FName CurrentSkinRowName = MainCharacterMeshComponentRef.GetAppliedSkinRowName();
 
 	UBmrSkeletalMeshComponent* CurrentMeshComponent = GetMeshChecked(GrsPawn);
