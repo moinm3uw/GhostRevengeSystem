@@ -22,5 +22,15 @@ void UGrsReviveAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	checkf(TriggerEventData, TEXT("ERROR: [%i] %hs:\n'TriggerEventData' is null!"), __LINE__, __FUNCTION__);
 
 	const AActor* AvatarActor = ActorInfo->AvatarActor.Get();
-	ABmrGeneratedMap::Get().AddToGrid(UBmrMapComponent::GetMapComponent(AvatarActor));
+	if (AvatarActor->HasAuthority())
+	{
+		UBmrMapComponent* MapComponent = UBmrMapComponent::GetMapComponent(AvatarActor);
+		if (!ensureMsgf(MapComponent, TEXT("ASSERT: [%i] %hs:\n Activated ability to an actor that is not on the map - 'MapComponent' is not set!"), __LINE__, __FUNCTION__))
+		{
+			return;
+		}
+
+		MapComponent->SetCell(FBmrCell::InvalidCell); // @todo temporary fix to force ABmrGeneratedMap::AddToGrid to treat it as a fresh add till a new approach with tags will be implemented
+		ABmrGeneratedMap::Get().AddToGrid(MapComponent);
+	}
 }
