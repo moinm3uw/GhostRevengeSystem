@@ -37,6 +37,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE bool ShouldSpawnBombOnMaxChargeTime() const { return bSpawnBombOnMaxChargingTime; }
 
+	/** Returns the time the bomb throw can be charged for, the longer it's charged the further the bomb is thrown.
+	 * @see UGRSDataAsset::MaxChargingTime */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE float GetMaxChargingTime() const { return MaxChargingTime; }
+
 	/** Returns spawn location */
 	FORCEINLINE const FVector& GetSpawnLocation() const { return SpawnLocation; }
 
@@ -131,6 +136,11 @@ protected:
 	/** Parameter to control if bomb should be spawned once reached a max charging time */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Spawn Bomb once Maximum Charge Time Reached"))
 	bool bSpawnBombOnMaxChargingTime = false;
+
+	/** Time the bomb throw can be charged for, the longer it's charged the further the bomb is thrown, since the charge scales launch velocity.
+	 * Once reached, the charge either throws the bomb or starts over, depending on bSpawnBombOnMaxChargingTime */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Maximum Charge Time", ClampMin = "0.1", Units = "s"))
+	float MaxChargingTime = 1.f;
 
 	/** Projectile path params */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Predict projectile path params"))

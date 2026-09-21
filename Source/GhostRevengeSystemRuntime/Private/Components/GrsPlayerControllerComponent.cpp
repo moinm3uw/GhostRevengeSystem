@@ -157,7 +157,6 @@ void UGrsPlayerControllerComponent::UnpossessGhostPawn()
 	if (!CurrentPossessedPawn)
 	{
 		// --- Always possess to player character when ghost character is no longer in control
-		// @PR JanSeliv [Coding Standards] - read-only value local needs const, const bool bInDestroy, applies across file (FVector SplinePoint, TangentStart, TangentEnd)
 		const bool bInDestroy = PlayerController->IsActorBeingDestroyed();
 		if (!bInDestroy)
 		{
@@ -320,14 +319,14 @@ void UGrsPlayerControllerComponent::ChargeBomb(const FInputActionValue& ActionVa
 {
 	ShowVisualTrajectory();
 
-	// @PR JanSeliv [Coding Standards] - magic 1.0f max charge time, extract to constexpr or DataAsset config value
-	if (CurrentHoldTime < 1.0f)
+	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
+	if (CurrentHoldTime < GrsDataAsset.GetMaxChargingTime())
 	{
 		CurrentHoldTime = CurrentHoldTime + GetWorld()->GetDeltaSeconds();
 	}
 	else
 	{
-		if (UGRSDataAsset::Get().ShouldSpawnBombOnMaxChargeTime())
+		if (GrsDataAsset.ShouldSpawnBombOnMaxChargeTime())
 		{
 			ThrowProjectile();
 		}
