@@ -7,6 +7,8 @@
 
 DEFINE_LOG_CATEGORY(LogGrs);
 
+const int32 GrsMaxPlayers = 4;
+
 void FGhostRevengeSystemRuntimeModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory;

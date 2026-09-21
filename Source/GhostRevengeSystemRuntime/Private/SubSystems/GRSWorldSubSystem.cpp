@@ -68,18 +68,13 @@ void UGRSWorldSubSystem::TryInit()
 //  Currently strictly tied to FBmrGameStateTag::InGame and expected module to be loaded/unloaded
 bool UGRSWorldSubSystem::IsReady() const
 {
-	// @PR JanSeliv [Coding Standards] - extract magic 4 to shared constexpr max players, same literal hardcoded at PawnComponents.Num() < 4 in RegisterPawnComponent
-	// todo: obtain max player param from Bmr core
-	int32 MaxPlayers = 4;
-
 	const ABmrGameState& GameState = ABmrGameState::Get();
-	// @PR JanSeliv [Coding Standards] - bool must start with b and CamelCase, rename isReady to bIsReady
-	bool isReady = CharacterManagerComponent
-	               && CollisionManagerComponent
-	               && PawnComponents.Num() == MaxPlayers
-	               && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, isReady ? TEXT("READY") : TEXT("NOT READY"));
-	return isReady;
+	bool bisReady = CharacterManagerComponent
+	                && CollisionManagerComponent
+	                && PawnComponents.Num() == GrsMaxPlayers
+	                && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s "), __LINE__, __FUNCTION__, bisReady ? TEXT("READY") : TEXT("NOT READY"));
+	return bisReady;
 }
 
 // Clears all transient data created by this subsystem
@@ -164,8 +159,7 @@ void UGRSWorldSubSystem::RegisterPawnComponent(UGrsPawnComponent* NewPawnCompone
 
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: %s %i"), __LINE__, __FUNCTION__, NewPawnComponent->GetOwner()->HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"), PawnComponents.Num());
 
-	int32 MaxPlayers = 4;
-	if (!ensureMsgf(PawnComponents.Num() < MaxPlayers, TEXT("ASSERT: [%i] %hs:\n'PawnComponents' is more than expected!"), __LINE__, __FUNCTION__))
+	if (!ensureMsgf(PawnComponents.Num() < GrsMaxPlayers, TEXT("ASSERT: [%i] %hs:\n'PawnComponents' is more than expected!"), __LINE__, __FUNCTION__))
 	{
 		return;
 	}
