@@ -213,16 +213,12 @@ protected:
 	 * Aiming functionality
 	 **********************************************************************************************/
 protected:
-	/** Mesh of component. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
-	TObjectPtr<class UMeshComponent> AimingMeshComponent = nullptr;
-
 	/** Spline component used to visually display a projectile trajectory path */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
 	TObjectPtr<class USplineComponent> AimingSplineComponent = nullptr;
 
-	/** Spline component used to build a projectile trajectory path */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
+	/** Grow-only pool of spline meshes that visualize a projectile trajectory path, each one covers a segment between two spline points */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem] | Aiming", meta = (BlueprintProtected))
 	TArray<TObjectPtr<USplineMeshComponent>> AimingSplineMeshArray;
 
 	/** Aiming sphere used when a player aiming */
@@ -238,11 +234,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem] | Aiming")
 	FORCEINLINE USplineComponent* GetAimingSplineComponent() const { return AimingSplineComponent; }
 
-	/** Add a new spline mesh component */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	void AddAimingSplineMeshComponent(USplineMeshComponent* SplineMeshComponent);
+	/** Returns pooled spline mesh that visualizes the trajectory segment by given index, creates missing ones since the pool only grows */
+	USplineMeshComponent* GetOrCreateAimingSplineMesh(int32 Index);
 
-	/** Obtain aiming static mesh (currently it's sphere component */
+	/** Hides pooled spline meshes starting from given index, so only segments of the current trajectory stay visible */
+	void HideAimingSplineMeshes(int32 FirstHiddenIndex = 0);
+
+	/** Obtain aiming static mesh (currently it's sphere component) */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem] | Aiming")
 	FORCEINLINE UStaticMeshComponent* GetAimingSphereComponent() const { return AimingSphereComponent; }
 

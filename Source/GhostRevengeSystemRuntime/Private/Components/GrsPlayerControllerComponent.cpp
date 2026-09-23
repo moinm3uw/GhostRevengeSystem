@@ -366,7 +366,6 @@ void UGrsPlayerControllerComponent::ShowVisualTrajectory()
 	// show trajectory visual
 	if (UGRSDataAsset::Get().ShouldDisplayTrajectory())
 	{
-		GrsPawn->ClearTrajectorySplines();
 		AddSplinePoints(Result);
 		AddSplineMesh(Result);
 	}
@@ -387,11 +386,13 @@ void UGrsPlayerControllerComponent::AddSplinePoints(FPredictProjectilePathResult
 		return;
 	}
 
+	// --- points are rebuilt on each aiming frame, so previous ones are removed first
+	AimingSplineComponent->ClearSplinePoints(/*bUpdateSpline*/ false);
+
 	for (int32 Index = 0; Index < OutResult.PathData.Num(); Index++)
 	{
 		FVector SplinePoint = OutResult.PathData[Index].Location;
 		AimingSplineComponent->AddSplinePointAtIndex(SplinePoint, Index, ESplineCoordinateSpace::World);
-		AimingSplineComponent->Mobility = EComponentMobility::Static;
 	}
 
 	AimingSplineComponent->SetSplinePointType(OutResult.PathData.Num() - 1, ESplinePointType::CurveClamped, true);
@@ -413,36 +414,30 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 		return;
 	}
 
-	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
-	const FVector2D TrajectoryMeshScale = GrsDataAsset.GetTrajectoryMeshScale();
-	
+	// Spline points are not changed within the loop, only spline meshes are placed along them
 	const int32 SplinePointsNum = AimingSplineComponent->GetNumberOfSplinePoints();
-	for (int32 Index = 0; Index < SplinePointsNum - 2; Index++)
+	const int32 SplineMeshesNum = FMath::Max(SplinePointsNum - 2, 0); // avoiding negative number here for short predicted trajectory  less than 2 points
+	for (int32 Index = 0; Index < SplineMeshesNum; Index++)
 	{
-		/* @PR JanSeliv [Architecture] - ChargeBomb runs every aim-held frame, each frame ClearTrajectorySplines destroys then this loop NewObject + RegisterComponent N spline components, defeats PoolManager this GFP depends on.
-		 * Keep grow-only pool of spline meshes sized to max points, per frame only update existing (SetStartAndEnd, visibility), set Mobility once outside loop */
-		// Create and attach the spline mesh component
-		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(GrsPawn);
-		SplineMesh->AttachToComponent(AimingSplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
-		SplineMesh->Mobility = EComponentMobility::Static;
+		// --- mesh is pooled on the pawn, so aiming each frame only updates existing meshes instead of creating new components
+		USplineMeshComponent* SplineMesh = GrsPawn->GetOrCreateAimingSplineMesh(Index);
+		if (!SplineMesh)
+		{
+			// Pool refused the index, so the rest of the trajectory can't be shown
+			break;
+		}
 
-		SplineMesh->SetStartScale(TrajectoryMeshScale);
-		SplineMesh->SetEndScale(TrajectoryMeshScale);
-
-		// Set mesh and material
-		SplineMesh->SetStaticMesh(GrsDataAsset.GetChargeMesh());
-		SplineMesh->SetMaterial(0, GrsDataAsset.GetTrajectoryMaterial());
-		FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(Index, ESplineCoordinateSpace::World);
-		FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(Index + 1, ESplineCoordinateSpace::World);
-
-		// Set start and end
-		SplineMesh->SetStartAndEnd(OutResult.PathData[Index].Location, TangentStart, OutResult.PathData[Index + 1].Location, TangentEnd);
-		// Register the component so it appears in the game
-		SplineMesh->RegisterComponent();
-
-		GrsPawn->AddAimingSplineMeshComponent(SplineMesh);
+		// --- spline mesh takes local space: it's attached to the spline with no offset, so spline local space is used, which also follows the pawn
+		const FVector LocationStart = AimingSplineComponent->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::Local);
+		const FVector LocationEnd = AimingSplineComponent->GetLocationAtSplinePoint(Index + 1, ESplineCoordinateSpace::Local);
+		const FVector TangentStart = AimingSplineComponent->GetTangentAtSplinePoint(Index, ESplineCoordinateSpace::Local);
+		const FVector TangentEnd = AimingSplineComponent->GetTangentAtSplinePoint(Index + 1, ESplineCoordinateSpace::Local);
+		SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
+		SplineMesh->SetVisibility(true);
 	}
+
+	// --- hide meshes left from a longer trajectory of a previous aiming frame
+	GrsPawn->HideAimingSplineMeshes(SplineMeshesNum);
 }
 
 // Configure PredictProjectilePath settings and get result

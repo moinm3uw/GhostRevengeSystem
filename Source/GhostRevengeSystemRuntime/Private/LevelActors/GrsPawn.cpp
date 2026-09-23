@@ -100,9 +100,8 @@ AGrsPawn::AGrsPawn(const FObjectInitializer& ObjectInitializer)
 	// --- Initial setup of spline component and aiming sphere
 	// --- setup spline component
 	AimingSplineComponent = CreateDefaultSubobject<USplineComponent>(TEXT("ProjectileSplineComponent"));
-	/* @PR JanSeliv [Potential Bug] - AimingMeshComponent never assigned (always nullptr), AttachToComponent to null parent silently no-ops, spline never attached.
-	 * Attach to RootComponent or existing mesh, or create AimingMeshComponent via CreateDefaultSubobject first */
-	AimingSplineComponent->AttachToComponent(AimingMeshComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	AimingSplineComponent->SetupAttachment(RootComponent);
+	AimingSplineComponent->Mobility = EComponentMobility::Movable; // --- follows the moving pawn, so it can't be static
 	AimingSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SphereComp"));
 }
 
@@ -451,11 +450,6 @@ void AGrsPawn::PerformCleanUp()
 	{
 		AimingSphereComponent->EmptyOverrideMaterials();
 	}
-	if (AimingMeshComponent)
-	{
-		AimingMeshComponent->DestroyComponent();
-		AimingMeshComponent = nullptr;
-	}
 
 	PlayerID = 0;
 	PlayerStateComponent.Reset();
@@ -521,20 +515,60 @@ void AGrsPawn::InitAimingSphere()
 	AimingSphereComponent->SetVisibility(false);
 }
 
-// Add a new spline mesh component
-void AGrsPawn::AddAimingSplineMeshComponent(USplineMeshComponent* SplineMeshComponent)
+// Returns pooled spline mesh that visualizes the trajectory segment by given index
+USplineMeshComponent* AGrsPawn::GetOrCreateAimingSplineMesh(int32 Index)
 {
-	AimingSplineMeshArray.AddUnique(SplineMeshComponent);
+	// Meshes are requested in order, so only the next one can be missing: bigger index is a caller bug, not a reason to create many meshes at once
+	if (!ensureMsgf(Index >= 0 && Index <= AimingSplineMeshArray.Num(), TEXT("ASSERT: [%i] %hs:\n'Index' %i is out of the pool range [0, %i]!"), __LINE__, __FUNCTION__, Index, AimingSplineMeshArray.Num()))
+	{
+		return nullptr;
+	}
+
+	// --- the pool only grows: each mesh is created and configured once, then it's reused on every next aiming
+	if (!AimingSplineMeshArray.IsValidIndex(Index))
+	{
+		const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
+		const FVector2D TrajectoryMeshScale = GrsDataAsset.GetTrajectoryMeshScale();
+
+		USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
+
+		// --- is static by default, while static component can't be attached to the movable spline (the attach is aborted), and the mesh is updated each aiming frame anyway
+		SplineMesh->Mobility = EComponentMobility::Movable;
+		SplineMesh->AttachToComponent(AimingSplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
+		SplineMesh->ForwardAxis = ESplineMeshAxis::Z;
+		SplineMesh->SetStartScale(TrajectoryMeshScale);
+		SplineMesh->SetEndScale(TrajectoryMeshScale);
+		SplineMesh->SetStaticMesh(GrsDataAsset.GetChargeMesh());
+		SplineMesh->SetMaterial(0, GrsDataAsset.GetTrajectoryMaterial());
+		SplineMesh->RegisterComponent();
+
+		AimingSplineMeshArray.Add(SplineMesh);
+	}
+
+	return AimingSplineMeshArray[Index];
+}
+
+// Hides pooled spline meshes starting from given index
+void AGrsPawn::HideAimingSplineMeshes(int32 FirstHiddenIndex/* = 0*/)
+{
+	if (!ensureMsgf(FirstHiddenIndex >= 0, TEXT("ASSERT: [%i] %hs:\n'FirstHiddenIndex' %i is negative!"), __LINE__, __FUNCTION__, FirstHiddenIndex))
+	{
+		return;
+	}
+
+	for (int32 Index = FirstHiddenIndex; Index < AimingSplineMeshArray.Num(); ++Index)
+	{
+		if (USplineMeshComponent* SplineMesh = AimingSplineMeshArray[Index])
+		{
+			SplineMesh->SetVisibility(false);
+		}
+	}
 }
 
 // Hide spline elements (trajectory)
 void AGrsPawn::ClearTrajectorySplines()
 {
-	for (USplineMeshComponent* SplineMeshComponent : AimingSplineMeshArray)
-	{
-		SplineMeshComponent->DestroyComponent();
-	}
-
-	AimingSplineMeshArray.Empty();
+	// --- spline meshes are pooled, so they are only hidden to be reused on the next aiming
+	HideAimingSplineMeshes();
 	AimingSplineComponent->ClearSplinePoints();
 }
