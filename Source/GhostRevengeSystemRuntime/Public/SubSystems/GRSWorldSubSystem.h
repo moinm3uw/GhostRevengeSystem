@@ -7,7 +7,6 @@
 
 #include "GRSWorldSubSystem.generated.h"
 
-class UGrsCharacterManagerComponent;
 class UGrsPawnComponent;
 class UGrsCollisionComponent;
 
@@ -30,10 +29,13 @@ public:
 	static UGRSWorldSubSystem& Get();
 
 protected:
-	/** Subscribes to local pawn ready event */
+	
+	/** Called when the owning game feature plugin activates (loaded by Game feature plugin manager)
+	 * Waits for the data asset and subscribes to local pawn ready event */
 	virtual void OnGameFeatureInitialize_Implementation() override;
-
-	/** Clears all transient data created by this subsystem */
+	
+	/** Called when the owning game feature plugin deactivates (unloaded by Game feature plugin manager)
+	 * Clears all transient data created by this subsystem */
 	virtual void OnGameFeatureDeinitialize_Implementation() override;
 
 	/** Called when the local player character is spawned, possessed, and replicated. */
@@ -78,21 +80,17 @@ public:
 	FORCEINLINE UGrsCollisionComponent* GetCollisionManagerComponent() const { return CollisionManagerComponent; }
 
 	/*********************************************************************************************
-	 * Ghost Characters
+	 * Data Asset
 	 **********************************************************************************************/
 protected:
-	/** Current Character Manager Component */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BluePrintProtected))
-	TObjectPtr<UGrsCharacterManagerComponent> CharacterManagerComponent;
+	/** Is set once the GRS data asset is loaded.
+	 * GFP can't be ready before that, since UGRSDataAsset::Get() crashes on an unloaded asset. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, AdvancedDisplay, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	bool bIsDataAssetLoaded = false;
 
-public:
-	/** Register character manager component. */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void RegisterCharacterManagerComponent(UGrsCharacterManagerComponent* NewCharacterManagerComponent);
-
-	/** Register character manager component. */
-	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE UGrsCharacterManagerComponent* GetCharacterManagerComponent() const { return CharacterManagerComponent; }
+	/** Called when the GRS data asset is loaded and available. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	void OnDataAssetLoaded(const class UGRSDataAsset* DataAsset);
 
 	/*********************************************************************************************
 	 * Pawn Component
@@ -110,10 +108,6 @@ public:
 	/** Clears the registered pawn component once it deleted  */
 	UFUNCTION(Category = "[GhostRevengeSystem]")
 	void UnregisterPawnComponent(UGrsPawnComponent* PawnComponentToUnregister);
-
-	/** Clears cached character manager component. */
-	UFUNCTION(Category = "[GhostRevengeSystem]")
-	void UnregisterCharacterManagerComponent();
 
 protected:
 	/** Listen game states to try initializing the GFP once the match starts */

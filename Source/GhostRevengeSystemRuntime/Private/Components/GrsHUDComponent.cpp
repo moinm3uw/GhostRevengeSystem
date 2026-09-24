@@ -143,8 +143,7 @@ UTextBlock* UGrsHUDComponent::GetTextBlockToHide(FName ResultTextBlockName)
 	UTextBlock* FoundTextBlock = nullptr;
 	TArray<UWidget*> AllWidgets;
 	BmrHUD->WidgetTree->GetAllWidgets(AllWidgets);
-
-	// @PR JanSeliv [Coding Standards] - Widget only read, make const-pointee `const UWidget*` like neighbor loop in GrsPlayerControllerComponent
+	
 	for (UWidget* Widget : AllWidgets)
 	{
 		if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))

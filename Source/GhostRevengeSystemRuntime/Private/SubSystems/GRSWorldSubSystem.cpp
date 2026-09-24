@@ -5,8 +5,12 @@
 // GRS
 #include "Components/GrsCollisionComponent.h"
 #include "Components/GrsPawnComponent.h"
+#include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h"
 #include "GrsGameplayTags.h"
+
+// DataAssetsLoader
+#include "DalSubsystem.h"
 
 // Bmr
 #include "GameFramework/BmrGameState.h"
@@ -37,10 +41,12 @@ UGRSWorldSubSystem& UGRSWorldSubSystem::Get()
 	return *ThisSubsystem;
 }
 
-// Subscribes to local pawn ready event
+// Called when the owning game feature plugin activates (loaded by Game feature plugin manager)
+// Waits for the data asset and subscribes to local pawn ready event
 void UGRSWorldSubSystem::OnGameFeatureInitialize_Implementation()
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+	UDalSubsystem::Get().ListenForDataAsset<UGRSDataAsset>(this, &ThisClass::OnDataAssetLoaded);
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::Player_LocalPawnReady, this, &ThisClass::OnLocalPawnReady);
 }
 
@@ -69,7 +75,7 @@ void UGRSWorldSubSystem::TryInit()
 bool UGRSWorldSubSystem::IsReady() const
 {
 	const ABmrGameState& GameState = ABmrGameState::Get();
-	bool bisReady = CharacterManagerComponent
+	bool bisReady = bIsDataAssetLoaded
 	                && CollisionManagerComponent
 	                && PawnComponents.Num() == GrsMaxPlayers
 	                && GameState.HasMatchingGameplayTag(FBmrGameStateTag::InGame);
@@ -78,6 +84,7 @@ bool UGRSWorldSubSystem::IsReady() const
 }
 
 // Clears all transient data created by this subsystem
+// Called when the owning game feature plugin deactivates (unloaded by Game feature plugin manager)
 void UGRSWorldSubSystem::OnGameFeatureDeinitialize_Implementation()
 {
 	PerformCleanUp();
@@ -91,7 +98,7 @@ void UGRSWorldSubSystem::PerformCleanUp()
 	// Clear cached GameFeaturePluginReady so late-binding listeners receive fresh data on GRS load
 	UGlobalMessageSubsystem::ClearCachedMessages(GrsGameplayTags::Event::GameFeaturePluginReady);
 
-	UnregisterCharacterManagerComponent();
+	bIsDataAssetLoaded = false;
 	UnregisterCollisionManagerComponent();
 }
 
@@ -124,23 +131,14 @@ void UGRSWorldSubSystem::UnregisterCollisionManagerComponent()
 }
 
 /*********************************************************************************************
- * Ghost Characters
+ * Data Asset
  **********************************************************************************************/
 
-// Register character manager component
-void UGRSWorldSubSystem::RegisterCharacterManagerComponent(UGrsCharacterManagerComponent* NewCharacterManagerComponent)
+// Called when the GRS data asset is loaded and available
+void UGRSWorldSubSystem::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
 {
-	if (!ensureMsgf(NewCharacterManagerComponent != CharacterManagerComponent, TEXT("ASSERT: [%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__))
-	{
-		UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs:\n'CharacterManagerComponent' is being overriden twice!"), __LINE__, __FUNCTION__);
-		return;
-	}
-
-	if (NewCharacterManagerComponent)
-	{
-		CharacterManagerComponent = NewCharacterManagerComponent;
-	}
-
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+	bIsDataAssetLoaded = true;
 	TryInit();
 }
 
@@ -177,13 +175,6 @@ void UGRSWorldSubSystem::UnregisterPawnComponent(UGrsPawnComponent* PawnComponen
 	}
 
 	PawnComponents.Remove(PawnComponentToUnregister);
-}
-
-// Clears cached character manager component
-void UGRSWorldSubSystem::UnregisterCharacterManagerComponent()
-{
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
-	CharacterManagerComponent = nullptr;
 }
 
 // Listen game states to try initializing the GFP once the match starts

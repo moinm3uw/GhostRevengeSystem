@@ -35,7 +35,6 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
-// @PR JanSeliv [Coding Standards] - .cpp with reflection in own .h must enable UE_INLINE_GENERATED_CPP_BY_NAME, uncomment after all includes + 1 blank line
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
 /*********************************************************************************************
@@ -86,10 +85,22 @@ void UGrsPlayerControllerComponent::BeginPlay()
 	UGlobalMessageSubsystem::CallOrStartListeningForGlobalMessage(BmrGameplayTags::Event::GameState_Changed, this, &ThisClass::OnGameStateChanged);
 }
 
-// @PR JanSeliv [Coding Standards] - listeners added in BeginPlay (OnPossessedPawnChanged, GameState_Changed, OnEndGameStateChanged) and OnOpponentsKilledNumChanged lack matching Remove here, add RemoveDynamic + StopListeningForAllGlobalMessages like neighbor GrsPlayerStateComponent cleanup
 // Clears all transient data created by this component
 void UGrsPlayerControllerComponent::OnUnregister()
 {
+	
+	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
+
+	if (ABmrPlayerController* PlayerController = GetPlayerController())
+	{
+		PlayerController->OnPossessedPawnChanged.RemoveDynamic(this, &ThisClass::OnPossessedPawnChanged);
+
+		if (ABmrPlayerState* BmrPlayerState = PlayerController->GetPlayerState<ABmrPlayerState>())
+		{
+			BmrPlayerState->OnOpponentsKilledNumChanged.RemoveDynamic(this, &ThisClass::OnOpponentsKilledNumChanged);
+		}
+	}
+
 	DisableGhostInputs(); // --- disables ghost input on local client
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 
@@ -494,10 +505,8 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 
 	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5.0f, 5.0f, 0.0f);
 	ThrowDirection.Normalize();
-	// @PR JanSeliv [Coding Standards] - LaunchVelocity never read, dead local, remove it and ThrowDirection compute that only feeds it
-	FVector LaunchVelocity = ThrowDirection * 100.0f;
 
-	// @PR JanSeliv [Potential Bug] - CurrentHoldTimeInternal not reset on release-throw path, only ChargeBomb max-charge branch resets, charges silently leak across throws, reset it here
+	CurrentHoldTime = 0.0f;
 	GrsPawn->ClearTrajectorySplines();
 
 	//--- hide aiming static mesh

@@ -12,7 +12,6 @@
 
 #include "GrsPlayerControllerComponent.generated.h"
 
-enum class EBmrEndGameState : uint8;
 class ABmrPlayerController;
 class ABmrPawn;
 struct FInputActionValue;
