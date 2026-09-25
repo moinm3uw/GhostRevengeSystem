@@ -509,7 +509,7 @@ void AGrsPawn::ApplyGhostActiveVisuals()
 void AGrsPawn::InitAimingSphere()
 {
 	const UGRSDataAsset* const GrsDataAsset = &UGRSDataAsset::Get();
-	AimingSphereComponent->SetStaticMesh(GrsDataAsset->GetProjectileMesh());
+	AimingSphereComponent->SetStaticMesh(GrsDataAsset->GetAimingAreaMesh());
 	AimingSphereComponent->SetMaterial(0, GrsDataAsset->GetAimingMaterial());
 	AimingSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AimingSphereComponent->SetVisibility(false);

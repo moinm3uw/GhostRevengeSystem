@@ -29,6 +29,7 @@ public class GhostRevengeSystemRuntime : ModuleRules
 				"CoreUObject", "Engine", "Slate", "SlateCore" // core
 				, "GameplayTags" // UE_DEFINE_GAMEPLAY_STATIC
 				, "GameplayAbilities" // Tags
+				, "NetCore" // Quantized vectors in FGrsThrowTargetData::NetSerialize
 				// Bomber
 				, "MyUtils", "PoolManager", "FunctionPicker" // spawn ghost character
 			}

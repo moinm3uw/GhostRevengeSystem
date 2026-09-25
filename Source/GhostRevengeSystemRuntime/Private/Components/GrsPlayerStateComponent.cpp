@@ -3,6 +3,7 @@
 // Grs
 #include "Components/GrsPlayerStateComponent.h"
 
+#include "Abilities/GrsThrowBombAbility.h"
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "GrsGameplayTags.h"
@@ -80,6 +81,7 @@ void UGrsPlayerStateComponent::OnUnregister()
 
 	RemoveAppliedReviveGameplayEffect();
 	RemoveBombSpawningGameplayEffect();
+	ClearThrowBombAbility();
 
 	AppliedBombSpawnEffectHandle.Invalidate();
 
@@ -120,12 +122,14 @@ void UGrsPlayerStateComponent::OnGameStateChanged_Implementation(const FGameplay
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
 		RemoveBombSpawningGameplayEffect();
+		ClearThrowBombAbility();
 		RemoveAppliedReviveGameplayEffect();
 	}
 
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::InGame))
 	{
 		ApplyBombSpawningGameplayEffect();
+		GiveThrowBombAbility();
 		GrantPlayerReviveEffect();
 		PreviousGrsPawn = nullptr; // --- reset the pointer as it should apply only once
 
@@ -389,4 +393,51 @@ void UGrsPlayerStateComponent::RemoveBombSpawningGameplayEffect()
 
 	ASC->RemoveActiveGameplayEffect(AppliedBombSpawnEffectHandle);
 	AppliedBombSpawnEffectHandle.Invalidate();
+}
+
+/*********************************************************************************************
+ * Bomb throwing ability of the ghost
+ **********************************************************************************************/
+
+// Grants the ability to throw a bomb projectile by the ghost of this player
+void UGrsPlayerStateComponent::GiveThrowBombAbility()
+{
+	if (!GetCurrentPlayerStateChecked().HasAuthority()
+	    || ThrowBombAbilitySpecHandle.IsValid())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ensureMsgf(ASC, TEXT("ASSERT: [%i] %hs:\n'ASC' is not set!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	// Blueprint child is granted, since its trigger is set in editor to UGRSDataAsset::ThrowBombTag
+	const TSubclassOf<UGrsThrowBombAbility> ThrowBombAbilityClass = UGRSDataAsset::Get().GetThrowBombAbilityClass();
+	if (!ensureMsgf(ThrowBombAbilityClass, TEXT("ASSERT: [%i] %hs:\n'ThrowBombAbilityClass' is not set in the GRS data asset!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	ThrowBombAbilitySpecHandle = ASC->GiveAbility(FGameplayAbilitySpec(ThrowBombAbilityClass));
+}
+
+// Removes the granted ability to throw a bomb projectile
+void UGrsPlayerStateComponent::ClearThrowBombAbility()
+{
+	if (!GetCurrentPlayerStateChecked().HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC || !ThrowBombAbilitySpecHandle.IsValid())
+	{
+		return;
+	}
+
+	ASC->ClearAbility(ThrowBombAbilitySpecHandle);
+	ThrowBombAbilitySpecHandle = FGameplayAbilitySpecHandle();
 }

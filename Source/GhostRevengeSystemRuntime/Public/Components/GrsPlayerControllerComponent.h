@@ -2,6 +2,9 @@
 
 #pragma once
 
+// Grs
+#include "Data/GrsThrowTargetData.h"
+
 // Bmr
 #include "Controllers/BmrPlayerController.h"
 
@@ -92,6 +95,10 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	float CurrentHoldTime = 0.0f;
 
+	/** Launch data of the last predicted trajectory, is sent on throw, so the bomb flies along the same arc the ghost saw */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "[GhostRevengeSystem]")
+	FGrsThrowTargetData LastThrowData;
+
 public:
 	/** Enables or disable input context (enhanced input) depends on possession state. Called when possessed pawn changed */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -131,7 +138,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	void ThrowProjectile();
 
-	/** Spawn bomb at aiming mesh location */
+	/** Throws bomb to aiming mesh location along the last predicted trajectory, the bomb is placed by the projectile on landing */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	void SpawnBomb(const struct FBmrCell& TargetCell);
 };

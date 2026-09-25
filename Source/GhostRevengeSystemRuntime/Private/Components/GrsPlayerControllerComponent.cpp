@@ -481,6 +481,14 @@ void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePath
 	Params.ActorsToIgnore.Add(&CurrentPawn);
 
 	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
+
+	// --- cache launch data of the shown trajectory, so the thrown bomb flies along the same arc
+	if (!PredictResult.PathData.IsEmpty())
+	{
+		LastThrowData.Start = Params.StartLocation;
+		LastThrowData.LaunchVelocity = Params.LaunchVelocity;
+		LastThrowData.FlightTime = PredictResult.LastTraceDestination.Time; // same end point as the aiming area
+	}
 }
 
 // Throw projectile event, bound to onetime button press
@@ -503,9 +511,8 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
 	SpawnBomb(TargetCell);
 
-	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5.0f, 5.0f, 0.0f);
-	ThrowDirection.Normalize();
-
+	// --- next throw has to be charged again, so the trajectory of this one is not reused
+	LastThrowData = FGrsThrowTargetData();
 	CurrentHoldTime = 0.0f;
 	GrsPawn->ClearTrajectorySplines();
 
@@ -514,7 +521,7 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	AimingStaticMeshComponent->SetWorldLocation(GrsPawn->GetActorLocation());
 }
 
-// Spawn bomb at aiming mesh location
+// Throws bomb to aiming mesh location along the last predicted trajectory, the bomb is placed by the projectile on landing
 void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
@@ -523,12 +530,19 @@ void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
 		return;
 	}
 
+	// --- nothing was predicted yet, e.g. released without charging
+	if (LastThrowData.FlightTime <= 0.f)
+	{
+		return;
+	}
+
 	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
 
-	// Activate bomb ability
+	// Activate throw ability, the bomb itself is placed by the projectile on landing
 	FGameplayEventData EventData;
-	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
+	EventData.EventTag = UGRSDataAsset::Get().GetThrowBombTag();
 	EventData.Instigator = GrsPawn;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
+	EventData.TargetData.Add(new FGrsThrowTargetData(LastThrowData)); // handle owns it
 	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
 }

@@ -4,6 +4,9 @@
 
 #include "DalPrimaryDataAsset.h"
 
+// Grs
+#include "GhostRevengeSystemRuntimeModule.h" // GrsMaxPlayers
+
 // UE
 #include "GameplayTagContainer.h"
 #include "Kismet/GameplayStaticsTypes.h" // FPredictProjectilePathParams
@@ -58,10 +61,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE TSubclassOf<class AGrsBombProjectile> GetProjectileClass() const { return BombClass; }
 
-	/** Returns projectile mesh
-	 * @see UGRSDataAsset::StaticMesh.*/
+	/** Returns the amount of projectiles prepared in the pool once the match starts, so throws take ready ones without spawning.
+	 * @see UGRSDataAsset::ProjectilePoolSize */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE class UStaticMesh* GetProjectileMesh() const { return AimingAreaStaticMesh; }
+	FORCEINLINE int32 GetProjectilePoolSize() const { return ProjectilePoolSize; }
+
+	/** Returns aiming area mesh, shown at the end of the predicted trajectory
+	 * @see UGRSDataAsset::AimingAreaStaticMesh */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE class UStaticMesh* GetAimingAreaMesh() const { return AimingAreaStaticMesh; }
 
 	/** Returns projectile mesh
 	 * @see UGRSDataAsset::ChargeTrajectoryMeshInternal.*/
@@ -105,10 +113,18 @@ public:
 	UFUNCTION(BlueprintPure, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetPlayerReviveEffectClass() const { return PlayerReviveEffect; }
 
-	/** Returns the trigger bomb placement tag */
+	/** Returns the trigger bomb placement tag, is sent by the thrower's client once a thrown bomb projectile lands */
 	UFUNCTION(BlueprintPure, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE FGameplayTag GetTriggerBombTag() const { return TriggerBombTag; }
 
+	/** Returns the throw bomb tag, is sent by the ghost's client to throw a bomb projectile */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE FGameplayTag GetThrowBombTag() const { return ThrowBombTag; }
+
+	/** Returns the ability class granted to throw a bomb projectile by the ghost
+	 * @see UGRSDataAsset::ThrowBombAbilityClass */
+	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
+	FORCEINLINE TSubclassOf<class UGrsThrowBombAbility> GetThrowBombAbilityClass() const { return ThrowBombAbilityClass; }
 	/** Returns the revive player character trigger tag */
 	UFUNCTION(BlueprintPure, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE FGameplayTag GetRevivePlayerCharacterTriggerTag() const { return ReviveCharacterTriggerTag; }
@@ -128,6 +144,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	TSubclassOf<class AGrsBombProjectile> BombClass;
+
+	/** Amount of projectiles prepared in the pool once the match starts, so throws take ready ones without spawning */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Projectile Pool Size", ClampMin = "1"))
+	int32 ProjectilePoolSize = GrsMaxPlayers;
 
 	/** Parameter to control trajectory visual display */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Should Display trajectory"))
@@ -190,6 +210,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (Categories = "Event", BlueprintProtected, DisplayName = "Trigger Bomb Tag", ShowOnlyInnerProperties))
 	FGameplayTag TriggerBombTag = FGameplayTag::EmptyTag;
 
+	/** A tag used for GAS to trigger the bomb throw, has to match the trigger of ThrowBombAbilityClass */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (Categories = "Event", BlueprintProtected, DisplayName = "Throw Bomb Tag", ShowOnlyInnerProperties))
+	FGameplayTag ThrowBombTag = FGameplayTag::EmptyTag;
+
+	/** Ability granted from code to throw a bomb projectile by the ghost, its trigger has to be set to ThrowBombTag */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Throw Bomb Ability Class", ShowOnlyInnerProperties))
+	TSubclassOf<class UGrsThrowBombAbility> ThrowBombAbilityClass = nullptr;
 	/** A tag used for GAS to trigger bomb placement */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (Categories = "Event", BlueprintProtected, DisplayName = "Revive Player Character Tag", ShowOnlyInnerProperties))
 	FGameplayTag ReviveCharacterTriggerTag = FGameplayTag::EmptyTag;
