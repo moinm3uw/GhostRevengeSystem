@@ -2,11 +2,9 @@
 
 #pragma once
 
-// Grs
-#include "Data/GrsThrowTargetData.h"
-
 // UE
 #include "Abilities/GameplayAbility.h"
+#include "Kismet/GameplayStaticsTypes.h"
 
 #include "GrsThrowBombAbility.generated.h"
 
@@ -15,9 +13,10 @@
  * Is granted from code by UGrsPlayerStateComponent while the match is in progress, the granted class is UGRSDataAsset::ThrowBombAbilityClass.
  * Ability is triggered by UGRSDataAsset::ThrowBombTag event sent by the ghost's client, the trigger is set in the blueprint child, where:
  * - Instigator is the ghost pawn;
- * - TargetData contains FGrsThrowTargetData with the launch data of the charge preview.
- * Is local predicted so the event data reaches the server, where the projectile is taken from the pool.
- * The real bomb is placed by the thrower's client once the projectile lands.
+ * - EventMagnitude is how long the throw was charged;
+ * - ContextHandle origin is where the arc starts.
+ * Is local predicted so the event data reaches the server, where the same arc is predicted and the projectile is taken from the pool.
+ * Projectile is purely visual: the real bomb is spawned by the thrower's UGrsPlayerControllerComponent once the flight time is over.
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API UGrsThrowBombAbility : public UGameplayAbility
@@ -27,6 +26,9 @@ class GHOSTREVENGESYSTEMRUNTIME_API UGrsThrowBombAbility : public UGameplayAbili
 public:
 	/** Sets default values for this ability */
 	UGrsThrowBombAbility();
+
+	/** Returns true if this ability is triggered by given gameplay event, the trigger is set in the blueprint child */
+	bool IsTriggeredByEvent(const FGameplayTag& EventTag) const;
 
 	/*********************************************************************************************
 	 * Overrides
@@ -39,16 +41,12 @@ protected:
 	 * Throw
 	 ********************************************************************************************* */
 protected:
-	/** Returns throw data sent by the client, or nullptr if the event has no such data */
-	static const FGrsThrowTargetData* GetThrowData(const FGameplayEventData& EventData);
-
-	/** Returns true if throw data sent by the client is possible for given ghost, so modified client can't throw a bomb anywhere */
-	static bool IsValidThrowData(const FGrsThrowTargetData& ThrowData, const APawn& Thrower);
+	/** Returns where the thrown arc starts: sent by the client if it's close to the ghost, otherwise the ghost location on server */
+	static FVector GetThrowStartLocation(const FGameplayEventData& EventData, const APawn& Thrower);
 
 	/** Starts the flight of the projectile taken from the pool (Object pooling patter).
-	 * Is not exposed to blueprints since GAS target data is not a blueprint type.
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 * @param Thrower - Ghost that throws the bomb
-	 * @param ThrowData - Launch data of the charge preview */
-	virtual void OnTakeProjectileFromPoolCompleted(const TArray<struct FPoolObjectData>& CreatedObjects, APawn* Thrower, const FGrsThrowTargetData& ThrowData);
+	 * @param PredictResult - Arc predicted on server, the same one the ghost saw in the charge preview */
+	virtual void OnTakeProjectileFromPoolCompleted(const TArray<struct FPoolObjectData>& CreatedObjects, APawn* Thrower, const FPredictProjectilePathResult& PredictResult);
 };

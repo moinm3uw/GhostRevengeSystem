@@ -38,6 +38,7 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPawn)
@@ -571,4 +572,33 @@ void AGrsPawn::ClearTrajectorySplines()
 	// --- spline meshes are pooled, so they are only hidden to be reused on the next aiming
 	HideAimingSplineMeshes();
 	AimingSplineComponent->ClearSplinePoints();
+}
+
+// Predicts the arc of the bomb thrown by this ghost, the same arc is shown in the charge preview and flown by the thrown bomb
+bool AGrsPawn::PredictThrowPath(float HoldTime, const FVector& StartLocation, FPredictProjectilePathResult& OutResult) const
+{
+	// --- pick a direction based on the side of the map (left or right) the server allocated for this ghost
+	const UGrsPlayerStateComponent* GrsPlayerStateComponent = GetGrsPlayerStateComponent();
+	const EGRSCharacterSide GhostSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
+	if (GhostSide == EGRSCharacterSide::None)
+	{
+		return false;
+	}
+
+	const float SideSign = GhostSide == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+
+	// 45-degree vector between up and right
+	const FVector UpRight45 = (GetActorForwardVector() + GetActorUpVector()).GetSafeNormal();
+
+	// Set launch velocity (forward direction with some upward angle), the longer the charge the further the throw
+	const FVector VelocityParams = UGRSDataAsset::Get().GetVelocityParams();
+	const FVector LaunchVelocity(UpRight45.X + SideSign * (VelocityParams.X * HoldTime), VelocityParams.Y, UpRight45.Z + VelocityParams.Z);
+
+	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
+	Params.StartLocation = StartLocation;
+	Params.LaunchVelocity = LaunchVelocity;
+	Params.ActorsToIgnore.Add(const_cast<ThisClass*>(this));
+
+	UGameplayStatics::PredictProjectilePath(this, Params, OutResult);
+	return OutResult.PathData.Num() >= 2;
 }

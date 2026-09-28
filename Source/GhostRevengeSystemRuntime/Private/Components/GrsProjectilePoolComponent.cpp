@@ -8,6 +8,9 @@
 #include "GrsGameplayTags.h"
 #include "LevelActors/GrsBombProjectile.h" // GetProjectileClass()
 
+// Bmr
+#include "GameFramework/BmrGameState.h"
+
 // PoolManager
 #include "PoolManagerSubsystem.h"
 
@@ -65,12 +68,12 @@ void UGrsProjectilePoolComponent::OnUnregister()
 // Starting point once whole module is ready(loaded) to be initialized, prepares projectiles in the pool on server
 void UGrsProjectilePoolComponent::OnInitialize_Implementation(const FGameplayEventData& Payload)
 {
-	const AActor* CurrentOwner = GetOwner();
-	checkf(CurrentOwner, TEXT("[%i] %hs 'CurrentOwner' is null"), __LINE__, __FUNCTION__);
+	const ABmrGameState* BmrGameState = Cast<ABmrGameState>(GetOwner());
+	checkf(BmrGameState, TEXT("[%i] %hs 'BmrGamteState' is null. GameState lost or attached component to wrong actor Expected BmrGameState"), __LINE__, __FUNCTION__);
 
 	// Pool is server-only, clients receive replicated projectiles; is prepared only once since the pool survives between matches
 	const bool bIsBeingPrepared = !ProjectilePoolActorHandlersInternal.IsEmpty();
-	if (!CurrentOwner->HasAuthority()
+	if (!BmrGameState->HasAuthority()
 	    || bIsProjectilePoolPrepared
 	    || bIsBeingPrepared)
 	{
@@ -91,7 +94,7 @@ void UGrsProjectilePoolComponent::OnInitialize_Implementation(const FGameplayEve
 
 	// --- Spawn actors
 	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
-	UPoolManagerSubsystem::Get().TakeFromPoolArray(ProjectilePoolActorHandlersInternal, GrsDataAsset.GetProjectileClass(), GrsDataAsset.GetProjectilePoolSize(), OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::High);
+	UPoolManagerSubsystem::Get().TakeFromPoolArray(ProjectilePoolActorHandlersInternal, GrsDataAsset.GetProjectileClass(), GrsDataAsset.GetProjectilePoolSize(), OnTakeActorsFromPoolCompleted, ESpawnRequestPriority::Normal);
 }
 
 // Puts prepared projectiles back to the pool, so throws take ready ones without spawning
@@ -99,9 +102,9 @@ void UGrsProjectilePoolComponent::OnTakeProjectilesFromPoolCompleted_Implementat
 {
 	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) Prepared %i projectiles"), __LINE__, __FUNCTION__, CreatedObjects.Num());
 
-	// Returning hides them and disables their tick
+	bIsProjectilePoolPrepared = true;
+
+	// --- return back to pool as available
 	UPoolManagerSubsystem::Get().ReturnToPoolArray(ProjectilePoolActorHandlersInternal);
 	ProjectilePoolActorHandlersInternal.Empty();
-
-	bIsProjectilePoolPrepared = true;
 }

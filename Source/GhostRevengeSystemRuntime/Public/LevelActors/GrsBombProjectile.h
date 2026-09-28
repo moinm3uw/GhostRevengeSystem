@@ -4,53 +4,18 @@
 
 // UE
 #include "CoreMinimal.h"
-#include "Engine/NetSerialization.h"
+#include "Engine/CurveTable.h"
 #include "GameFramework/Actor.h"
+#include "Kismet/GameplayStaticsTypes.h"
 
 #include "GrsBombProjectile.generated.h"
 
-struct FGrsThrowTargetData;
-
 /**
- * Replicated data of a single throw.
- * Is replicated once per throw, every machine evaluates the same arc from it, so movement itself is not replicated.
- */
-USTRUCT(BlueprintType)
-struct GHOSTREVENGESYSTEMRUNTIME_API FGrsBombFlight
-{
-	GENERATED_BODY()
-
-	/** Ghost that threw the bomb, resolves the bomb mesh and material on every machine */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	TObjectPtr<APawn> Thrower = nullptr;
-
-	/** World location the arc starts from */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	FVector_NetQuantize Start = FVector::ZeroVector;
-
-	/** Velocity the arc was predicted with in the charge preview */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	FVector_NetQuantize10 LaunchVelocity = FVector::ZeroVector;
-
-	/** Gravity the arc was predicted with, is resolved on server by the same rule as UGameplayStatics::PredictProjectilePath */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	float GravityZ = 0.f;
-
-	/** Time the arc takes till its end */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	float FlightTime = 0.f;
-
-	/** Server time the bomb was thrown at, changes every throw, so the rep notify is always called for a reused pooled projectile */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]")
-	float LaunchServerTime = 0.f;
-};
-
-/**
- * Bomb thrown by a ghost, flies along the same arc the ghost saw in the charge preview.
- * Once it lands, the thrower's client places the real bomb there, the same way regular bombs are placed, since the bomb ability is local predicted.
+ * Bomb thrown by a ghost, moves between the points of the arc the ghost saw in the charge preview.
+ * Only the server moves the projectile, clients receive its location by replicated movement, as it's done for pawns.
+ * Is purely visual: the real bomb is spawned by the thrower's UGrsPlayerControllerComponent once the same flight time is over on its client.
  * Is pooled: prepared on server once GRS is ready (see UGrsProjectilePoolComponent), taken on each throw (see UGrsThrowBombAbility)
  * and returned back to the pool on landing.
- * Only the throw data is replicated, every machine evaluates the arc by server time, so the flight is the same on all clients.
  */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API AGrsBombProjectile : public AActor
@@ -68,14 +33,14 @@ protected:
 	/** Returns properties that are replicated for the lifetime of the actor channel */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** Moves the bomb along the arc, is enabled only while the bomb is flying */
+	/** Server only: moves the bomb between the points of the arc, is enabled only while the bomb is flying */
 	virtual void Tick(float DeltaTime) override;
 
 	/*********************************************************************************************
 	 * Components
 	 **********************************************************************************************/
 protected:
-	/** Root of the projectile, has no collision since the bomb flies over walls to the cell decided on throw */
+	/** Root of the projectile, has no collision since the bomb flies over walls to the end of the arc */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	TObjectPtr<class USphereComponent> CollisionSphere = nullptr;
 
@@ -87,32 +52,45 @@ protected:
 	 * Flight
 	 **********************************************************************************************/
 public:
-	/** Starts a new flight of this projectile, is called on server right after it's taken from the pool.
-	 * @param Thrower - Ghost that throws the bomb
-	 * @param ThrowData - Launch data of the charge preview the ghost saw */
-	void StartFlight(APawn& Thrower, const FGrsThrowTargetData& ThrowData);
+	/** Launches this projectile, is called on server right after it's taken from the pool.
+	 * @param InThrower - Ghost that throws the bomb
+	 * @param PredictResult - Arc predicted on server, the same one the ghost saw in the charge preview */
+	void StartFlight(APawn& InThrower, const FPredictProjectilePathResult& PredictResult);
 
 protected:
-	/** Data of the current throw, is replicated once per throw */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_Flight", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
-	FGrsBombFlight Flight;
+	/** Ghost that threw the bomb, resolves the bomb mesh and material on every machine */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, ReplicatedUsing = "OnRep_Thrower", Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TObjectPtr<APawn> Thrower = nullptr;
 
-	/** Starts the flight visuals on all machines once throw data is received, is called directly on server */
+	/** Server only: points of the arc the projectile moves between */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	FPredictProjectilePathResult FlightPath;
+
+	/** Server only: time passed since the throw */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	float FlightElapsedTime = 0.f;
+
+	/** Server only: how long the flight takes with the projectile flight speed, is taken from the data asset once per throw */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	float FlightDuration = 0.f;
+
+	/** Server only: how the bomb goes along the arc during its flight, is taken from the data asset once per throw */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	FCurveTableRowHandle FlightCurve;
+
+	/** Returns progress along the arc from 0 to 1 for given flight progress from 0 to 1, is linear if the flight curve is not set */
+	float GetArcProgress(float FlightProgress) const;
+
+	/** Applies the bomb visuals of the new thrower on clients */
 	UFUNCTION()
-	void OnRep_Flight();
+	void OnRep_Thrower();
 
-	/** Returns true on the machine that controls the thrower's player, where the bomb placement ability is predicted */
-	bool IsThrowerLocallyControlled() const;
-
-	/** Returns time passed since the throw by server time, clamped by the flight time */
-	float GetFlightElapsedTime() const;
-
-	/** Returns location on the arc at given time since the throw, is the same formula PredictProjectilePath integrates */
-	FVector GetFlightLocation(float Time) const;
+	/** Returns location between the two points of the arc the bomb is at, at given time since the throw */
+	FVector GetLocationOnPath(float Time) const;
 
 	/** Applies the same mesh and material as the bomb the thrower places */
 	void ApplyBombVisuals();
 
-	/** Hides the projectile once it reached the end of the arc, on the thrower's client places the real bomb, on server returns the projectile to the pool */
+	/** Server only: returns the projectile to the pool once it reached the end of the arc, what hides it on all machines */
 	void OnLanded();
 };

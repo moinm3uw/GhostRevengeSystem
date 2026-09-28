@@ -6,6 +6,7 @@
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
 #include "LevelActors/GrsBombProjectile.h"
+#include "LevelActors/GrsPawn.h"
 
 // Bmr
 #include "Structures/BmrCell.h"
@@ -13,19 +14,26 @@
 // PoolManager
 #include "PoolManagerSubsystem.h"
 
-// UE
-#include "GameFramework/Pawn.h"
-
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsThrowBombAbility)
 
 // Sets default values for this ability
 UGrsThrowBombAbility::UGrsThrowBombAbility()
 {
-	// Local predicted, so the throw data sent with the event reaches the server
+	// Local predicted, so the event data sent with the throw reaches the server
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
 	// Instance is kept alive to receive the pool callback
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+}
+
+// Returns true if this ability is triggered by given gameplay event, the trigger is set in the blueprint child
+bool UGrsThrowBombAbility::IsTriggeredByEvent(const FGameplayTag& EventTag) const
+{
+	return AbilityTriggers.ContainsByPredicate([&EventTag](const FAbilityTriggerData& Trigger)
+	{
+		return Trigger.TriggerSource == EGameplayAbilityTriggerSource::GameplayEvent
+		       && Trigger.TriggerTag == EventTag;
+	});
 }
 
 /*********************************************************************************************
@@ -54,10 +62,19 @@ void UGrsThrowBombAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 
 	// Instigator of the event is the ghost pawn, event data keeps it const
-	APawn* Thrower = const_cast<APawn*>(Cast<APawn>(TriggerEventData->Instigator.Get()));
-	const FGrsThrowTargetData* ThrowData = GetThrowData(*TriggerEventData);
-	if (!ensureMsgf(Thrower && ThrowData, TEXT("ASSERT: [%i] %hs:\n'Thrower' or 'ThrowData' is not valid in the throw event!"), __LINE__, __FUNCTION__)
-	    || !IsValidThrowData(*ThrowData, *Thrower))
+	AGrsPawn* Thrower = const_cast<AGrsPawn*>(Cast<AGrsPawn>(TriggerEventData->Instigator.Get()));
+	if (!ensureMsgf(Thrower, TEXT("ASSERT: [%i] %hs:\n'Thrower' is not a ghost in the throw event!"), __LINE__, __FUNCTION__))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, /*bReplicateEndAbility*/ true, /*bWasCancelled*/ true);
+		return;
+	}
+
+	// --- predict the same arc the ghost saw in the charge preview: charge is sent as magnitude, the start of the arc as context origin
+	// Client value is clamped, so a longer charge than allowed can't be sent
+	const float HoldTime = FMath::Clamp(TriggerEventData->EventMagnitude, 0.f, UGRSDataAsset::Get().GetMaxChargingTime());
+	const FVector StartLocation = GetThrowStartLocation(*TriggerEventData, *Thrower);
+	FPredictProjectilePathResult PredictResult;
+	if (!Thrower->PredictThrowPath(HoldTime, StartLocation, PredictResult))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, /*bReplicateEndAbility*/ true, /*bWasCancelled*/ true);
 		return;
@@ -67,12 +84,12 @@ void UGrsThrowBombAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
-	const TWeakObjectPtr<APawn> WeakThrower = Thrower;
-	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis, WeakThrower, ThrowDataCopy = *ThrowData](const TArray<FPoolObjectData>& CreatedObjects)
+	const TWeakObjectPtr<AGrsPawn> WeakThrower = Thrower;
+	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis, WeakThrower, PredictResult](const TArray<FPoolObjectData>& CreatedObjects)
 	{
 		if (UGrsThrowBombAbility* This = WeakThis.Get())
 		{
-			This->OnTakeProjectileFromPoolCompleted(CreatedObjects, WeakThrower.Get(), ThrowDataCopy);
+			This->OnTakeProjectileFromPoolCompleted(CreatedObjects, WeakThrower.Get(), PredictResult);
 		}
 	};
 
@@ -86,43 +103,24 @@ void UGrsThrowBombAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
  * Throw
  ********************************************************************************************* */
 
-// Returns throw data sent by the client, or nullptr if the event has no such data
-const FGrsThrowTargetData* UGrsThrowBombAbility::GetThrowData(const FGameplayEventData& EventData)
+// Returns where the thrown arc starts: sent by the client if it's close to the ghost, otherwise the ghost location on server
+FVector UGrsThrowBombAbility::GetThrowStartLocation(const FGameplayEventData& EventData, const APawn& Thrower)
 {
-	const FGameplayAbilityTargetData* TargetData = EventData.TargetData.IsValid(0) ? EventData.TargetData.Get(0) : nullptr;
-	const bool bIsThrowData = TargetData && TargetData->GetScriptStruct() == FGrsThrowTargetData::StaticStruct();
-	return bIsThrowData ? static_cast<const FGrsThrowTargetData*>(TargetData) : nullptr;
-}
+	const FVector ServerLocation = Thrower.GetActorLocation();
+	if (!EventData.ContextHandle.IsValid()
+	    || !EventData.ContextHandle.HasOrigin())
+	{
+		return ServerLocation;
+	}
 
-// Returns true if throw data sent by the client is possible for given ghost, so modified client can't throw a bomb anywhere
-bool UGrsThrowBombAbility::IsValidThrowData(const FGrsThrowTargetData& ThrowData, const APawn& Thrower)
-{
-	const UGRSDataAsset& GrsDataAsset = UGRSDataAsset::Get();
-
-	// Ghost could move a bit on its client till the throw reached the server
+	// Ghost could move a bit on its client till the throw reached the server, so modified client can't throw from anywhere else
 	static constexpr float MaxStartLocationError = FBmrCell::CellSize;
-	const bool bIsValidStart = FVector::Dist(ThrowData.Start, Thrower.GetActorLocation()) <= MaxStartLocationError;
-
-	const bool bIsValidFlightTime = ThrowData.FlightTime > 0.f
-	                                && ThrowData.FlightTime <= GrsDataAsset.GetChargePredictParams().MaxSimTime;
-
-	// Launch velocity is built in UGrsPlayerControllerComponent::PredictProjectilePath: unit direction plus velocity params scaled by the charge on X
-	// Charge can exceed its max by one frame, since it's accumulated by frame delta before checked
-	static constexpr float ChargeTimeError = 0.1f;
-	static constexpr float QuantizationError = 1.f;
-	const FVector VelocityParams = GrsDataAsset.GetVelocityParams().GetAbs();
-	const float MaxChargeTime = GrsDataAsset.GetMaxChargingTime() + ChargeTimeError;
-	const FVector MaxLaunchVelocity(1.f + VelocityParams.X * MaxChargeTime, VelocityParams.Y, 1.f + VelocityParams.Z);
-	const bool bIsValidVelocity = ThrowData.LaunchVelocity.Size() <= MaxLaunchVelocity.Size() + QuantizationError;
-
-	const bool bIsValid = bIsValidStart && bIsValidFlightTime && bIsValidVelocity;
-	UE_CLOG(!bIsValid, LogGrs, Warning, TEXT("[%i] %hs: Rejected throw of %s: start %s, flight time %s, velocity %s"), __LINE__, __FUNCTION__, *Thrower.GetName(),
-	        bIsValidStart ? TEXT("OK") : TEXT("INVALID"), bIsValidFlightTime ? TEXT("OK") : TEXT("INVALID"), bIsValidVelocity ? TEXT("OK") : TEXT("INVALID"));
-	return bIsValid;
+	const FVector& ClientLocation = EventData.ContextHandle.GetOrigin();
+	return FVector::Dist(ClientLocation, ServerLocation) <= MaxStartLocationError ? ClientLocation : ServerLocation;
 }
 
 // Starts the flight of the projectile taken from the pool
-void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects, APawn* Thrower, const FGrsThrowTargetData& ThrowData)
+void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects, APawn* Thrower, const FPredictProjectilePathResult& PredictResult)
 {
 	if (!ensureMsgf(CreatedObjects.IsValidIndex(0), TEXT("ASSERT: [%i] %hs:\n'CreatedObjects' is empty, projectile is not taken from the pool!"), __LINE__, __FUNCTION__))
 	{
@@ -133,7 +131,7 @@ void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolO
 	const FPoolObjectData& CreatedProjectile = CreatedObjects[0];
 	if (Thrower)
 	{
-		CreatedProjectile.GetChecked<AGrsBombProjectile>().StartFlight(*Thrower, ThrowData);
+		CreatedProjectile.GetChecked<AGrsBombProjectile>().StartFlight(*Thrower, PredictResult);
 	}
 	else
 	{

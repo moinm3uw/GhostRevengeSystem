@@ -52,7 +52,7 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	void OnInitialize(const struct FGameplayEventData& Payload);
 
-	/** Puts prepared projectiles back to the pool, so throws take ready ones without spawning (Object pooling patter)
+	/** Puts prepared projectiles back to the pool, so throws take ready ones without spawning (Object pooling pattern)
 	 * @param CreatedObjects - Handles of objects from Pool Manager
 	 */
 	UFUNCTION(BlueprintNativeEvent, Category = "[GhostRevengeSystem]")

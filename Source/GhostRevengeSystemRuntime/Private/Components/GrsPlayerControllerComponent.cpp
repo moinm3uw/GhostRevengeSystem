@@ -29,11 +29,13 @@
 
 // UE
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
+#include "AbilitySystemGlobals.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -88,7 +90,6 @@ void UGrsPlayerControllerComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPlayerControllerComponent::OnUnregister()
 {
-	
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
 	if (ABmrPlayerController* PlayerController = GetPlayerController())
@@ -102,6 +103,7 @@ void UGrsPlayerControllerComponent::OnUnregister()
 	}
 
 	DisableGhostInputs(); // --- disables ghost input on local client
+	ClearPendingBombs(); // --- bombs still flying are not spawned
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 
 	Super::OnUnregister();
@@ -114,6 +116,7 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const FGam
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
 		DisableGhostInputs(); // --- disables ghost input on local client
+		ClearPendingBombs(); // --- bombs still flying are not spawned
 		UnpossessGhostPawn(); // --- unpossess ghost pawn
 	}
 
@@ -147,6 +150,7 @@ void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(i
 	}
 
 	DisableGhostInputs(); // --- disables ghost input on local client
+	ClearPendingBombs(); // --- bombs still flying are not spawned
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 }
 
@@ -454,41 +458,14 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 // Configure PredictProjectilePath settings and get result
 void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
 {
-	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
-
-	APawn& CurrentPawn = GetCurrentPawnChecked();
-
-	// 45-degree vector between up and right
-	FVector UpRight45 = (CurrentPawn.GetActorForwardVector() + CurrentPawn.GetActorUpVector()).GetSafeNormal();
-
-	// Predict and draw the trajectory
-	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
-	Params.StartLocation = CurrentPawn.GetActorLocation();
-
-	// --- pick a direction based on the side of the map (left or right) the server allocated for this ghost
-	const AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn);
-	const UGrsPlayerStateComponent* GrsPlayerStateComponent = GrsPawn ? GrsPawn->GetGrsPlayerStateComponent() : nullptr;
-	const EGRSCharacterSide GhostSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
-	if (GhostSide == EGRSCharacterSide::None)
+	// --- same prediction is used by the server and clients to fly the thrown bomb along this arc
+	const AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!GrsPawn)
 	{
 		return;
 	}
 
-	const float SideSign = GhostSide == EGRSCharacterSide::Left ? 1.0f : -1.0f;
-
-	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTime), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
-	Params.ActorsToIgnore.Add(&CurrentPawn);
-
-	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
-
-	// --- cache launch data of the shown trajectory, so the thrown bomb flies along the same arc
-	if (!PredictResult.PathData.IsEmpty())
-	{
-		LastThrowData.Start = Params.StartLocation;
-		LastThrowData.LaunchVelocity = Params.LaunchVelocity;
-		LastThrowData.FlightTime = PredictResult.LastTraceDestination.Time; // same end point as the aiming area
-	}
+	GrsPawn->PredictThrowPath(CurrentHoldTime, GrsPawn->GetActorLocation(), PredictResult);
 }
 
 // Throw projectile event, bound to onetime button press
@@ -509,10 +486,42 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	//--- Calculate Cell to spawn bomb
 	FBmrCell TargetCell;
 	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
-	SpawnBomb(TargetCell);
 
-	// --- next throw has to be charged again, so the trajectory of this one is not reused
-	LastThrowData = FGrsThrowTargetData();
+	// --- same arc as the charge preview, nothing is thrown if it was released without charging
+	FPredictProjectilePathResult PredictResult;
+	PredictProjectilePath(PredictResult);
+	const bool bIsCharged = CurrentHoldTime > 0.f
+	                        && PredictResult.PathData.Num() >= 2;
+
+	// --- server launches the projectile half a ping later, and the bomb event reaches it half a ping later as well,
+	// so spawning the bomb once the flight time is over places it on server right when its projectile lands
+	if (bIsCharged
+	    && SendThrowBombEvent())
+	{
+		const float FlightTime = UGRSDataAsset::Get().GetProjectileFlightTime(PredictResult);
+		const TWeakObjectPtr<AGrsPawn> WeakGrsPawn = GrsPawn;
+		const FTimerDelegate OnFlightTimeOver = FTimerDelegate::CreateWeakLambda(this, [this, WeakGrsPawn, TargetCell]()
+		{
+			// --- ghost could be no longer in control, e.g. it's revived while the bomb was flying
+			if (WeakGrsPawn.IsValid()
+			    && WeakGrsPawn.Get() == GetCurrentPawn())
+			{
+				SpawnBomb(TargetCell);
+			}
+		});
+
+		// --- forget timers of bombs that already landed, so only flying ones are kept
+		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+		PendingBombTimerHandles.RemoveAll([&TimerManager](const FTimerHandle& TimerHandle)
+		{
+			return !TimerManager.TimerExists(TimerHandle);
+		});
+
+		FTimerHandle& BombTimerHandle = PendingBombTimerHandles.AddDefaulted_GetRef();
+		TimerManager.SetTimer(BombTimerHandle, OnFlightTimeOver, FlightTime, /*bLoop*/ false);
+	}
+
+	// --- next throw has to be charged again
 	CurrentHoldTime = 0.0f;
 	GrsPawn->ClearTrajectorySplines();
 
@@ -521,7 +530,29 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	AimingStaticMeshComponent->SetWorldLocation(GrsPawn->GetActorLocation());
 }
 
-// Throws bomb to aiming mesh location along the last predicted trajectory, the bomb is placed by the projectile on landing
+// Sends the throw event with the current charge, the server predicts the same arc and launches the bomb projectile along it
+bool UGrsPlayerControllerComponent::SendThrowBombEvent()
+{
+	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
+	{
+		return false;
+	}
+
+	// Activate throw ability, it's purely visual: the bomb itself is spawned by SpawnBomb() once the flight time is over
+	// Charge and the start of the arc are enough for the server to predict the same arc as the charge preview
+	FGameplayEventData EventData;
+	EventData.EventTag = UGRSDataAsset::Get().GetThrowBombTag();
+	EventData.Instigator = GrsPawn;
+	EventData.EventMagnitude = CurrentHoldTime;
+	EventData.ContextHandle = FGameplayEffectContextHandle(UAbilitySystemGlobals::Get().AllocGameplayEffectContext());
+	EventData.ContextHandle.AddOrigin(GrsPawn->GetActorLocation());
+	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
+
+	return true;
+}
+
+// Spawn bomb at aiming mesh location
 void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
@@ -530,19 +561,27 @@ void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
 		return;
 	}
 
-	// --- nothing was predicted yet, e.g. released without charging
-	if (LastThrowData.FlightTime <= 0.f)
-	{
-		return;
-	}
-
 	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
 
-	// Activate throw ability, the bomb itself is placed by the projectile on landing
+	// Activate bomb ability
 	FGameplayEventData EventData;
-	EventData.EventTag = UGRSDataAsset::Get().GetThrowBombTag();
+	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
 	EventData.Instigator = GrsPawn;
 	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
-	EventData.TargetData.Add(new FGrsThrowTargetData(LastThrowData)); // handle owns it
 	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
+}
+
+// Clears timers of thrown bombs that are still flying, so no bomb is spawned once the ghost is no longer in control
+void UGrsPlayerControllerComponent::ClearPendingBombs()
+{
+	const UWorld* World = GetWorld();
+	if (World)
+	{
+		for (FTimerHandle& BombTimerHandle : PendingBombTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(BombTimerHandle);
+		}
+	}
+
+	PendingBombTimerHandles.Empty();
 }

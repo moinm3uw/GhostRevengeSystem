@@ -421,6 +421,11 @@ void UGrsPlayerStateComponent::GiveThrowBombAbility()
 		return;
 	}
 
+	// Granted ability without the trigger is never activated by the throw event, so no projectile is thrown
+	const FGameplayTag ThrowBombTag = UGRSDataAsset::Get().GetThrowBombTag();
+	ensureMsgf(ThrowBombAbilityClass.GetDefaultObject()->IsTriggeredByEvent(ThrowBombTag), TEXT("ASSERT: [%i] %hs:\n'%s' has no Gameplay Event trigger for '%s', add it to Ability Triggers of the blueprint child and set that blueprint in the GRS data asset!"),
+	           __LINE__, __FUNCTION__, *GetNameSafe(ThrowBombAbilityClass), *ThrowBombTag.ToString());
+
 	ThrowBombAbilitySpecHandle = ASC->GiveAbility(FGameplayAbilitySpec(ThrowBombAbilityClass));
 }
 
