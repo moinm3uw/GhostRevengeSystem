@@ -33,7 +33,6 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
-#include "Kismet/GameplayStatics.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -88,7 +87,6 @@ void UGrsPlayerControllerComponent::BeginPlay()
 // Clears all transient data created by this component
 void UGrsPlayerControllerComponent::OnUnregister()
 {
-	
 	UGlobalMessageSubsystem::StopListeningForAllGlobalMessages(this);
 
 	if (ABmrPlayerController* PlayerController = GetPlayerController())
@@ -454,33 +452,14 @@ void UGrsPlayerControllerComponent::AddSplineMesh(FPredictProjectilePathResult& 
 // Configure PredictProjectilePath settings and get result
 void UGrsPlayerControllerComponent::PredictProjectilePath(FPredictProjectilePathResult& PredictResult)
 {
-	// Set launch velocity (forward direction with some upward angle)
-	FVector LaunchVelocity = UGRSDataAsset::Get().GetVelocityParams();
-
-	APawn& CurrentPawn = GetCurrentPawnChecked();
-
-	// 45-degree vector between up and right
-	FVector UpRight45 = (CurrentPawn.GetActorForwardVector() + CurrentPawn.GetActorUpVector()).GetSafeNormal();
-
-	// Predict and draw the trajectory
-	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
-	Params.StartLocation = CurrentPawn.GetActorLocation();
-
-	// --- pick a direction based on the side of the map (left or right) the server allocated for this ghost
-	const AGrsPawn* GrsPawn = Cast<AGrsPawn>(&CurrentPawn);
-	const UGrsPlayerStateComponent* GrsPlayerStateComponent = GrsPawn ? GrsPawn->GetGrsPlayerStateComponent() : nullptr;
-	const EGRSCharacterSide GhostSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
-	if (GhostSide == EGRSCharacterSide::None)
+	// --- same prediction is used by the server and clients to fly the thrown bomb along this arc
+	const AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
+	if (!GrsPawn)
 	{
 		return;
 	}
 
-	const float SideSign = GhostSide == EGRSCharacterSide::Left ? 1.0f : -1.0f;
-
-	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (LaunchVelocity.X * CurrentHoldTime), LaunchVelocity.Y, UpRight45.Z + LaunchVelocity.Z);
-	Params.ActorsToIgnore.Add(&CurrentPawn);
-
-	UGameplayStatics::PredictProjectilePath(GetWorld(), Params, PredictResult);
+	GrsPawn->PredictThrowPath(CurrentHoldTime, GrsPawn->GetActorLocation(), PredictResult);
 }
 
 // Throw projectile event, bound to onetime button press
@@ -498,14 +477,19 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 		return;
 	}
 
-	//--- Calculate Cell to spawn bomb
-	FBmrCell TargetCell;
-	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
-	SpawnBomb(TargetCell);
+	// --- same arc as the charge preview, nothing is thrown if it was released without charging
+	FPredictProjectilePathResult PredictResult;
+	PredictProjectilePath(PredictResult);
+	const bool bIsCharged = CurrentHoldTime > 0.f
+	                        && PredictResult.PathData.Num() >= 2;
 
-	FVector ThrowDirection = GrsPawn->GetActorForwardVector() + FVector(5.0f, 5.0f, 0.0f);
-	ThrowDirection.Normalize();
+	// --- server launches the projectile and spawns the bomb once it lands
+	if (bIsCharged)
+	{
+		SendThrowBombEvent();
+	}
 
+	// --- next throw has to be charged again
 	CurrentHoldTime = 0.0f;
 	GrsPawn->ClearTrajectorySplines();
 
@@ -514,21 +498,21 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	AimingStaticMeshComponent->SetWorldLocation(GrsPawn->GetActorLocation());
 }
 
-// Spawn bomb at aiming mesh location
-void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
+// Sends the throw event with the current charge, the server launches the bomb projectile from the ghost
+bool UGrsPlayerControllerComponent::SendThrowBombEvent()
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
 	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
 	{
-		return;
+		return false;
 	}
 
-	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
-
-	// Activate bomb ability
+	// Activate throw ability, the charge is enough for the server to calculate the same arc as the charge preview from the ghost location
 	FGameplayEventData EventData;
-	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
+	EventData.EventTag = UGRSDataAsset::Get().GetThrowBombTag();
 	EventData.Instigator = GrsPawn;
-	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
+	EventData.EventMagnitude = CurrentHoldTime;
 	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
+
+	return true;
 }

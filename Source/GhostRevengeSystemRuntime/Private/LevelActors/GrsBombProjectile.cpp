@@ -3,93 +3,208 @@
 // Grs
 #include "LevelActors/GrsBombProjectile.h"
 
+#include "Components/GrsPlayerStateComponent.h"
 #include "Data/GRSDataAsset.h"
 #include "GhostRevengeSystemRuntimeModule.h" // LogGrs
+#include "LevelActors/GrsPawn.h"
 
 // Bmr
-#include "Bomber.h" // collision channels
+#include "DataRegistries/BmrBombRow.h"
+#include "GameFramework/BmrGameState.h"
+#include "Structures/BmrCell.h"
+#include "Structures/BmrGameStateTag.h"
+#include "UtilityLibraries/BmrCellUtilsLibrary.h"
 
-// DataAssetLoader
-#include "DalSubsystem.h"
+// MyEditorUtils
+#include "Subsystems/GlobalMessageSubsystem.h"
+
+// PoolManager
+#include "PoolManagerSubsystem.h"
 
 // UE
-#include "Components/SphereComponent.h"
+#include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstance.h"
+#include "TimerManager.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsBombProjectile)
 
-// Sets default values
+// Sets default values for this actor's properties
 AGrsBombProjectile::AGrsBombProjectile()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+	SetReplicatingMovement(true);
+	bAlwaysRelevant = true; // ghosts throw from outside of the map, so relevancy should not depend on the distance, is cheap for a few pooled actors
+	SetHidden(true);
 
-	// Collision sphere
-	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	CollisionSphere->SetSphereRadius(1.0f);
-	RootComponent = CollisionSphere;
-
-	// Setup collision to allow overlap players with each other, but block all other actors
-	CollisionSphere->CanCharacterStepUpOn = ECB_Yes;
-	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	CollisionSphere->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player0, ECR_Overlap);
-	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player1, ECR_Overlap);
-	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player2, ECR_Overlap);
-	// CollisionSphere->SetCollisionResponseToChannel(ECC_Player3, ECR_Overlap);
-
-	// @PR JanSeliv [Potential Bug] - dont bind in Constructor, but in OnRegister\BeginPlay
-	// @PR JanSeliv [Coding Standards] - bind via `&ThisClass::OnHit`, module uses ThisClass everywhere not explicit class name
-	CollisionSphere->OnComponentHit.AddDynamic(this, &AGrsBombProjectile::OnHit);
-
-	// Mesh
+	// mesh, is purely visual: has no collision, so it flies along the predicted arc without being stopped by anything
 	BombMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BombMesh"));
-	BombMesh->SetupAttachment(RootComponent);
-	BombMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BombMesh->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	RootComponent = BombMesh;
 
-	// Projectile movement
+	// movement, is not auto activated since the pool spawns the projectile far away, it's activated on launch instead
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
-	ProjectileMovement->SetUpdatedComponent(CollisionSphere);
-	ProjectileMovement->InitialSpeed = 0.0f;
-	ProjectileMovement->MaxSpeed = 3000.0f;
-	ProjectileMovement->bRotationFollowsVelocity = true;
-	ProjectileMovement->ProjectileGravityScale = 1.0f;
+	ProjectileMovement->UpdatedComponent = BombMesh;
+	ProjectileMovement->bAutoActivate = false;
 }
 
-void AGrsBombProjectile::Launch(const FVector& LaunchVelocity)
+// Server only: launches this projectile from the thrower along the same arc the ghost saw in the charge preview
+bool AGrsBombProjectile::Launch(AGrsPawn& Thrower, float HoldTime)
 {
-	ProjectileMovement->Velocity = LaunchVelocity;
+	if (!ensureMsgf(HasAuthority(), TEXT("ASSERT: [%i] %hs:\n'Launch' has to be called on server only!"), __LINE__, __FUNCTION__))
+	{
+		return false;
+	}
+
+	// --- pick a direction based on the side of the map (left or right) the server allocated for this ghost
+	const UGrsPlayerStateComponent* GrsPlayerStateComponent = Thrower.GetGrsPlayerStateComponent();
+	const EGRSCharacterSide GhostSide = GrsPlayerStateComponent ? GrsPlayerStateComponent->GetGhostSide() : EGRSCharacterSide::None;
+	if (GhostSide == EGRSCharacterSide::None)
+	{
+		return false;
+	}
+
+	const float SideSign = GhostSide == EGRSCharacterSide::Left ? 1.0f : -1.0f;
+
+	// 45-degree vector between up and right
+	const FVector UpRight45 = (Thrower.GetActorForwardVector() + Thrower.GetActorUpVector()).GetSafeNormal();
+
+	// Set launch velocity (forward direction with some upward angle), the longer the charge the further the throw
+	const FVector VelocityParams = UGRSDataAsset::Get().GetVelocityParams();
+
+	FPredictProjectilePathParams Params = UGRSDataAsset::Get().GetChargePredictParams();
+	Params.StartLocation = Thrower.GetActorLocation();
+	Params.LaunchVelocity = FVector(UpRight45.X + SideSign * (VelocityParams.X * HoldTime), VelocityParams.Y, UpRight45.Z + VelocityParams.Z);
+	Params.ActorsToIgnore.Add(&Thrower);
+
+	// Flight speed plays the same arc faster or slower: velocity is scaled by it and gravity by its square,
+	// so the curvature stays the same while the predicted time of each point is divided by the speed.
+	// Simulation time and frequency are scaled as well, so the arc ends at the same point and is traced with the same amount of steps
+	// Gravity is the world one if not overridden, it's taken from the movement, so the projectile falls with exactly the predicted gravity
+	const float WorldGravityZ = ProjectileMovement->UMovementComponent::GetGravityZ();
+	const float FlightSpeed = UGRSDataAsset::Get().GetProjectileFlightSpeed();
+	const float GravityZ = FMath::IsNearlyZero(Params.OverrideGravityZ) ? WorldGravityZ : Params.OverrideGravityZ;
+	Params.LaunchVelocity *= FlightSpeed;
+	Params.OverrideGravityZ = GravityZ * FMath::Square(FlightSpeed);
+	Params.MaxSimTime /= FlightSpeed;
+	Params.SimFrequency *= FlightSpeed;
+
+	FPredictProjectilePathResult PredictResult;
+	UGameplayStatics::PredictProjectilePath(this, Params, PredictResult);
+	if (PredictResult.PathData.Num() < 2)
+	{
+		return false;
+	}
+
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) Thrower: %s, HoldTime: %f"), __LINE__, __FUNCTION__, *Thrower.GetName(), HoldTime);
+
+	// Instigator is replicated, so clients apply the same visuals in OnRep_Instigator, while rep notify is not called on the server
+	SetInstigator(&Thrower);
+	ApplyBombVisuals();
+	SetActorLocation(Params.StartLocation);
+
+	// Same gravity as the arc is predicted with
+	ProjectileMovement->ProjectileGravityScale = !FMath::IsNearlyZero(WorldGravityZ) ? Params.OverrideGravityZ / WorldGravityZ : 1.f;
+
+	ProjectileMovement->Velocity = Params.LaunchVelocity;
+	ProjectileMovement->Activate(/*bReset*/ true);
+
+	SetActorHiddenInGame(false);
+
+	// Projectile has no collision, so it reaches the end of the predicted arc right when its flight time is over
+	const float FlightTime = PredictResult.PathData.Last().Time;
+	GetWorldTimerManager().SetTimer(FlightTimerHandle, this, &ThisClass::OnFlightTimeOver, FlightTime, /*bLoop*/ false);
+
+	ForceNetUpdate();
+	return true;
 }
 
-// Called when the game starts or when spawned
-void AGrsBombProjectile::BeginPlay()
+// Applies the bomb visuals of the new thrower on clients, the thrower is the replicated instigator
+void AGrsBombProjectile::OnRep_Instigator()
 {
-	Super::BeginPlay();
+	Super::OnRep_Instigator();
 
-	UDalSubsystem::Get().ListenForDataAsset<UGRSDataAsset>(this, &ThisClass::OnDataAssetLoaded);
+	if (GetInstigator())
+	{
+		ApplyBombVisuals();
+	}
 }
 
-// Called when the GRS data asset is loaded and available
-void AGrsBombProjectile::OnDataAssetLoaded_Implementation(const UGRSDataAsset* DataAsset)
+// Applies the same mesh and material as the bomb the thrower places
+void AGrsBombProjectile::ApplyBombVisuals()
 {
-	// @PR JanSeliv [Coding Standards] - DataAsset can be null - add ensureMsgf
-	// @PR JanSeliv [Coding Standards] - SetStaticMesh uses UStaticMesh type, include Engine/StaticMesh.h, no transitive reliance, match sibling GrsPawn cpp at same call
-	BombMesh->SetStaticMesh(DataAsset->GetProjectileMesh());
+	// Same row the bomb resolves in ABmrBombAbilityActor::ApplyMesh() for its instigator
+	const APawn* Thrower = GetInstigator();
+	const FBmrBombRow& BombRow = FBmrBombRow::GetBombRow(Thrower);
+	UStaticMesh* NewBombMesh = Cast<UStaticMesh>(BombRow.Mesh.Get());
+	if (!ensureMsgf(NewBombMesh, TEXT("ASSERT: [%i] %hs: 'NewBombMesh' is not valid static mesh!"), __LINE__, __FUNCTION__))
+	{
+		return;
+	}
+
+	BombMesh->SetStaticMesh(NewBombMesh);
+
+	// Projectile is reused by different players, so previous thrower's material is reset first, what also falls back to the mesh default slot
+	BombMesh->EmptyOverrideMaterials();
+
+	// Same material the bomb picks in ABmrBombAbilityActor::ApplyMaterial(): cycled by player id, so each player gets own material when sharing the same bomb row
+	const int32 BombMaterialsNum = FBmrBombRow::GetBombMaterialsNum();
+	const APlayerState* ThrowerPlayerState = Thrower ? Thrower->GetPlayerState() : nullptr;
+	if (BombRow.Material.Get()
+	    && BombMaterialsNum > 0
+	    && ThrowerPlayerState)
+	{
+		const int32 MaterialIndex = FMath::Abs(ThrowerPlayerState->GetPlayerId()) % BombMaterialsNum;
+		if (UMaterialInterface* BombMaterial = FBmrBombRow::GetBombMaterial(MaterialIndex))
+		{
+			BombMesh->SetMaterial(0, BombMaterial);
+		}
+	}
 }
 
-void AGrsBombProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+// Server only: spawns the bomb at the nearest free cell under the projectile and returns the projectile to the pool, what hides it on all machines
+void AGrsBombProjectile::OnFlightTimeOver()
 {
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: "), __LINE__, __FUNCTION__);
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) Thrower: %s"), __LINE__, __FUNCTION__, *GetNameSafe(GetInstigator()));
+
+	// Bomb is spawned and the projectile is hidden in the same frame, so both are replicated to clients together
+	SpawnBomb();
+
+	ProjectileMovement->Deactivate();
+
+	// Projectile is released back instead of being destroyed, so next throw reuses it
+	UPoolManagerSubsystem& PoolManager = UPoolManagerSubsystem::Get();
+	const FPoolObjectHandle& ProjectileHandle = PoolManager.FindPoolHandleByObject(this);
+	if (ensureMsgf(ProjectileHandle.IsValid(), TEXT("ASSERT: [%i] %hs:\n'ProjectileHandle' is not valid, projectile is not in the pool!"), __LINE__, __FUNCTION__))
+	{
+		PoolManager.ReturnToPool(ProjectileHandle);
+	}
 }
 
-// @PR JanSeliv [Coding Standards] - empty Tick override with bCanEverTick=false, remove dead override in both cpp and header
-// Called every frame
-void AGrsBombProjectile::Tick(float DeltaTime)
+// Server only: activates the bomb ability of the thrower at the nearest free cell under the projectile
+void AGrsBombProjectile::SpawnBomb()
 {
-	Super::Tick(DeltaTime);
+	// Ghost could be no longer in control, e.g. it's revived or the match is over while the bomb was flying
+	APawn* Thrower = GetInstigator();
+	if (!IsValid(Thrower)
+	    || !Thrower->GetController()
+	    || !ABmrGameState::Get().HasMatchingGameplayTag(FBmrGameStateTag::InGame))
+	{
+		return;
+	}
+
+	const FBmrCell SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(FBmrCell(GetActorLocation()));
+
+	// Activate bomb ability of the thrower, the event is sent on server, so the bomb ability has to be server activated
+	FGameplayEventData EventData;
+	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
+	EventData.Instigator = Thrower;
+	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
+	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
 }

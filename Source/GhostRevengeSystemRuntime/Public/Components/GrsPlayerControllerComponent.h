@@ -131,7 +131,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	void ThrowProjectile();
 
-	/** Spawn bomb at aiming mesh location */
+	/** Sends the throw event with the current charge, the server launches the bomb projectile from the ghost
+	 * @return true if the throw is sent */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	void SpawnBomb(const struct FBmrCell& TargetCell);
+	bool SendThrowBombEvent();
 };

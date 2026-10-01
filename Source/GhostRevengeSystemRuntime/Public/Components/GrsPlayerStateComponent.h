@@ -5,6 +5,7 @@
 // UE
 #include "AbilitySystemInterface.h"
 #include "ActiveGameplayEffectHandle.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 
@@ -160,4 +161,20 @@ public:
 	/** To Remove applied explosion (bomb spawning) gameplay effect */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void RemoveBombSpawningGameplayEffect();
+
+	/*********************************************************************************************
+	 * Bomb throwing ability of the ghost
+	 **********************************************************************************************/
+protected:
+	/** Cached handle of granted throw bomb ability */
+	FGameplayAbilitySpecHandle ThrowBombAbilitySpecHandle;
+
+public:
+	/** Grants the ability to throw a bomb projectile by the ghost of this player, see UGrsThrowBombAbility */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void GiveThrowBombAbility();
+
+	/** Removes the granted ability to throw a bomb projectile */
+	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
+	void ClearThrowBombAbility();
 };

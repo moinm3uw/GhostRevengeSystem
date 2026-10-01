@@ -247,4 +247,11 @@ public:
 	/** Hide spline elements (trajectory) */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem]")
 	void ClearTrajectorySplines();
+
+	/** Predicts the arc of the bomb thrown by this ghost, the same arc is shown in the charge preview and flown by the thrown bomb.
+	 * @param HoldTime - how long the throw was charged, the longer it's charged the further the bomb is thrown
+	 * @param StartLocation - where the arc starts
+	 * @param OutResult - points of the arc, is empty if the ghost side is not known yet
+	 * @return true if the arc is predicted */
+	bool PredictThrowPath(float HoldTime, const FVector& StartLocation, struct FPredictProjectilePathResult& OutResult) const;
 };

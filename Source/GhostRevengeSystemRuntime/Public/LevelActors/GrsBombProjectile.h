@@ -4,50 +4,56 @@
 
 // UE
 #include "CoreMinimal.h"
+#include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"
 
 #include "GrsBombProjectile.generated.h"
 
+/**
+ * Bomb thrown by a ghost, flies by its ProjectileMovementComponent along the same arc the ghost saw in the charge preview:
+ * start location, launch velocity and gravity are calculated from the ghost and its charge the same way as AGrsPawn::PredictThrowPath does.
+ * Only the server moves the projectile, clients receive its location by replicated movement.
+ * Looks like the bomb the thrower places: mesh and material are applied from the replicated instigator on every machine.
+ * Once the flight time is over, the server spawns the real bomb at the nearest free cell under the projectile and hides the projectile in the same frame.
+ * Is pooled: prepared on server once GRS is ready (see UGrsProjectilePoolComponent), taken on each throw (see UGrsThrowBombAbility)
+ * and returned back to the pool once the flight time is over.
+ */
 UCLASS()
 class GHOSTREVENGESYSTEMRUNTIME_API AGrsBombProjectile : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
+	/** Sets default values for this actor's properties */
 	AGrsBombProjectile();
 
-	// @PR JanSeliv [Coding Standards] - missing module category, use Category = "[GhostRevengeSystem]" like neighbor UFUNCTIONs
-	UFUNCTION(BlueprintCallable)
-	void Launch(const FVector& LaunchVelocity);
+	/** Server only: launches this projectile from the thrower along the same arc the ghost saw in the charge preview.
+	 * @param Thrower - Ghost that throws the bomb, the arc starts at its location
+	 * @param HoldTime - How long the throw was charged, the longer it's charged the further the bomb is thrown
+	 * @return false if the arc can't be calculated, e.g. the ghost side is not known yet */
+	bool Launch(class AGrsPawn& Thrower, float HoldTime);
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	/** Visual of the bomb, is the root the projectile movement moves, has the same mesh and material as the bomb the thrower places */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TObjectPtr<class UStaticMeshComponent> BombMesh = nullptr;
 
-	// @PR JanSeliv [Coding Standards] - protected BP-exposed UFUNCTION needs meta = (BlueprintProtected), mirror C++ access like neighbor OnGameStateChanged
-	/** Called when the GRS data asset is loaded and available */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]")
-	void OnDataAssetLoaded(const class UGRSDataAsset* DataAsset);
+	/** Moves the bomb, its velocity and gravity are set on launch to follow the predicted arc */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
+	TObjectPtr<class UProjectileMovementComponent> ProjectileMovement = nullptr;
 
-	// @PR JanSeliv [Coding Standards] - CreateDefaultSubobject component uses VisibleDefaultsOnly across module, not VisibleAnywhere, match neighbor GrsPawn components, applies across file (BombMesh, ProjectileMovement)
-	// @PR JanSeliv [Coding Standards] - wrap UObject member in TObjectPtr and init nullptr, raw pointer no init, applies across file (BombMesh, ProjectileMovement)
-	// @PR JanSeliv [Coding Standards] - BP-expose UPROPERTY with BlueprintReadOnly + meta=(BlueprintProtected) like neighbor GrsPawn components, applies across file
-	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
-	class USphereComponent* CollisionSphere;
+	/** Server only: spawns the bomb and hides the projectile once the flight time is over */
+	FTimerHandle FlightTimerHandle;
 
-	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
-	class UStaticMeshComponent* BombMesh;
+	/** Applies the bomb visuals of the new thrower on clients, the thrower is the replicated instigator */
+	virtual void OnRep_Instigator() override;
 
-	UPROPERTY(VisibleAnywhere, Category = "[GhostRevengeSystem]")
-	class UProjectileMovementComponent* ProjectileMovement;
+	/** Applies the same mesh and material as the bomb the thrower places */
+	void ApplyBombVisuals();
 
-	// @PR JanSeliv [Coding Standards] - On-callback must be BlueprintNativeEvent like OnDataAssetLoaded, add module Category = "[GhostRevengeSystem]"
-	UFUNCTION()
-	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	    FVector NormalImpulse, const FHitResult& Hit);
+	/** Server only: spawns the bomb at the nearest free cell under the projectile and returns the projectile to the pool, what hides it on all machines */
+	void OnFlightTimeOver();
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	/** Server only: activates the bomb ability of the thrower at the nearest free cell under the projectile */
+	void SpawnBomb();
 };
