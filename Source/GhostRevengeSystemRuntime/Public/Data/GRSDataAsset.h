@@ -8,7 +8,6 @@
 #include "GhostRevengeSystemRuntimeModule.h" // GrsMaxPlayers
 
 // UE
-#include "Engine/CurveTable.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/GameplayStaticsTypes.h" // FPredictProjectilePathParams
 
@@ -67,18 +66,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE int32 GetProjectilePoolSize() const { return ProjectilePoolSize; }
 
-	/** Returns how fast the thrown bomb flies along the arc: 1 is the real time of the arc, 2 flies it twice faster, 0.5 twice slower.
+	/** Returns how fast the thrown bomb flies along the arc: 1 is the real time of the arc, 2 twice faster, 0.5 twice slower.
 	 * @see UGRSDataAsset::ProjectileFlightSpeed */
 	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE float GetProjectileFlightSpeed() const { return ProjectileFlightSpeed; }
-
-	/** Returns how long the thrown bomb flies along given arc with the projectile flight speed, or 0 if there is no arc */
-	float GetProjectileFlightTime(const FPredictProjectilePathResult& PredictResult) const;
-
-	/** Returns the curve that defines how the thrown bomb goes along the arc during its flight.
-	 * @see UGRSDataAsset::ProjectileFlightCurve */
-	UFUNCTION(BlueprintPure, Category = "[GhostRevengeSystem]")
-	FORCEINLINE FCurveTableRowHandle GetProjectileFlightCurve() const { return ProjectileFlightCurve; }
 
 	/** Returns aiming area mesh, shown at the end of the predicted trajectory
 	 * @see UGRSDataAsset::AimingAreaStaticMesh */
@@ -127,7 +118,7 @@ public:
 	UFUNCTION(BlueprintPure, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetPlayerReviveEffectClass() const { return PlayerReviveEffect; }
 
-	/** Returns the trigger bomb placement tag, is sent by the thrower's client once a thrown bomb projectile lands */
+	/** Returns the trigger bomb placement tag, is sent on server once a thrown bomb projectile lands */
 	UFUNCTION(BlueprintPure, BlueprintPure, Category = "[GhostRevengeSystem]")
 	FORCEINLINE FGameplayTag GetTriggerBombTag() const { return TriggerBombTag; }
 
@@ -163,22 +154,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Projectile Pool Size", ClampMin = "1"))
 	int32 ProjectilePoolSize = 1;
 
-	/** How fast the thrown bomb flies along the arc: 1 is the real time of the arc, 2 flies it twice faster, 0.5 twice slower.
-	 * The arc itself stays the same, the bomb is spawned once the scaled flight time is over */
+	/** How fast the thrown bomb flies along the arc: 1 is the real time of the arc, 2 twice faster, 0.5 twice slower.
+	 * The arc itself stays the same, only its flight time is scaled, so the bomb still lands where the charge preview shows */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Projectile Flight Speed", ClampMin = "0.1"))
 	float ProjectileFlightSpeed = 1.f;
-
-	/** Curve table row that defines how the thrown bomb goes along the arc during its flight, the total flight time stays the same.
-	 * Time is the flight progress from 0 to 1, value is the progress along the arc from 0 to 1,
-	 * e.g. a curve that rises fast and flattens in the end makes the bomb fly faster in the beginning and slower in the end.
-	 * If not set, the bomb flies with the speed of the arc itself.
-	 * Example data (can be imported as csv into your Curve Table):
-	 *
-	 *     Name,0,0.25,0.5,1
-	 *     FlightProgress,0,0.5,0.8,1
-	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected, DisplayName = "Projectile Flight Curve"))
-	FCurveTableRowHandle ProjectileFlightCurve;
 
 	/** Parameter to control trajectory visual display */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "[GhostRevengeSystem] | Trajectory Visual", meta = (BlueprintProtected, DisplayName = "Should Display trajectory"))

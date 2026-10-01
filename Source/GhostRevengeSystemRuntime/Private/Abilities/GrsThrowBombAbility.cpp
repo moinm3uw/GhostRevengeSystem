@@ -8,9 +8,6 @@
 #include "LevelActors/GrsBombProjectile.h"
 #include "LevelActors/GrsPawn.h"
 
-// Bmr
-#include "Structures/BmrCell.h"
-
 // PoolManager
 #include "PoolManagerSubsystem.h"
 
@@ -19,9 +16,6 @@
 // Sets default values for this ability
 UGrsThrowBombAbility::UGrsThrowBombAbility()
 {
-	// Local predicted, so the event data sent with the throw reaches the server
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
-
 	// Instance is kept alive to receive the pool callback
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
@@ -69,27 +63,19 @@ void UGrsThrowBombAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return;
 	}
 
-	// --- predict the same arc the ghost saw in the charge preview: charge is sent as magnitude, the start of the arc as context origin
-	// Client value is clamped, so a longer charge than allowed can't be sent
+	// Charge is sent as magnitude, client value is clamped, so a longer charge than allowed can't be sent
 	const float HoldTime = FMath::Clamp(TriggerEventData->EventMagnitude, 0.f, UGRSDataAsset::Get().GetMaxChargingTime());
-	const FVector StartLocation = GetThrowStartLocation(*TriggerEventData, *Thrower);
-	FPredictProjectilePathResult PredictResult;
-	if (!Thrower->PredictThrowPath(HoldTime, StartLocation, PredictResult))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, /*bReplicateEndAbility*/ true, /*bWasCancelled*/ true);
-		return;
-	}
 
-	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) Thrower: %s"), __LINE__, __FUNCTION__, *GetNameSafe(Thrower));
+	UE_LOG(LogGrs, Verbose, TEXT("[%i] %hs: (SERVER) Thrower: %s, HoldTime: %f"), __LINE__, __FUNCTION__, *GetNameSafe(Thrower), HoldTime);
 
 	// --- Prepare spawn request
 	const TWeakObjectPtr<ThisClass> WeakThis = this;
 	const TWeakObjectPtr<AGrsPawn> WeakThrower = Thrower;
-	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis, WeakThrower, PredictResult](const TArray<FPoolObjectData>& CreatedObjects)
+	const FOnSpawnAllCallback OnTakeActorsFromPoolCompleted = [WeakThis, WeakThrower, HoldTime](const TArray<FPoolObjectData>& CreatedObjects)
 	{
 		if (UGrsThrowBombAbility* This = WeakThis.Get())
 		{
-			This->OnTakeProjectileFromPoolCompleted(CreatedObjects, WeakThrower.Get(), PredictResult);
+			This->OnTakeProjectileFromPoolCompleted(CreatedObjects, WeakThrower.Get(), HoldTime);
 		}
 	};
 
@@ -103,24 +89,8 @@ void UGrsThrowBombAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
  * Throw
  ********************************************************************************************* */
 
-// Returns where the thrown arc starts: sent by the client if it's close to the ghost, otherwise the ghost location on server
-FVector UGrsThrowBombAbility::GetThrowStartLocation(const FGameplayEventData& EventData, const APawn& Thrower)
-{
-	const FVector ServerLocation = Thrower.GetActorLocation();
-	if (!EventData.ContextHandle.IsValid()
-	    || !EventData.ContextHandle.HasOrigin())
-	{
-		return ServerLocation;
-	}
-
-	// Ghost could move a bit on its client till the throw reached the server, so modified client can't throw from anywhere else
-	static constexpr float MaxStartLocationError = FBmrCell::CellSize;
-	const FVector& ClientLocation = EventData.ContextHandle.GetOrigin();
-	return FVector::Dist(ClientLocation, ServerLocation) <= MaxStartLocationError ? ClientLocation : ServerLocation;
-}
-
 // Starts the flight of the projectile taken from the pool
-void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects, APawn* Thrower, const FPredictProjectilePathResult& PredictResult)
+void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolObjectData>& CreatedObjects, AGrsPawn* Thrower, float HoldTime)
 {
 	if (!ensureMsgf(CreatedObjects.IsValidIndex(0), TEXT("ASSERT: [%i] %hs:\n'CreatedObjects' is empty, projectile is not taken from the pool!"), __LINE__, __FUNCTION__))
 	{
@@ -128,14 +98,11 @@ void UGrsThrowBombAbility::OnTakeProjectileFromPoolCompleted(const TArray<FPoolO
 		return;
 	}
 
+	// Ghost could be gone while the pool was spawning the projectile, or its arc can't be calculated, then nothing is thrown and the projectile is released back
 	const FPoolObjectData& CreatedProjectile = CreatedObjects[0];
-	if (Thrower)
+	if (!Thrower
+	    || !CreatedProjectile.GetChecked<AGrsBombProjectile>().Launch(*Thrower, HoldTime))
 	{
-		CreatedProjectile.GetChecked<AGrsBombProjectile>().StartFlight(*Thrower, PredictResult);
-	}
-	else
-	{
-		// Ghost is gone while the pool was spawning the projectile, so nothing is thrown and the projectile is released back
 		UPoolManagerSubsystem::Get().ReturnToPool(CreatedProjectile.Handle);
 	}
 

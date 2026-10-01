@@ -8,7 +8,6 @@
 // UE
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Engine/TimerHandle.h"
 #include "Kismet/GameplayStaticsTypes.h"
 
 #include "GrsPlayerControllerComponent.generated.h"
@@ -93,9 +92,6 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Transient, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
 	float CurrentHoldTime = 0.0f;
 
-	/** Timers of thrown bombs that are still flying, each one spawns its bomb once the flight time of its throw is over */
-	TArray<FTimerHandle> PendingBombTimerHandles;
-
 public:
 	/** Enables or disable input context (enhanced input) depends on possession state. Called when possessed pawn changed */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "[GhostRevengeSystem]", meta = (BlueprintProtected))
@@ -135,16 +131,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	void ThrowProjectile();
 
-	/** Sends the throw event with the current charge, the server predicts the same arc and launches the bomb projectile along it
+	/** Sends the throw event with the current charge, the server launches the bomb projectile from the ghost
 	 * @return true if the throw is sent */
 	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
 	bool SendThrowBombEvent();
-
-	/** Spawn bomb at aiming mesh location */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	void SpawnBomb(const struct FBmrCell& TargetCell);
-
-	/** Clears timers of thrown bombs that are still flying, so no bomb is spawned once the ghost is no longer in control */
-	UFUNCTION(BlueprintCallable, Category = "[GhostRevengeSystem] | Aiming")
-	void ClearPendingBombs();
 };

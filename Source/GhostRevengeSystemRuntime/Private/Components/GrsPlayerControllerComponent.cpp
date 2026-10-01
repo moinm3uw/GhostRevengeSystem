@@ -29,13 +29,10 @@
 
 // UE
 #include "Abilities/GameplayAbilityTypes.h" // FGameplayEventData
-#include "AbilitySystemGlobals.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
-#include "Kismet/GameplayStatics.h"
-#include "TimerManager.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrsPlayerControllerComponent)
 
@@ -103,7 +100,6 @@ void UGrsPlayerControllerComponent::OnUnregister()
 	}
 
 	DisableGhostInputs(); // --- disables ghost input on local client
-	ClearPendingBombs(); // --- bombs still flying are not spawned
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 
 	Super::OnUnregister();
@@ -116,7 +112,6 @@ void UGrsPlayerControllerComponent::OnGameStateChanged_Implementation(const FGam
 	if (Payload.InstigatorTags.HasTag(FBmrGameStateTag::GameStarting))
 	{
 		DisableGhostInputs(); // --- disables ghost input on local client
-		ClearPendingBombs(); // --- bombs still flying are not spawned
 		UnpossessGhostPawn(); // --- unpossess ghost pawn
 	}
 
@@ -150,7 +145,6 @@ void UGrsPlayerControllerComponent::OnOpponentsKilledNumChanged_Implementation(i
 	}
 
 	DisableGhostInputs(); // --- disables ghost input on local client
-	ClearPendingBombs(); // --- bombs still flying are not spawned
 	UnpossessGhostPawn(); // --- unpossess ghost pawn
 }
 
@@ -483,42 +477,16 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 		return;
 	}
 
-	//--- Calculate Cell to spawn bomb
-	FBmrCell TargetCell;
-	TargetCell.Location = AimingStaticMeshComponent->GetComponentLocation();
-
 	// --- same arc as the charge preview, nothing is thrown if it was released without charging
 	FPredictProjectilePathResult PredictResult;
 	PredictProjectilePath(PredictResult);
 	const bool bIsCharged = CurrentHoldTime > 0.f
 	                        && PredictResult.PathData.Num() >= 2;
 
-	// --- server launches the projectile half a ping later, and the bomb event reaches it half a ping later as well,
-	// so spawning the bomb once the flight time is over places it on server right when its projectile lands
-	if (bIsCharged
-	    && SendThrowBombEvent())
+	// --- server launches the projectile and spawns the bomb once it lands
+	if (bIsCharged)
 	{
-		const float FlightTime = UGRSDataAsset::Get().GetProjectileFlightTime(PredictResult);
-		const TWeakObjectPtr<AGrsPawn> WeakGrsPawn = GrsPawn;
-		const FTimerDelegate OnFlightTimeOver = FTimerDelegate::CreateWeakLambda(this, [this, WeakGrsPawn, TargetCell]()
-		{
-			// --- ghost could be no longer in control, e.g. it's revived while the bomb was flying
-			if (WeakGrsPawn.IsValid()
-			    && WeakGrsPawn.Get() == GetCurrentPawn())
-			{
-				SpawnBomb(TargetCell);
-			}
-		});
-
-		// --- forget timers of bombs that already landed, so only flying ones are kept
-		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
-		PendingBombTimerHandles.RemoveAll([&TimerManager](const FTimerHandle& TimerHandle)
-		{
-			return !TimerManager.TimerExists(TimerHandle);
-		});
-
-		FTimerHandle& BombTimerHandle = PendingBombTimerHandles.AddDefaulted_GetRef();
-		TimerManager.SetTimer(BombTimerHandle, OnFlightTimeOver, FlightTime, /*bLoop*/ false);
+		SendThrowBombEvent();
 	}
 
 	// --- next throw has to be charged again
@@ -530,7 +498,7 @@ void UGrsPlayerControllerComponent::ThrowProjectile()
 	AimingStaticMeshComponent->SetWorldLocation(GrsPawn->GetActorLocation());
 }
 
-// Sends the throw event with the current charge, the server predicts the same arc and launches the bomb projectile along it
+// Sends the throw event with the current charge, the server launches the bomb projectile from the ghost
 bool UGrsPlayerControllerComponent::SendThrowBombEvent()
 {
 	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
@@ -539,49 +507,12 @@ bool UGrsPlayerControllerComponent::SendThrowBombEvent()
 		return false;
 	}
 
-	// Activate throw ability, it's purely visual: the bomb itself is spawned by SpawnBomb() once the flight time is over
-	// Charge and the start of the arc are enough for the server to predict the same arc as the charge preview
+	// Activate throw ability, the charge is enough for the server to calculate the same arc as the charge preview from the ghost location
 	FGameplayEventData EventData;
 	EventData.EventTag = UGRSDataAsset::Get().GetThrowBombTag();
 	EventData.Instigator = GrsPawn;
 	EventData.EventMagnitude = CurrentHoldTime;
-	EventData.ContextHandle = FGameplayEffectContextHandle(UAbilitySystemGlobals::Get().AllocGameplayEffectContext());
-	EventData.ContextHandle.AddOrigin(GrsPawn->GetActorLocation());
 	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
 
 	return true;
-}
-
-// Spawn bomb at aiming mesh location
-void UGrsPlayerControllerComponent::SpawnBomb(const FBmrCell& TargetCell)
-{
-	AGrsPawn* GrsPawn = Cast<AGrsPawn>(GetCurrentPawn());
-	if (!ensureMsgf(GrsPawn, TEXT("ASSERT: [%i] %hs:\n'GrsPawn' is not currently possess by this controller!"), __LINE__, __FUNCTION__))
-	{
-		return;
-	}
-
-	const FBmrCell& SpawnBombCell = UBmrCellUtilsLibrary::GetNearestFreeCell(TargetCell);
-
-	// Activate bomb ability
-	FGameplayEventData EventData;
-	EventData.EventTag = UGRSDataAsset::Get().GetTriggerBombTag();
-	EventData.Instigator = GrsPawn;
-	EventData.EventMagnitude = UBmrCellUtilsLibrary::GetIndexByCellOnLevel(SpawnBombCell);
-	UGlobalMessageSubsystem::BroadcastGlobalMessage(EventData);
-}
-
-// Clears timers of thrown bombs that are still flying, so no bomb is spawned once the ghost is no longer in control
-void UGrsPlayerControllerComponent::ClearPendingBombs()
-{
-	const UWorld* World = GetWorld();
-	if (World)
-	{
-		for (FTimerHandle& BombTimerHandle : PendingBombTimerHandles)
-		{
-			World->GetTimerManager().ClearTimer(BombTimerHandle);
-		}
-	}
-
-	PendingBombTimerHandles.Empty();
 }
